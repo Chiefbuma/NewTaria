@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { corporates } from '@/lib/mock-data';
 
 export async function GET() {
   try {
-    const connection = await db.getConnection();
-    const [rows] = await connection.query('SELECT * FROM corporates ORDER BY name ASC');
-    connection.release();
-    return NextResponse.json(rows);
+    return NextResponse.json(corporates.sort((a, b) => a.name.localeCompare(b.name)));
   } catch (error) {
     console.error(error);
     return NextResponse.json({ message: 'Error fetching corporates' }, { status: 500 });
