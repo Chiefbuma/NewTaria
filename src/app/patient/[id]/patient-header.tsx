@@ -51,7 +51,7 @@ export default function PatientHeader({ patient }: { patient: Patient }) {
                 <div className="space-y-2 flex-1">
                     <div className="flex items-center gap-4">
                         <h1 className="text-3xl font-bold font-headline tracking-tight">{name}</h1>
-                        <Badge variant={statusVariant[patient.status]} className={cn('text-base', patient.status === 'Active' && 'bg-green-500/20 text-green-700 dark:bg-green-500/10 dark:text-green-400 border-green-500/30')}>
+                        <Badge variant={statusVariant[patient.status]} className={cn('text-base', patient.status === 'Active' && 'bg-green-500/20 text-green-700 dark:bg-green-500/10 dark:text-green-400 border-green-500/30', patient.status === 'Critical' && 'bg-red-500/20 text-red-700 dark:bg-red-500/10 dark:text-red-400 border-red-500/30')}>
                             {patient.status}
                         </Badge>
                     </div>

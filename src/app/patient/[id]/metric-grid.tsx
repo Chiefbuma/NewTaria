@@ -74,7 +74,7 @@ export default function MetricGrid({ patient, clinicalParameters }: MetricGridPr
     
     const getMetricHistory = (paramId: number) => {
         return patient.assessments
-            ?.filter(a => a.clinical_parameter_id === paramId && a.parameter?.type === 'numeric')
+            ?.filter(a => a.clinical_parameter_id === paramId && (a.parameter?.type === 'numeric' || (typeof a.value === 'string' && !isNaN(parseFloat(a.value)))))
             .map(a => ({
                 date: format(new Date(a.measured_at), 'MMM d'),
                 value: parseFloat(a.value)
@@ -110,7 +110,7 @@ export default function MetricGrid({ patient, clinicalParameters }: MetricGridPr
                                         <p className="text-sm text-muted-foreground">
                                             Recorded on {format(new Date(latestAssessment.measured_at), 'MMMM d, yyyy')}
                                         </p>
-                                        {history.length > 1 && param.type === 'numeric' && (
+                                        {history.length > 1 && (param.type === 'numeric' || (param.name === 'Blood Pressure' && typeof latestAssessment.value === 'string')) && (
                                              <div className="h-[100px] w-full">
                                                 <ResponsiveContainer width="100%" height="100%">
                                                     <LineChart data={history} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
@@ -147,6 +147,7 @@ export default function MetricGrid({ patient, clinicalParameters }: MetricGridPr
                             <Label htmlFor="value">Value {selectedParam?.unit && `(${selectedParam.unit})`}</Label>
                             {selectedParam?.type === 'numeric' && <Input id="value" type="number" value={assessmentValue} onChange={e => setAssessmentValue(e.target.value)} />}
                             {selectedParam?.type === 'text' && <Input id="value" value={assessmentValue} onChange={e => setAssessmentValue(e.target.value)} />}
+                             {selectedParam?.name === 'Blood Pressure' && <Input id="value" placeholder="e.g. 120/80" value={assessmentValue} onChange={e => setAssessmentValue(e.target.value)} />}
                             {selectedParam?.type === 'choice' && selectedParam.options && (
                                 <Select onValueChange={setAssessmentValue} value={assessmentValue}>
                                     <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>

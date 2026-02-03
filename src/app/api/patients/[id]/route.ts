@@ -1,14 +1,43 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { fetchPatientById } from '@/lib/data';
+import { patients, assessments, goals, clinicalParameters, users, corporates } from '@/lib/mock-data';
+import type { Patient } from '@/lib/types';
+
+let mockPatients: Patient[] = [...patients];
+
+function getFullPatientDetails(patient: Patient) {
+    const patientAssessments = assessments.filter(a => a.patient_id === patient.id)
+        .map(a => ({
+            ...a,
+            parameter: clinicalParameters.find(p => p.id === a.clinical_parameter_id)
+        }));
+    
+    const patientGoals = goals.filter(g => g.patient_id === patient.id && g.status === 'active')
+        .map(g => ({
+            ...g,
+            parameter: clinicalParameters.find(p => p.id === g.clinical_parameter_id)
+        }));
+
+    const navigator = users.find(u => u.id === patient.navigator_id);
+    const corporate = corporates.find(c => c.id === patient.corporate_id);
+
+    return {
+        ...patient,
+        assessments: patientAssessments.sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime()),
+        goals: patientGoals.sort((a,b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()),
+        navigator_name: navigator?.name,
+        corporate_name: corporate?.name,
+    };
+}
+
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const patient = await fetchPatientById(params.id);
+    const patient = mockPatients.find(p => p.id === parseInt(params.id));
     if (!patient) {
       return NextResponse.json({ message: 'Patient not found' }, { status: 404 });
     }
-    return NextResponse.json(patient);
+    const fullDetails = getFullPatientDetails(patient);
+    return NextResponse.json(fullDetails);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ message: 'Error fetching patient' }, { status: 500 });
@@ -17,31 +46,19 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
     try {
-        const patientId = params.id;
+        const patientId = parseInt(params.id);
         const body = await request.json();
         
-        // This endpoint handles both partial updates and the full onboarding
-        const connection = await db.getConnection();
+        const patientIndex = mockPatients.findIndex(p => p.id === patientId);
 
-        // Dynamically build query to only update provided fields
-        const fields = Object.keys(body);
-        const values = Object.values(body);
-
-        if (fields.length === 0) {
-            return NextResponse.json({ message: 'No fields to update' }, { status: 400 });
+        if (patientIndex === -1) {
+            return NextResponse.json({ message: 'Patient not found' }, { status: 404 });
         }
-
-        const fieldPlaceholders = fields.map(field => `\`${field}\` = ?`).join(', ');
-
-        await connection.query(
-            `UPDATE patients SET ${fieldPlaceholders} WHERE id = ?`,
-            [...values, patientId]
-        );
         
-        connection.release();
-
-        const updatedPatient = await fetchPatientById(patientId);
-
+        mockPatients[patientIndex] = { ...mockPatients[patientIndex], ...body };
+        
+        const updatedPatient = getFullPatientDetails(mockPatients[patientIndex]);
+        
         return NextResponse.json({ message: 'Patient updated successfully', patient: updatedPatient });
 
     } catch (error) {
@@ -52,12 +69,14 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
     try {
-        const connection = await db.getConnection();
-        // Setup cascade deletes in MySQL or delete related records manually
-        await connection.query('DELETE FROM assessments WHERE patient_id = ?', [params.id]);
-        await connection.query('DELETE FROM goals WHERE patient_id = ?', [params.id]);
-        await connection.query('DELETE FROM patients WHERE id = ?', [params.id]);
-        connection.release();
+        const patientId = parseInt(params.id);
+        const initialLength = mockPatients.length;
+        mockPatients = mockPatients.filter(p => p.id !== patientId);
+
+        if (mockPatients.length === initialLength) {
+             return NextResponse.json({ message: 'Patient not found' }, { status: 404 });
+        }
+
         return NextResponse.json({ message: 'Patient deleted successfully' });
     } catch (error) {
         console.error(error);

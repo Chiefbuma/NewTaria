@@ -24,7 +24,7 @@ The application is built with a modern tech stack and follows best practices for
 -   **UI Library**: **ShadCN UI** & **Tailwind CSS**
 -   **Animations**: **Framer Motion**
 -   **Charting**: **Recharts**
--   **Database**: **MySQL**
+-   **Database**: **MySQL** (current implementation uses a mock API)
 -   **Containerization**: **Docker** and **Docker Compose**
 
 ## Database Schema

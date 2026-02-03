@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import bcrypt from 'bcryptjs';
+import { users } from '@/lib/mock-data'; // Using mock data
 
 export async function POST(request: Request) {
   try {
@@ -9,34 +8,20 @@ export async function POST(request: Request) {
     if (!email || !password) {
       return NextResponse.json({ message: 'Email and password are required' }, { status: 400 });
     }
-
-    const connection = await db.getConnection();
-    const [rows] = await connection.query('SELECT * FROM users WHERE email = ?', [email]);
-    connection.release();
-
-    const users = rows as any[];
-    if (users.length === 0) {
-      return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
-    }
-
-    const user = users[0];
     
-    if (!user.password) {
-      console.error(`Authentication error: User ${email} found but has no password.`);
+    // In a real app, you would query the database. Here we use mock data.
+    const user = users.find(u => u.email === email);
+
+    if (!user) {
       return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
     }
 
-    // The hashes in the DB might be from PHP's bcrypt ($2y$).
-    // bcryptjs should be able to handle '$2y$' prefix if we replace it with '$2a$'
-    const hash = user.password.replace(/^\$2y\$/, '$2a\$');
-
-    const isPasswordValid = await bcrypt.compare(password, hash);
-
-    if (!isPasswordValid) {
-      return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
+    // In a real app, you'd compare a hashed password. Here, we'll just check a plain text password for demo purposes.
+    if (password !== 'password') { // Using a simple mock password
+        return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Don't send the password hash to the client
+    // Don't send the password (even a mock one) to the client
     const { password: _, ...userToReturn } = user;
 
     return NextResponse.json(userToReturn);

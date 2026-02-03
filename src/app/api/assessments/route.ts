@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { assessments } from '@/lib/mock-data';
+import type { Assessment } from '@/lib/types';
+
+let mockAssessments: Assessment[] = [...assessments];
 
 export async function POST(request: Request) {
   try {
@@ -10,17 +13,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
-    const connection = await db.getConnection();
-    const [result] = await connection.query(
-      'INSERT INTO assessments (patient_id, clinical_parameter_id, value, notes, measured_at) VALUES (?, ?, ?, ?, ?)',
-      [patient_id, clinical_parameter_id, value, notes, measured_at]
-    );
+    const newAssessment: Assessment = {
+      id: Math.max(0, ...mockAssessments.map(a => a.id)) + 1,
+      patient_id,
+      clinical_parameter_id,
+      value,
+      notes,
+      measured_at,
+      created_at: new Date().toISOString(),
+      is_normal: null
+    };
     
-    const insertId = (result as any).insertId;
-    const [rows] = await connection.query('SELECT * FROM assessments WHERE id = ?', [insertId]);
-    connection.release();
+    mockAssessments.unshift(newAssessment);
 
-    return NextResponse.json({ message: 'Assessment added successfully', assessment: (rows as any)[0] }, { status: 201 });
+    return NextResponse.json({ message: 'Assessment added successfully', assessment: newAssessment }, { status: 201 });
 
   } catch (error) {
     console.error('Error adding assessment:', error);

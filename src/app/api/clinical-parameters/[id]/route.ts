@@ -1,27 +1,26 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { clinicalParameters } from '@/lib/mock-data';
+import type { ClinicalParameter } from '@/lib/types';
+
+let mockParams: ClinicalParameter[] = [...clinicalParameters];
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
+    const id = parseInt(params.id);
     const { name, type, unit, options } = await request.json();
     if (!name || !type) {
       return NextResponse.json({ message: 'Name and type are required' }, { status: 400 });
     }
 
-    const connection = await db.getConnection();
-    await connection.query(
-      'UPDATE clinical_parameters SET name = ?, type = ?, unit = ?, `options` = ? WHERE id = ?',
-      [name, type, unit, options ? JSON.stringify(options) : null, params.id]
-    );
-    
-    const [rows] = await connection.query('SELECT * FROM clinical_parameters WHERE id = ?', [params.id]);
-    connection.release();
+    const paramIndex = mockParams.findIndex(p => p.id === id);
 
-    if ((rows as any).length === 0) {
-      return NextResponse.json({ message: 'Parameter not found after update' }, { status: 404 });
+    if (paramIndex === -1) {
+        return NextResponse.json({ message: 'Parameter not found' }, { status: 404 });
     }
-
-    return NextResponse.json({ message: 'Parameter updated successfully', parameter: (rows as any)[0] });
+    
+    mockParams[paramIndex] = { ...mockParams[paramIndex], name, type, unit, options };
+    
+    return NextResponse.json({ message: 'Parameter updated successfully', parameter: mockParams[paramIndex] });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ message: 'Error updating parameter' }, { status: 500 });
@@ -30,11 +29,14 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
-    const connection = await db.getConnection();
-    // Consider constraints: what happens if assessments or goals use this parameter?
-    // For now, we assume direct deletion is acceptable for this MVP.
-    await connection.query('DELETE FROM clinical_parameters WHERE id = ?', [params.id]);
-    connection.release();
+    const id = parseInt(params.id);
+    const initialLength = mockParams.length;
+    mockParams = mockParams.filter(p => p.id !== id);
+
+    if (mockParams.length === initialLength) {
+        return NextResponse.json({ message: 'Parameter not found' }, { status: 404 });
+    }
+
     return NextResponse.json({ message: 'Parameter deleted successfully' });
   } catch (error) {
     console.error(error);

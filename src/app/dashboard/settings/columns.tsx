@@ -90,7 +90,7 @@ export const getColumns = ({ onEdit, onDelete }: ParametersColumnsProps): Column
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => onDelete(parameter.id)}>Continue</AlertDialogAction>
+                        <AlertDialogAction onClick={() => onDelete(parameter.id)} className="bg-destructive hover:bg-destructive/90">Continue</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
