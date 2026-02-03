@@ -11,14 +11,6 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -46,8 +38,6 @@ import {
   Edit,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -62,7 +52,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ReportViewer from '@/components/report-viewer';
 import MetricGrid from './metric-grid';
 import GoalList from './goal-list';
+import AssessmentList from './assessment-list';
 import { fetchCorporates } from '@/lib/data';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 const DetailItem = ({
   label,
@@ -141,8 +135,15 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
     setIsSubmitting(true);
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    const updatedPatient = { ...patient, ...editFormData };
-    setPatient(updatedPatient);
+    const updatedPatientData = { ...patient, ...editFormData };
+    const corporate = corporates.find(c => c.id === Number(editFormData.corporate_id));
+    if (corporate) {
+      updatedPatientData.corporate_name = corporate.name;
+    } else {
+      updatedPatientData.corporate_name = undefined;
+    }
+    
+    setPatient(updatedPatientData);
     
     toast({ title: 'Success!', description: 'Patient details updated. (Mock)' });
     setIsEditModalOpen(false);
@@ -169,6 +170,22 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
     setPatient(prevPatient => ({
       ...prevPatient,
       assessments: [newAssessment, ...(prevPatient.assessments || [])]
+        .sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())
+    }));
+  };
+
+  const handleAssessmentUpdated = (updatedAssessment: Assessment) => {
+    setPatient(prevPatient => ({
+      ...prevPatient,
+      assessments: (prevPatient.assessments || []).map(a => a.id === updatedAssessment.id ? updatedAssessment : a)
+        .sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())
+    }));
+  };
+
+  const handleAssessmentDeleted = (assessmentId: number) => {
+    setPatient(prevPatient => ({
+      ...prevPatient,
+      assessments: (prevPatient.assessments || []).filter(a => a.id !== assessmentId)
     }));
   };
 
@@ -294,8 +311,9 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
           </div>
           <div className="lg:col-span-2 space-y-6">
              <Tabs defaultValue="metrics">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="metrics">Metrics</TabsTrigger>
+                    <TabsTrigger value="assessments">Assessments</TabsTrigger>
                     <TabsTrigger value="goals">Goals</TabsTrigger>
                 </TabsList>
                 <TabsContent value="metrics" className="mt-6">
@@ -304,6 +322,16 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
                       assessments={patient.assessments || []} 
                       clinicalParameters={clinicalParameters} 
                       onAssessmentAdded={handleAssessmentAdded}
+                    />
+                </TabsContent>
+                 <TabsContent value="assessments" className="mt-6">
+                    <AssessmentList
+                      patientId={patient.id}
+                      assessments={patient.assessments || []}
+                      clinicalParameters={clinicalParameters}
+                      onAssessmentAdded={handleAssessmentAdded}
+                      onAssessmentUpdated={handleAssessmentUpdated}
+                      onAssessmentDeleted={handleAssessmentDeleted}
                     />
                 </TabsContent>
                 <TabsContent value="goals" className="mt-6">
