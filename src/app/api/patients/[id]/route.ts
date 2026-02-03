@@ -1,45 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-
-async function getPatientWithRelations(patientId: string) {
-  const connection = await db.getConnection();
-  try {
-    // Fetch patient with corporate info
-    const [patientRows] = await connection.query(`
-      SELECT p.*, c.name as corporate_name
-      FROM registrations p
-      LEFT JOIN corporates c ON p.corporate_id = c.id
-      WHERE p.id = ?
-    `, [patientId]);
-
-    if ((patientRows as any).length === 0) {
-      return null;
-    }
-    const patient = (patientRows as any)[0];
-
-    // Fetch related data
-    const [vitals] = await connection.query('SELECT * FROM vitals WHERE registration_id = ? ORDER BY measured_at DESC', [patientId]);
-    const [nutrition] = await connection.query('SELECT * FROM nutritions WHERE registration_id = ? ORDER BY created_at DESC', [patientId]);
-    const [goals] = await connection.query('SELECT * FROM goals WHERE registration_id = ? ORDER BY created_at DESC', [patientId]);
-    const [clinicals] = await connection.query('SELECT * FROM clinicals WHERE registration_id = ? ORDER BY created_at DESC', [patientId]);
-
-    // Assemble the patient object
-    return {
-      ...patient,
-      vitals,
-      nutrition,
-      goals,
-      clinicals,
-    };
-  } finally {
-    connection.release();
-  }
-}
-
+import { fetchPatientById } from '@/lib/data';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const patient = await getPatientWithRelations(params.id);
+    const patient = await fetchPatientById(params.id);
     if (!patient) {
       return NextResponse.json({ message: 'Patient not found' }, { status: 404 });
     }
@@ -54,55 +19,28 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     try {
         const patientId = params.id;
         const body = await request.json();
-        const {
-            first_name,
-            middle_name,
-            surname,
-            dob,
-            age,
-            sex,
-            phone,
-            email,
-            wellness_date,
-            corporate_id
-        } = body;
+        
+        // This endpoint handles both partial updates and the full onboarding
+        const connection = await db.getConnection();
 
-        // Basic validation
-        if (!first_name || !surname || !sex || !wellness_date) {
-            return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+        // Dynamically build query to only update provided fields
+        const fields = Object.keys(body);
+        const values = Object.values(body);
+
+        if (fields.length === 0) {
+            return NextResponse.json({ message: 'No fields to update' }, { status: 400 });
         }
 
-        const connection = await db.getConnection();
+        const fieldPlaceholders = fields.map(field => `\`${field}\` = ?`).join(', ');
+
         await connection.query(
-            `UPDATE registrations SET 
-                first_name = ?, 
-                middle_name = ?, 
-                surname = ?, 
-                dob = ?, 
-                age = ?, 
-                sex = ?, 
-                phone = ?, 
-                email = ?, 
-                wellness_date = ?, 
-                corporate_id = ?
-            WHERE id = ?`,
-            [
-                first_name,
-                middle_name || null,
-                surname,
-                dob || null,
-                age ? parseInt(age, 10) : null,
-                sex,
-                phone || null,
-                email || null,
-                wellness_date,
-                (corporate_id && corporate_id !== 'null' && corporate_id !== '') ? parseInt(corporate_id, 10) : null,
-                patientId
-            ]
+            `UPDATE patients SET ${fieldPlaceholders} WHERE id = ?`,
+            [...values, patientId]
         );
+        
         connection.release();
 
-        const updatedPatient = await getPatientWithRelations(patientId);
+        const updatedPatient = await fetchPatientById(patientId);
 
         return NextResponse.json({ message: 'Patient updated successfully', patient: updatedPatient });
 
@@ -115,7 +53,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
     try {
         const connection = await db.getConnection();
-        await connection.query('DELETE FROM registrations WHERE id = ?', [params.id]);
+        // Setup cascade deletes in MySQL or delete related records manually
+        await connection.query('DELETE FROM assessments WHERE patient_id = ?', [params.id]);
+        await connection.query('DELETE FROM goals WHERE patient_id = ?', [params.id]);
+        await connection.query('DELETE FROM patients WHERE id = ?', [params.id]);
         connection.release();
         return NextResponse.json({ message: 'Patient deleted successfully' });
     } catch (error) {

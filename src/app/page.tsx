@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react';
 import Logo from '@/components/logo';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@superadmin.com');
+  const [email, setEmail] = useState('admin@taria.com');
   const [password, setPassword] = useState('password');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -34,13 +34,11 @@ export default function LoginPage() {
       }
 
       const user = await res.json();
-
-      // Store user info in localStorage
       localStorage.setItem('loggedInUser', JSON.stringify(user));
       
       toast({
         title: 'Success!',
-        description: 'Logged in successfully.',
+        description: 'Logged in successfully. Redirecting...',
       });
 
       router.push('/dashboard');
@@ -56,16 +54,16 @@ export default function LoginPage() {
   };
   
   return (
-    <div className="w-full min-h-screen flex items-center justify-center p-4 bg-background">
+    <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/40">
        <div className="w-full max-w-md">
             <div className="flex justify-center items-center mb-6">
-                <Logo className="h-12 w-auto" />
+                <Logo className="h-8 w-auto" />
             </div>
-            <Card className="border">
+            <Card>
                 <CardHeader className="text-center">
-                    <CardTitle>Welcome Back</CardTitle>
+                    <CardTitle className="text-2xl">Welcome Back</CardTitle>
                     <CardDescription>
-                        Enter your credentials to access the dashboard.
+                        Enter your credentials to access your dashboard.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -76,6 +74,7 @@ export default function LoginPage() {
                             <Input
                             id="email"
                             type="email"
+                            placeholder="name@example.com"
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}

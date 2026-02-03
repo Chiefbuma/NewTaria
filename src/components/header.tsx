@@ -30,14 +30,13 @@ export default function Header({ user }: { user: User }) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="outline"
-            className="flex items-center gap-2 rounded-full p-1 pr-3"
+            variant="ghost"
+            className="relative h-8 w-8 rounded-full"
           >
             <Avatar className="h-8 w-8">
               <AvatarImage src={user.avatarUrl} alt={user.name} />
               <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
             </Avatar>
-            <span className="hidden sm:inline">{user.name}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
@@ -53,12 +52,12 @@ export default function Header({ user }: { user: User }) {
           <DropdownMenuItem asChild className="cursor-pointer">
             <Link href="/dashboard/profile">
                 <UserIcon className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+                <span>My Profile</span>
             </Link>
           </DropdownMenuItem>
           {user.role === 'admin' && (
             <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/dashboard/settings">
+                <Link href="/settings">
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                 </Link>

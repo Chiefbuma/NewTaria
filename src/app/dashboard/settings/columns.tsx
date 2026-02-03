@@ -13,7 +13,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,36 +21,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ArrowUpDown, MoreHorizontal, Edit, Trash2 } from "lucide-react"
-import type { Corporate } from "@/lib/types"
+import type { ClinicalParameter } from "@/lib/types"
+import { Badge } from "@/components/ui/badge"
 
-interface CorporatesColumnsProps {
-  onEdit: (corporate: Corporate) => void
+interface ParametersColumnsProps {
+  onEdit: (parameter: ClinicalParameter) => void
   onDelete: (id: number) => void
 }
 
-export const getColumns = ({ onEdit, onDelete }: CorporatesColumnsProps): ColumnDef<Corporate>[] => [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
+export const getColumns = ({ onEdit, onDelete }: ParametersColumnsProps): ColumnDef<ClinicalParameter>[] => [
   {
     accessorKey: "name",
     header: ({ column }) => {
@@ -67,18 +45,20 @@ export const getColumns = ({ onEdit, onDelete }: CorporatesColumnsProps): Column
     },
     cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
   },
+   {
+    accessorKey: "type",
+    header: "Type",
+    cell: ({ row }) => <Badge variant="outline" className="capitalize">{row.getValue("type")}</Badge>
+  },
   {
-    accessorKey: "wellness_date",
-    header: "Wellness Date",
-    cell: ({ row }) => {
-      const date = new Date(row.getValue("wellness_date"))
-      return <div>{date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-    },
+    accessorKey: "unit",
+    header: "Unit",
+    cell: ({ row }) => row.getValue("unit") || <span className="text-muted-foreground">-</span>
   },
   {
     id: "actions",
     cell: ({ row }) => {
-      const corporate = row.original
+      const parameter = row.original
       return (
         <div className="text-right">
             <DropdownMenu>
@@ -90,13 +70,13 @@ export const getColumns = ({ onEdit, onDelete }: CorporatesColumnsProps): Column
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => onEdit(corporate)} className="cursor-pointer">
+                <DropdownMenuItem onClick={() => onEdit(parameter)} className="cursor-pointer">
                     <Edit className="mr-2 h-4 w-4" />
                     Edit
                 </DropdownMenuItem>
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
-                         <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-red-500 hover:text-red-600">
+                         <div className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm text-red-600 outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50">
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
                         </div>
@@ -105,12 +85,12 @@ export const getColumns = ({ onEdit, onDelete }: CorporatesColumnsProps): Column
                         <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the corporate and all associated patient registrations.
+                            This action cannot be undone. This will permanently delete the clinical parameter.
                         </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => onDelete(corporate.id)}>Continue</AlertDialogAction>
+                        <AlertDialogAction onClick={() => onDelete(parameter.id)}>Continue</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>

@@ -2,7 +2,7 @@ export type User = {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'staff' | 'navigator' | 'payer' | 'physician';
+  role: 'admin' | 'staff' | 'physician' | 'navigator' | 'payer';
   avatarUrl?: string;
 };
 
@@ -12,75 +12,69 @@ export type Corporate = {
   wellness_date: string;
 };
 
-// This represents a row in the `registrations` table
 export type Patient = {
   id: number;
   first_name: string;
-  middle_name?: string;
-  surname?: string;
-  sex?: 'Male' | 'Female' | 'Other';
-  dob?: string;
-  age?: number;
-  phone?: string;
-  email?: string;
+  middle_name: string | null;
+  surname: string | null;
+  dob: string | null;
+  age: number | null;
+  sex: 'Male' | 'Female' | 'Other' | null;
+  phone: string | null;
+  email: string | null;
   wellness_date: string;
-  user_id?: number;
-  corporate_id?: number;
+  corporate_id: number | null;
+  status: 'Active' | 'Pending' | 'Critical' | 'Discharged' | 'In Review';
   created_at: string;
-  updated_at?: string;
-
-  // Joined data
+  date_of_onboarding: string | null;
+  has_glucometer: boolean;
+  has_bp_machine: boolean;
+  has_tape_measure: boolean;
+  brief_medical_history: string | null;
+  years_since_diagnosis: number | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  emergency_contact_relation: string | null;
+  consent_date: string | null;
+  navigator_id: number | null;
+  // Joined/related data
   corporate_name?: string;
-
-  // Relations
-  vitals?: Vital[];
-  nutrition?: Nutrition[];
+  navigator_name?: string;
+  assessments?: Assessment[];
   goals?: Goal[];
-  clinicals?: Clinical[];
 };
 
-export type Vital = {
+export type ClinicalParameter = {
   id: number;
-  patient_id: number; // Mapped from registration_id
-  bp_systolic?: number;
-  bp_diastolic?: number;
-  pulse?: number;
-  temp?: number;
-  rbs?: string;
-  user_id?: number;
-  measured_at?: string;
+  name: string;
+  type: 'numeric' | 'text' | 'choice';
+  unit: string | null;
+  options: string[] | null; // from JSON
 };
 
-export type Nutrition = {
+export type Assessment = {
   id: number;
-  patient_id: number; // Mapped from registration_id
-  height?: number;
-  weight?: number;
-  bmi?: number;
-  visceral_fat?: number;
-  body_fat_percent?: number;
-  notes_nutritionist?: string;
-  user_id?: number;
+  patient_id: number;
+  clinical_parameter_id: number;
+  value: string;
+  notes: string | null;
+  is_normal: boolean | null;
+  created_at: string;
+  measured_at: string;
+  // Joined data
+  parameter?: Partial<ClinicalParameter>;
 };
 
 export type Goal = {
   id: number;
-  patient_id: number; // Mapped from registration_id
-  user_id: number;
-  discussion?: string;
-  goal?: string;
-};
-
-export type Clinical = {
-  id: number;
-  patient_id: number; // Mapped from registration_id
-  notes_psychologist?: string;
-  notes_doctor?: string;
-  user_id?: number;
-};
-
-export type AppData = {
-  loggedInUser: User;
-  patients: Patient[];
-  corporates: Corporate[];
+  patient_id: number;
+  clinical_parameter_id: number;
+  target_value: string;
+  target_operator: string;
+  status: 'active' | 'completed' | 'cancelled';
+  notes: string | null;
+  deadline: string;
+  created_at: string;
+  // Joined data
+  parameter?: Partial<ClinicalParameter>;
 };

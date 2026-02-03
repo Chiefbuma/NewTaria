@@ -1,43 +1,43 @@
 import type React from 'react';
+import { cn } from '@/lib/utils';
 
 const Logo = ({ className = '', ...props }: React.SVGProps<SVGSVGElement>) => (
   <svg
+    width="115"
+    height="24"
+    viewBox="0 0 115 24"
+    fill="none"
     xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 200 50"
-    className={className}
+    className={cn('text-foreground', className)}
     {...props}
   >
-    <style>
-      {`
-        .logo-text {
-          font-family: 'PT Sans', sans-serif;
-          font-weight: 700;
-        }
-        .logo-mark-fill {
-            fill: hsl(var(--primary));
-        }
-        .logo-text-fill {
-            fill: hsl(var(--foreground));
-        }
-      `}
-    </style>
-    <g>
-      {/* Abstract medical cross mark */}
+    <g clipPath="url(#clip0_401_2)">
       <path
-        className="logo-mark-fill"
-        d="M25,5 L30,5 L30,20 L45,20 L45,25 L30,25 L30,40 L25,40 L25,25 L10,25 L10,20 L25,20 Z"
-        transform="rotate(45 27.5 22.5)"
+        d="M12 24C18.6274 24 24 18.6274 24 12C24 5.37258 18.6274 0 12 0C5.37258 0 0 5.37258 0 12C0 18.6274 5.37258 24 12 24Z"
+        fill="currentColor"
+        className="text-primary"
       />
-      {/* Text */}
-      <text
-        x="60"
-        y="32"
-        fontSize="24"
-        className="logo-text logo-text-fill"
-      >
-        Taria Health
-      </text>
+      <path
+        d="M12 18C15.3137 18 18 15.3137 18 12C18 8.68629 15.3137 6 12 6C8.68629 6 6 8.68629 6 12C6 15.3137 8.68629 18 12 18Z"
+        fill="currentColor"
+        className="text-background"
+      />
     </g>
+    <text
+      x="32"
+      y="17"
+      fontFamily="Inter, sans-serif"
+      fontSize="20"
+      fontWeight="600"
+      fill="currentColor"
+    >
+      Taria
+    </text>
+    <defs>
+      <clipPath id="clip0_401_2">
+        <rect width="24" height="24" fill="white" />
+      </clipPath>
+    </defs>
   </svg>
 );
 

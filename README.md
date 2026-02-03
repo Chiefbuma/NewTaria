@@ -1,257 +1,154 @@
-# Taria Health Activation
+# Taria Health - Patient Monitoring Dashboard
 
-This is a comprehensive, full-stack web application designed for managing health activation campaigns. It provides a robust platform for healthcare staff to register patients, track a wide range of health assessments, manage corporate partnerships, and generate detailed wellness reports. The application is built with a modern tech stack and follows best practices for scalability, maintainability, and security.
+A modern, patient-centric health monitoring dashboard designed to track personalized health metrics over time. It provides a clean, intuitive interface for healthcare providers to monitor patient progress against their health goals.
+
+The application is built with a modern tech stack and follows best practices for creating a fast, user-friendly, and maintainable application.
 
 ## Features
 
--   **Secure User Authentication**: A complete login system for staff members with secure password hashing (`bcryptjs`) and a "Forgot Password" flow.
--   **Centralized Dashboard**: An overview of recently registered patients for the current campaign.
--   **Patient Management**: A complete workflow for registering new patients and viewing their detailed profiles.
--   **Comprehensive Assessments**: Functionality to add and view records for Vitals, Nutrition, Health Goals, and Clinical Notes.
--   **Corporate Partner Management**: Full CRUD (Create, Read, Update, Delete) functionality for managing corporate partners.
--   **Dynamic PDF Reporting**: On-the-fly generation of a printable wellness report for each patient, summarizing all their assessment data, fetched directly from the database.
--   **Local Development Environment**: A fully containerized setup using Docker Compose for easy local development.
+-   **Patient-Centric Dashboard**: A central dashboard displaying a list of all patients, with key information at a glance.
+-   **Two-Step Patient Intake**: A streamlined workflow that separates initial registration from detailed clinical onboarding.
+-   **Comprehensive Onboarding**: A dedicated form to capture detailed patient history, lifestyle factors, and medical information.
+-   **Detailed Patient View**: A comprehensive view for each patient, including:
+    -   Personalized health metrics tracked over time with support for numeric, text, and choice-based goals.
+    -   Interactive charts to visualize metric history.
+    -   A section for patient-specific health goals.
+-   **Dynamic Parameter Management**: A full-featured settings page to create, edit, and delete the clinical parameters used for tracking.
+-   **Modern UI/UX**: A clean, responsive interface with smooth animations, built with ShadCN UI, Tailwind CSS, and Framer Motion.
+-   **API Driven**: The application features a dedicated API layer for data management, preparing it for database integration.
 
 ## Tech Stack
 
-This project is built with a modern and robust technology stack:
-
--   **Framework**: **Next.js** (v14+ with App Router) for a full-stack React experience with Server Components and API Routes.
--   **Language**: **TypeScript** for type safety and improved developer experience.
--   **UI Library**: **ShadCN UI** built on top of **Tailwind CSS** for a professional, component-based design system.
--   **Database**: **MySQL** for robust, relational data storage.
--   **Containerization**: **Docker** and **Docker Compose** for a consistent and reproducible development environment.
--   **Authentication**: **bcryptjs** for secure password hashing and validation.
-
-
-## Software Design Principles
-
--   **Full-Stack Architecture**: A modern architecture with a Next.js frontend and a backend API built with Next.js API Routes.
--   **RESTful API**: The backend exposes a clear, RESTful API for all CRUD operations, ensuring a clean separation of concerns between the client and server.
--   **Component-Based UI**: The frontend is built using reusable React components, promoting maintainability and code reuse.
--   **Database-Driven**: All application data is stored in a relational MySQL database, ensuring data integrity and persistence.
--   **Secure by Design**: Implements a secure authentication flow with industry-standard password hashing to protect user credentials.
--   **Environment Configuration**: Utilizes `.env` files to manage environment-specific variables, keeping sensitive credentials out of the codebase.
-
-## Performance
-
-The application leverages Next.js Server Components to optimize performance. Key pages like the main dashboard and patient lists are rendered on the server, which reduces the amount of JavaScript sent to the client. This results in faster initial page loads and a better user experience, especially on slower networks. Data is fetched directly from the database on the server, avoiding unnecessary client-side API requests.
-
-## Getting Started
-
-To get started with local development, ensure you have Docker and Docker Compose installed.
-
-1.  **Environment Setup**: The project includes a `.env` file with the necessary environment variables for the Docker setup.
-2.  **Build and Run**: From the root of the project, run the following command:
-    ```bash
-    docker-compose up --build
-    ```
-3.  **Access the Application**:
-    -   Next.js App: **http://localhost:3000**
-    -   phpMyAdmin: **http://localhost:8080**
-    -   Default Login: `admin@superadmin.com` / `password`
+-   **Framework**: **Next.js** (v14+ with App Router)
+-   **Language**: **TypeScript**
+-   **UI Library**: **ShadCN UI** & **Tailwind CSS**
+-   **Animations**: **Framer Motion**
+-   **Charting**: **Recharts**
+-   **Database**: **MySQL**
+-   **Containerization**: **Docker** and **Docker Compose**
 
 ## Database Schema
 
-Below is the SQL schema for the application. You can use this to set up your local MySQL database.
+The following tables are used in the application.
+
+### `users`
+
+Stores user accounts for staff, navigators, and physicians.
 
 ```sql
---
--- Table structure for table `users`
---
 CREATE TABLE `users` (
   `id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
   `email` varchar(255) NOT NULL,
-  `role` enum('admin','staff','navigator','payer','physician') NOT NULL DEFAULT 'staff',
   `password` varchar(255) NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `role` enum('admin','staff','physician','navigator','payer') NOT NULL,
+  `avatarUrl` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+);
+```
 
---
--- Table structure for table `corporates`
---
+### `corporates`
 
+Stores corporate partner information.
+
+```sql
 CREATE TABLE `corporates` (
   `id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
   `wellness_date` date NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Table structure for table `registrations`
---
-
-CREATE TABLE `registrations` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `first_name` varchar(255) NOT NULL,
-  `middle_name` varchar(255) DEFAULT NULL,
-  `surname` varchar(255) DEFAULT NULL,
-  `sex` enum('Male','Female','Other') DEFAULT NULL,
-  `dob` date DEFAULT NULL,
-  `age` int DEFAULT NULL,
-  `phone` varchar(255) DEFAULT NULL,
-  `email` varchar(255) DEFAULT NULL,
-  `corporate_id` int DEFAULT NULL,
-  `wellness_date` date DEFAULT NULL,
-  `user_id` int DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `corporate_id` (`corporate_id`),
-  CONSTRAINT `registrations_ibfk_1` FOREIGN KEY (`corporate_id`) REFERENCES `corporates` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-
---
--- Table structure for table `vitals`
---
-
-CREATE TABLE `vitals` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `registration_id` int NOT NULL,
-  `bp_systolic` int DEFAULT NULL,
-  `bp_diastolic` int DEFAULT NULL,
-  `pulse` int DEFAULT NULL,
-  `temp` float DEFAULT NULL,
-  `rbs` varchar(255) DEFAULT NULL,
-  `user_id` int DEFAULT NULL,
-  `measured_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `registration_id` (`registration_id`),
-  CONSTRAINT `vitals_ibfk_1` FOREIGN KEY (`registration_id`) REFERENCES `registrations` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Table structure for table `nutritions`
---
-
-CREATE TABLE `nutritions` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `registration_id` int NOT NULL,
-  `height` float DEFAULT NULL,
-  `weight` float DEFAULT NULL,
-  `bmi` float DEFAULT NULL,
-  `visceral_fat` float DEFAULT NULL,
-  `body_fat_percent` float DEFAULT NULL,
-  `notes_nutritionist` text,
-  `user_id` int DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `registration_id` (`registration_id`),
-  CONSTRAINT `nutritions_ibfk_1` FOREIGN KEY (`registration_id`) REFERENCES `registrations` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Table structure for table `goals`
---
-
-CREATE TABLE `goals` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `registration_id` int NOT NULL,
-  `user_id` int DEFAULT NULL,
-  `discussion` text,
-  `goal` text,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `registration_id` (`registration_id`),
-  CONSTRAINT `goals_ibfk_1` FOREIGN KEY (`registration_id`) REFERENCES `registrations` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Table structure for table `clinicals`
---
-
-CREATE TABLE `clinicals` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `registration_id` int NOT NULL,
-  `notes_psychologist` text,
-  `notes_doctor` text,
-  `user_id` int DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `registration_id` (`registration_id`),
-  CONSTRAINT `clinicals_ibfk_1` FOREIGN KEY (`registration_id`) REFERENCES `registrations` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+);
 ```
-## Seed Data
+
+### `patients`
+
+The central table for patient information, including demographic and onboarding data.
 
 ```sql
---
--- Dumping data for table `users`
---
--- Note: The password for 'admin@superadmin.com' is 'password'.
--- It is stored as a bcrypt hash for security. The login API handles this automatically.
---
-INSERT INTO `users` (`id`, `name`, `email`, `role`, `password`) VALUES
-(1, 'Taria Admin', 'admin@superadmin.com', 'admin', '$2a$10$GomuBl2mnm5T1C/T6S1gduMJo2TVv5Hrj1gI62xGIJ2Q8yL2wzI4S');
+CREATE TABLE `patients` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `first_name` varchar(100) NOT NULL,
+  `middle_name` varchar(100) DEFAULT NULL,
+  `surname` varchar(100) DEFAULT NULL,
+  `dob` date DEFAULT NULL,
+  `age` int DEFAULT NULL,
+  `sex` enum('Male','Female','Other') DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `wellness_date` date NOT NULL,
+  `corporate_id` int DEFAULT NULL,
+  `status` enum('Active','Pending','Critical','Discharged','In Review') NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `date_of_onboarding` date DEFAULT NULL,
+  `has_glucometer` tinyint(1) DEFAULT '0',
+  `has_bp_machine` tinyint(1) DEFAULT '0',
+  `has_tape_measure` tinyint(1) DEFAULT '0',
+  `brief_medical_history` text,
+  `years_since_diagnosis` int DEFAULT NULL,
+  `emergency_contact_name` varchar(100) DEFAULT NULL,
+  `emergency_contact_phone` varchar(20) DEFAULT NULL,
+  `emergency_contact_relation` varchar(50) DEFAULT NULL,
+  `consent_date` date DEFAULT NULL,
+  `navigator_id` int DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`corporate_id`) REFERENCES `corporates`(`id`),
+  FOREIGN KEY (`navigator_id`) REFERENCES `users`(`id`)
+);
+```
 
---
--- Dumping data for table `corporates`
---
+### `clinical_parameters`
 
-INSERT INTO `corporates` (`id`, `name`, `wellness_date`) VALUES
-(1, 'Bio Food Products', '2025-09-29'),
-(2, 'Ikomoko', '2025-10-01'),
-(3, 'Taria', '2025-10-01');
+Stores the definitions for all trackable health metrics.
 
---
--- Dumping data for table `registrations`
---
+```sql
+CREATE TABLE `clinical_parameters` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `type` enum('numeric','text','choice') NOT NULL,
+  `unit` varchar(50) DEFAULT NULL,
+  `options` json DEFAULT NULL,
+  PRIMARY KEY (`id`)
+);
+```
 
-INSERT INTO `registrations` (`id`, `first_name`, `middle_name`, `surname`, `sex`, `dob`, `age`, `phone`, `email`, `corporate_id`, `wellness_date`) VALUES
-(1, 'Sylvester', NULL, 'Musa', 'Male', '1997-01-01', 28, '743955149', 'musasylvester1065@gmail.com', 1, '2025-09-29'),
-(2, 'Tom', 'Mbalala', 'Wawire', 'Male', '1970-01-01', 55, '729089363', 'tommbalala@20.com', 1, '2025-09-29'),
-(3, 'Euticus', 'Matumbi', 'Muthuri', 'Male', '1991-01-01', 34, '742025594', 'matumbieutychus@gmail.com', NULL, '2025-10-05'),
-(4, 'Paul', NULL, 'Ratemo', 'Male', '1985-01-01', 40, '743760460', 'paulratemo84@gmail.com', NULL, '2025-10-05'),
-(5, 'Kingsley', NULL, 'Otieno', 'Male', '1976-01-01', 49, '724785997', 'nyakrojala@gmail.com', NULL, '2025-10-06');
+### `assessments`
 
---
--- Dumping data for table `vitals`
---
+Stores each individual measurement or assessment recorded for a patient.
 
-INSERT INTO `vitals` (`registration_id`, `bp_systolic`, `bp_diastolic`, `pulse`, `temp`, `rbs`) VALUES
-(1, 114, 73, 58, 36.4, '5.1'),
-(2, 150, 99, 62, 36.4, '6.2'),
-(3, 133, 81, 70, 36.1, 'NOT SUPPORTED'),
-(4, 135, 89, 74, 37, '5.5'),
-(5, 171, 118, 76, 37, '5.8');
+```sql
+CREATE TABLE `assessments` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `patient_id` int NOT NULL,
+  `clinical_parameter_id` int NOT NULL,
+  `value` varchar(255) NOT NULL,
+  `notes` text,
+  `is_normal` tinyint(1) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `measured_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`patient_id`) REFERENCES `patients`(`id`),
+  FOREIGN KEY (`clinical_parameter_id`) REFERENCES `clinical_parameters`(`id`)
+);
+```
 
---
--- Dumping data for table `nutritions`
---
+### `goals`
 
-INSERT INTO `nutritions` (`registration_id`, `height`, `weight`, `bmi`, `visceral_fat`, `body_fat_percent`, `notes_nutritionist`) VALUES
-(1, 169, 64.8, 23, 2, 10.3, 'normal nutritional status'),
-(2, 175, 84, 27, NULL, NULL, NULL),
-(3, 169, 81, 28, NULL, NULL, 'ecouraged on excercise'),
-(4, 181, 74.8, 23, 6, 18.5, 'encouraged on exercise');
+Stores the health goals set for each patient.
 
---
--- Dumping data for table `goals`
---
-
-INSERT INTO `goals` (`registration_id`, `user_id`, `discussion`, `goal`) VALUES
-(1, 1, 'Patient wants to improve cardiovascular health and reduce stress.', 'Incorporate 30 minutes of moderate cardio exercise 3 times a week. Practice mindfulness meditation for 10 minutes daily.'),
-(2, 1, 'Patient is concerned about his high blood pressure reading and wants to manage it better.', 'Reduce daily sodium intake to under 2,300mg. Monitor blood pressure at home weekly and keep a log.');
-
---
--- Dumping data for table `clinicals`
---
-
-INSERT INTO `clinicals` (`registration_id`, `user_id`, `notes_doctor`, `notes_psychologist`) VALUES
-(1, 1, 'Patient is in good health. Advised on consistent exercise and a balanced diet. Follow up in 6 months.', 'No immediate concerns. Patient seems well-adjusted and motivated.'),
-(2, 1, 'Diagnosed with Stage 1 Hypertension. Prescribed Lisinopril 10mg. Advised on lifestyle modifications, particularly diet and exercise. Follow up in 1 month to check BP.', 'Patient is showing signs of anxiety related to his new diagnosis. Provided resources for stress management.');
-
+```sql
+CREATE TABLE `goals` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `patient_id` int NOT NULL,
+  `clinical_parameter_id` int NOT NULL,
+  `target_value` varchar(255) NOT NULL,
+  `target_operator` varchar(10) NOT NULL,
+  `status` enum('active','completed','cancelled') NOT NULL,
+  `notes` text,
+  `deadline` date NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`patient_id`) REFERENCES `patients`(`id`),
+  FOREIGN KEY (`clinical_parameter_id`) REFERENCES `clinical_parameters`(`id`)
+);
 ```

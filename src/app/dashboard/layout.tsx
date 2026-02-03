@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/header';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { UserPlus, Settings, Loader2, Building2 } from 'lucide-react';
+import { Settings, Loader2 } from 'lucide-react';
 import type { User } from '@/lib/types';
 import Logo from '@/components/logo';
-
+import { placeholderImages } from '@/lib/placeholder-images';
 
 export default function DashboardLayout({
   children,
@@ -24,54 +24,36 @@ export default function DashboardLayout({
     const storedUser = localStorage.getItem('loggedInUser');
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
-       // Create a user object that matches the type, using a placeholder for avatarUrl
       const userForState: User = {
         ...parsedUser,
-        avatarUrl: '', // Will be set from placeholder if available
+        avatarUrl: parsedUser.avatarUrl || placeholderImages.find(p => p.id === 'user-avatar')?.imageUrl,
       };
-      
-      const userAvatar = placeholderImages.find(p => p.id === 'user-avatar');
-      if (userAvatar) {
-        userForState.avatarUrl = userAvatar.imageUrl;
-      }
       setUser(userForState);
     } else {
-      router.push('/'); // Redirect to login if no user is found
+      router.push('/');
     }
     setLoading(false);
   }, [router]);
 
   if (loading || !user) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="sticky top-0 z-40 w-full border-b bg-background">
+    <div className="flex flex-col min-h-screen bg-muted/40">
+      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Logo className="h-8 w-auto" />
+            <Logo className="h-7 w-auto" />
           </Link>
           <div className="flex items-center gap-4">
-             <Button asChild>
-                <Link href="/register">
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Register Patient
-                </Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/dashboard/corporates">
-                    <Building2 className="mr-2 h-4 w-4" />
-                    Manage Corporates
-                </Link>
-              </Button>
               {user && user.role === 'admin' && (
-                <Button asChild variant="outline">
-                    <Link href="/dashboard/settings">
+                <Button asChild variant="ghost" size="sm">
+                    <Link href="/settings">
                         <Settings className="mr-2 h-4 w-4" />
                         Settings
                     </Link>
@@ -89,6 +71,3 @@ export default function DashboardLayout({
     </div>
   );
 }
-
-// Need to import placeholderImages to use it
-import { placeholderImages } from '@/lib/placeholder-images';

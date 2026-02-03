@@ -1,24 +1,19 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request) {
   try {
-    const { id: registration_id } = params;
     const body = await request.json();
+    const { patient_id, clinical_parameter_id, target_value, target_operator, status, notes, deadline } = body;
 
-    const { discussion, goal, user_id } = body;
-
-    if (!registration_id) {
-      return NextResponse.json({ message: 'Patient ID is required' }, { status: 400 });
-    }
-     if (!goal) {
-      return NextResponse.json({ message: 'Goal is required' }, { status: 400 });
+    if (!patient_id || !clinical_parameter_id || !target_value || !target_operator || !status || !deadline) {
+      return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
     const connection = await db.getConnection();
     const [result] = await connection.query(
-      'INSERT INTO goals (registration_id, discussion, goal, user_id) VALUES (?, ?, ?, ?)',
-      [registration_id, discussion, goal, user_id ?? 1] // Default user_id to 1 if not provided
+      'INSERT INTO goals (patient_id, clinical_parameter_id, target_value, target_operator, status, notes, deadline) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [patient_id, clinical_parameter_id, target_value, target_operator, status, notes, deadline]
     );
     
     const insertId = (result as any).insertId;
