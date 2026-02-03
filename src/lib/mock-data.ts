@@ -1,4 +1,4 @@
-import type { User, Corporate, Patient, ClinicalParameter, Assessment, Goal } from './types';
+import type { User, Corporate, Patient, ClinicalParameter, Assessment, Goal, Diagnosis, Medication, Prescription, Appointment, Review } from './types';
 
 export const users: User[] = [
     { id: 1, name: 'Dr. Emily Carter', email: 'admin@taria.com', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=emily' },
@@ -31,11 +31,37 @@ export const assessments: Assessment[] = [
 ];
 
 export const goals: Goal[] = [
-    { id: 1, patient_id: 1, clinical_parameter_id: 5, target_value: '80', target_operator: '<=', status: 'active', notes: 'Focus on diet and exercise.', deadline: '2023-09-20', created_at: '2023-06-20T10:00:00Z' },
-    { id: 2, patient_id: 3, clinical_parameter_id: 1, target_value: '130', target_operator: '<=', status: 'active', notes: 'Monitor BP twice daily.', deadline: '2023-08-19', created_at: '2023-06-19T09:00:00Z' },
+    { id: 1, patient_id: 1, clinical_parameter_id: 5, target_value: '80', target_operator: '<=', status: 'active', notes: 'Focus on diet and exercise.', deadline: '2023-09-20', created_at: '2023-06-20T10:00:00Z', current_value: '85', is_overdue: false },
+    { id: 2, patient_id: 3, clinical_parameter_id: 1, target_value: '130', target_operator: '<=', status: 'active', notes: 'Monitor BP twice daily.', deadline: '2023-08-19', created_at: '2023-06-19T09:00:00Z', current_value: '145', is_overdue: true },
 ];
 
-export let patients: Omit<Patient, 'assessments' | 'goals'>[] = [
+export const diagnoses: Diagnosis[] = [
+    { id: 1, name: 'Type 2 Diabetes', code: 'E11', description: 'Chronic condition that affects the way the body processes blood sugar.' },
+    { id: 2, name: 'Hypertension', code: 'I10', description: 'A condition in which the force of the blood against the artery walls is too high.' },
+];
+
+export const medications: Medication[] = [
+    { id: 1, name: 'Metformin', dosage: '500mg' },
+    { id: 2, name: 'Lisinopril', dosage: '10mg' },
+];
+
+export const prescriptions: Prescription[] = [
+    { id: 1, patient_id: 1, medication_id: 1, dosage: '500mg', frequency: 'twice_daily', start_date: '2023-05-16', end_date: null, notes: 'Take with meals.', status: 'active' },
+    { id: 2, patient_id: 3, medication_id: 2, dosage: '10mg', frequency: 'daily', start_date: '2023-05-17', end_date: null, notes: 'Monitor for cough.', status: 'active' },
+];
+
+export const appointments: Appointment[] = [
+    { id: 1, patient_id: 1, clinician_id: 3, title: 'Follow-up Consultation', appointment_date: '2023-07-15T14:00:00Z', end_date: '2023-07-15T14:30:00Z', description: 'Review recent blood sugar levels.', status: 'scheduled', cancellation_reason: null },
+    { id: 2, patient_id: 3, clinician_id: 3, title: 'BP Check', appointment_date: '2023-07-10T09:00:00Z', end_date: '2023-07-10T09:15:00Z', description: null, status: 'confirmed', cancellation_reason: null },
+];
+
+export const reviews: Review[] = [
+    { id: 1, patient_id: 1, reviewed_by_id: 3, review_date: '2023-06-20', subjective_findings: 'Patient reports feeling well.', objective_findings: 'Blood glucose levels are stable.', assessment: 'Good control of diabetes.', plan: 'Continue current medication and diet.', recommendations: 'Encourage regular exercise.', follow_up_date: '2023-07-15' },
+    { id: 2, patient_id: 3, reviewed_by_id: 3, review_date: '2023-06-19', subjective_findings: 'Patient reports occasional headaches.', objective_findings: 'BP remains elevated.', assessment: 'Uncontrolled hypertension.', plan: 'Adjust medication (Lisinopril to 20mg).', recommendations: 'Low-sodium diet, stress management techniques.', follow_up_date: '2023-07-10' },
+];
+
+
+export let patients: Omit<Patient, 'assessments' | 'goals' | 'diagnoses' | 'prescriptions' | 'appointments' | 'reviews'>[] = [
     {
         id: 1,
         first_name: 'John',
@@ -61,6 +87,7 @@ export let patients: Omit<Patient, 'assessments' | 'goals'>[] = [
         consent_date: '2023-05-15',
         navigator_id: 2,
         middle_name: 'A',
+        date_of_diagnosis: '2020-01-10',
     },
     {
         id: 2,
@@ -87,6 +114,7 @@ export let patients: Omit<Patient, 'assessments' | 'goals'>[] = [
         consent_date: null,
         navigator_id: null,
         middle_name: null,
+        date_of_diagnosis: null,
     },
     {
         id: 3,
@@ -113,5 +141,6 @@ export let patients: Omit<Patient, 'assessments' | 'goals'>[] = [
         consent_date: '2023-05-15',
         navigator_id: 2,
         middle_name: 'B',
+        date_of_diagnosis: '2013-03-20',
     }
 ];

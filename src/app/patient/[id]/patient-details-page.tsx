@@ -1,27 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import type { Patient, Assessment, Goal, ClinicalParameter } from '@/lib/types';
+import { useState, useEffect, useCallback } from 'react';
+import type { Patient, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Edit, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Edit, RefreshCw, User as UserIcon, CalendarDays } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { placeholderImages } from '@/lib/placeholder-images';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+
+import MedicalInfoSection from '@/components/patient/medical-info-section';
+import EmergencyContactSection from '@/components/patient/emergency-contact-section';
+import MedicationUseSection from '@/components/patient/medication-use-section';
+import GoalsSettingSection from '@/components/patient/goals-setting-section';
+import ClinicalAssessments from '@/components/patient/clinical-assessments-section';
+import AssessmentHistorySection from '@/components/patient/assessment-history-section';
+import UpcomingAppointmentsSection from '@/components/patient/upcoming-appointments-section';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import MetricGrid from '@/components/patient/metric-grid';
-import GoalList from '@/components/patient/goal-list';
-import AssessmentList from '@/components/patient/assessment-list';
-import { fetchClinicalParameters } from '@/lib/data';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+
 
 const DetailItem = ({
   label,
@@ -51,33 +55,18 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
   const { toast } = useToast();
 
   const [patient, setPatient] = useState<Patient>(initialPatient);
-  const [clinicalParameters, setClinicalParameters] = useState<ClinicalParameter[]>([]);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    const loadParams = async () => {
-      const params = await fetchClinicalParameters();
-      setClinicalParameters(params);
-    }
-    loadParams();
   }, []);
-
-  const handleUpdate = () => {
-    toast({ title: 'Data refreshed (simulation)' });
-    // This is where you would re-fetch patient data in a real app
-    setPatient(prev => ({...prev})); // Force re-render of children
-  };
   
-  const handleAssessmentsUpdate = (updatedAssessments: Assessment[]) => {
-    setPatient(prev => ({ ...prev, assessments: updatedAssessments }));
-    toast({ title: 'Success', description: 'Assessments updated locally.' });
-  }
-
-  const handleGoalsUpdate = (updatedGoals: Goal[]) => {
-    setPatient(prev => ({ ...prev, goals: updatedGoals }));
-    toast({ title: 'Success', description: 'Goals updated locally.' });
-  }
+  const handleUpdate = useCallback(() => {
+      // In a real app, this would re-fetch data.
+      // For mock data, we just re-set the state to trigger a re-render.
+      setPatient(prev => ({...prev}));
+      toast({ title: "Data Synced", description: "Patient data has been updated locally." });
+  }, [toast]);
 
   const getStatusDisplayName = (status: Patient['status']) => {
     const statusMap = {
@@ -90,6 +79,11 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
     return statusMap[status] || status;
   };
   
+  const handleStatusUpdate = (newStatus: Patient['status']) => {
+    setPatient(prev => ({ ...prev, status: newStatus }));
+    toast({ title: 'Status Updated', description: `Patient status set to ${newStatus}` });
+  };
+  
   const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
 
   if (!isClient) {
@@ -99,7 +93,12 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
+        <motion.div 
+          className="mb-8"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <Button asChild variant="outline">
               <Link href="/dashboard" className="inline-flex items-center gap-2">
@@ -110,8 +109,21 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
             <div className="flex items-center gap-3">
               <Button variant="outline"><Edit className="mr-2"/> Edit Patient</Button>
               <Button onClick={handleUpdate}><RefreshCw className="mr-2"/> Refresh Data</Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">{getStatusDisplayName(patient.status)}</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => handleStatusUpdate('Active')}>Set as Active</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleStatusUpdate('Pending')}>Set as Pending</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleStatusUpdate('Critical')}>Set as Critical</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleStatusUpdate('Discharged')}>Set as Discharged</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleStatusUpdate('In Review')}>Set as In Review</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
+
           <div className="bg-gradient-to-r from-white to-blue-50/50 rounded-2xl p-8 shadow-xl border border-blue-200/40">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-6">
                 <div className="flex items-center gap-6">
@@ -129,47 +141,27 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
                 <Badge className={cn('text-base', patient.status === 'Critical' && 'bg-red-500 text-white')}>{getStatusDisplayName(patient.status)}</Badge>
             </div>
              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-200/60">
-                <DetailItem label="Date of Birth" value={patient.dob ? new Date(patient.dob).toLocaleDateString() : 'N/A'} />
-                <DetailItem label="Age" value={patient.age?.toString()} />
-                <DetailItem label="Onboarding Date" value={patient.date_of_onboarding ? new Date(patient.date_of_onboarding).toLocaleDateString() : 'N/A'} />
+                <DetailItem icon={UserIcon} label="Date of Birth" value={patient.dob ? new Date(patient.dob).toLocaleDateString() : 'N/A'} />
+                <DetailItem icon={UserIcon} label="Age" value={patient.age?.toString()} />
+                <DetailItem icon={CalendarDays} label="Onboarding Date" value={patient.date_of_onboarding ? new Date(patient.date_of_onboarding).toLocaleDateString() : 'N/A'} />
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        <Card>
-            <CardContent className="p-6">
-                <Tabs defaultValue="metrics">
-                    <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="metrics">Metrics</TabsTrigger>
-                        <TabsTrigger value="assessments">Assessments</TabsTrigger>
-                        <TabsTrigger value="goals">Goals</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="metrics">
-                       <MetricGrid 
-                            patient={patient}
-                            clinicalParameters={clinicalParameters}
-                            onAssessmentsUpdate={handleAssessmentsUpdate}
-                        />
-                    </TabsContent>
-                    <TabsContent value="assessments">
-                        <AssessmentList 
-                             patient={patient}
-                             assessments={patient.assessments}
-                             clinicalParameters={clinicalParameters}
-                             onAssessmentsUpdate={handleAssessmentsUpdate}
-                        />
-                    </TabsContent>
-                    <TabsContent value="goals">
-                        <GoalList 
-                            patient={patient}
-                            goals={patient.goals}
-                            clinicalParameters={clinicalParameters}
-                            onGoalsUpdate={handleGoalsUpdate}
-                        />
-                    </TabsContent>
-                </Tabs>
-            </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          <div className="xl:col-span-2 space-y-8">
+            <MedicalInfoSection patient={patient} onUpdate={handleUpdate} />
+            <EmergencyContactSection patient={patient} onUpdate={handleUpdate} />
+            <MedicationUseSection patient={patient} onUpdate={handleUpdate} />
+            <GoalsSettingSection patient={patient} onUpdate={handleUpdate} />
+            <ClinicalAssessments patient={patient} onUpdate={handleUpdate} />
+          </div>
+
+          <div className="space-y-8">
+            <AssessmentHistorySection patient={patient} onUpdate={handleUpdate} />
+            <UpcomingAppointmentsSection patient={patient} onUpdate={handleUpdate} />
+          </div>
+        </div>
       </div>
     </div>
   );

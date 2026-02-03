@@ -42,7 +42,63 @@ export type Goal = {
   notes: string | null;
   deadline: string;
   created_at: string;
+  current_value?: string;
+  is_overdue?: boolean;
 };
+
+export type Diagnosis = {
+  id: number;
+  name: string;
+  code: string | null;
+  description: string | null;
+};
+
+export type Medication = {
+  id: number;
+  name: string;
+  dosage: string;
+};
+
+export type Prescription = {
+  id: number;
+  patient_id: number;
+  medication_id: number;
+  medication?: Medication; // joined
+  dosage: string;
+  frequency: string;
+  start_date: string;
+  end_date: string | null;
+  notes: string | null;
+  status: 'active' | 'completed' | 'discontinued';
+};
+
+export type Appointment = {
+  id: number;
+  patient_id: number;
+  clinician_id: number;
+  clinician?: User; // joined
+  title: string;
+  appointment_date: string;
+  end_date: string | null;
+  description: string | null;
+  status: 'scheduled' | 'confirmed' | 'cancelled' | 'completed' | 'no_show' | 'rescheduled';
+  cancellation_reason: string | null;
+};
+
+export type Review = {
+    id: number;
+    patient_id: number;
+    reviewed_by_id: number;
+    reviewed_by?: string; // joined name
+    review_date: string;
+    subjective_findings: string | null;
+    objective_findings: string | null;
+    assessment: string;
+    plan: string;
+    recommendations: string | null;
+    follow_up_date: string | null;
+};
+
 
 export type Patient = {
   id: number;
@@ -69,10 +125,15 @@ export type Patient = {
   emergency_contact_relation: string | null;
   consent_date: string | null;
   navigator_id: number | null;
+  date_of_diagnosis: string | null;
   
   // Joined/related data
   corporate_name?: string;
   navigator_name?: string;
   assessments: Assessment[];
   goals: Goal[];
+  diagnoses: Diagnosis[];
+  prescriptions: Prescription[];
+  appointments: Appointment[];
+  reviews: Review[];
 };
