@@ -12,44 +12,44 @@ export type Corporate = {
   wellness_date: string;
 };
 
-export type Vital = {
+export type ClinicalParameter = {
     id: number;
-    patient_id: number;
-    bp_systolic: number;
-    bp_diastolic: number;
-    pulse: number;
-    temp: number;
-    rbs: string;
-    created_at: string;
+    name: string;
+    type: 'numeric' | 'text' | 'choice';
+    unit: string | null;
+    options: string[] | null;
 }
 
-export type Nutrition = {
+export type Assessment = {
     id: number;
     patient_id: number;
-    height: number;
-    weight: number;
-    bmi: number;
-    visceral_fat: number;
-    body_fat_percent: number;
-    notes_nutritionist: string | null;
+    clinical_parameter_id: number;
+    value: string;
+    notes: string | null;
     created_at: string;
+    measured_at: string;
+    is_normal: boolean | null;
 }
 
 export type Goal = {
     id: number;
     patient_id: number;
-    discussion: string;
-    goal: string;
+    clinical_parameter_id: number;
+    target_value: string;
+    target_operator: '<' | '<=' | '=' | '>=' | '>';
+    status: 'active' | 'completed' | 'cancelled';
+    notes: string | null;
+    deadline: string;
     created_at: string;
 }
 
-export type Clinical = {
-    id: number;
-    patient_id: number;
-    notes_doctor: string | null;
-    notes_psychologist: string | null;
-    created_at: string;
-}
+export type PatientStats = {
+  totalGoals: number;
+  activeGoals: number;
+  totalAssessments: number;
+  assessmentCoverage: number;
+  needsAttention: boolean;
+};
 
 export type Patient = {
   id: number;
@@ -79,8 +79,7 @@ export type Patient = {
   // Joined/related data
   corporate_name?: string;
   navigator_name?: string;
-  vitals?: Vital[];
-  nutrition?: Nutrition[];
-  goals?: Goal[];
-  clinicals?: Clinical[];
+  assessments: Assessment[];
+  goals: Goal[];
+  stats?: PatientStats;
 };

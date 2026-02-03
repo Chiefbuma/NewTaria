@@ -21,14 +21,6 @@ import { cn } from "@/lib/utils"
 
 const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
 
-const statusVariant: { [key: string]: "default" | "secondary" | "destructive" } = {
-  Active: 'default',
-  Pending: 'secondary',
-  Critical: 'destructive',
-  'In Review': 'secondary',
-  Discharged: 'secondary'
-}
-
 export const columns: ColumnDef<Patient>[] = [
   {
     id: "select",

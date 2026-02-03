@@ -12,8 +12,6 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
 } from "@tanstack/react-table"
 import {
   ChevronLeft,
@@ -25,7 +23,6 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -43,88 +40,82 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface DataTableToolbarProps<TData> {
   table: ReturnType<typeof useReactTable<TData>>
-  customActions?: React.ReactNode
-  bulkActions?: (table: ReturnType<typeof useReactTable<TData>>) => React.ReactNode
 }
 
-export function DataTableToolbar<TData>({
-  table,
-  customActions,
-  bulkActions
-}: DataTableToolbarProps<TData>) {
-    const isFiltered = !!table.getState().globalFilter;
+export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>) {
+  const isFiltered = !!table.getState().globalFilter
 
-    return (
-        <div className="flex items-center justify-between">
-            <div className="flex flex-1 items-center space-x-2">
-                <Input
-                    placeholder="Search all columns..."
-                    value={(table.getState().globalFilter as string) ?? ""}
-                    onChange={(event) =>
-                        table.setGlobalFilter(event.target.value)
-                    }
-                    className="h-8 w-[150px] lg:w-[250px]"
-                />
-                {isFiltered && (
-                    <Button
-                        variant="ghost"
-                        onClick={() => table.setGlobalFilter('')}
-                        className="h-8 px-2 lg:px-3"
-                    >
-                        Reset
-                        <X className="ml-2 h-4 w-4" />
-                    </Button>
-                )}
-                 {bulkActions && bulkActions(table)}
-            </div>
-            <div className="flex items-center space-x-2">
-                {customActions}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="ml-auto hidden h-8 lg:flex">
-                        <ListFilter className="mr-2 h-4 w-4" />
-                        View
-                    </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[150px]">
-                    <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {table
-                        .getAllColumns()
-                        .filter(
-                        (column) =>
-                            typeof column.accessorFn !== "undefined" && column.getCanHide()
-                        )
-                        .map((column) => {
-                        return (
-                            <DropdownMenuCheckboxItem
-                            key={column.id}
-                            className="capitalize"
-                            checked={column.getIsVisible()}
-                            onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                            >
-                            {column.id.replace(/_/g, ' ')}
-                            </DropdownMenuCheckboxItem>
-                        )
-                        })}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-        </div>
-    )
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex flex-1 items-center space-x-2">
+        <Input
+          placeholder="Search patients..."
+          value={(table.getState().globalFilter as string) ?? ""}
+          onChange={(event) => table.setGlobalFilter(event.target.value)}
+          className="h-8 w-[150px] lg:w-[250px]"
+        />
+        {isFiltered && (
+          <Button
+            variant="ghost"
+            onClick={() => table.setGlobalFilter("")}
+            className="h-8 px-2 lg:px-3"
+          >
+            Reset
+            <X className="ml-2 h-4 w-4" />
+          </Button>
+        )}
+      </div>
+      <div className="flex items-center space-x-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="ml-auto hidden h-8 lg:flex">
+              <ListFilter className="mr-2 h-4 w-4" />
+              View
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[150px]">
+            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {table
+              .getAllColumns()
+              .filter(
+                (column) =>
+                  typeof column.accessorFn !== "undefined" && column.getCanHide()
+              )
+              .map((column) => {
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    className="capitalize"
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                  >
+                    {column.id.replace(/_/g, ' ')}
+                  </DropdownMenuCheckboxItem>
+                )
+              })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  )
 }
 
 interface DataTablePaginationProps<TData> {
   table: ReturnType<typeof useReactTable<TData>>
 }
 
-export function DataTablePagination<TData>({
-  table,
-}: DataTablePaginationProps<TData>) {
+export function DataTablePagination<TData>({ table }: DataTablePaginationProps<TData>) {
   return (
     <div className="flex items-center justify-between px-2">
       <div className="flex-1 text-sm text-muted-foreground">
@@ -202,16 +193,9 @@ export function DataTablePagination<TData>({
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
-  customActions?: React.ReactNode
-  bulkActions?: (table: ReturnType<typeof useReactTable<TData>>) => React.ReactNode
 }
 
-export function DataTable<TData, TValue>({
-  columns,
-  data,
-  customActions,
-  bulkActions,
-}: DataTableProps<TData, TValue>) {
+export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -225,9 +209,9 @@ export function DataTable<TData, TValue>({
     data,
     columns,
     initialState: {
-        pagination: {
-            pageSize: 5,
-        },
+      pagination: {
+        pageSize: 10,
+      },
     },
     state: {
       sorting,
@@ -250,7 +234,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      <DataTableToolbar table={table} customActions={customActions} bulkActions={bulkActions}/>
+      <DataTableToolbar table={table} />
       <div className="rounded-md border">
         <Table>
           <TableHeader>
