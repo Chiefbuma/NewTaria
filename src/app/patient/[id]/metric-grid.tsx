@@ -12,8 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 
 interface MetricGridProps {
     patient: Patient;
@@ -88,6 +88,14 @@ export default function MetricGrid({ patient, clinicalParameters }: MetricGridPr
                 {clinicalParameters.map(param => {
                     const latestAssessment = patient.assessments?.find(a => a.clinical_parameter_id === param.id);
                     const history = getMetricHistory(param.id);
+                    
+                    const chartConfig = {
+                        value: {
+                            label: param.unit,
+                            color: "hsl(var(--primary))",
+                        },
+                    } satisfies ChartConfig;
+
 
                     return (
                         <Card key={param.id}>
@@ -111,17 +119,24 @@ export default function MetricGrid({ patient, clinicalParameters }: MetricGridPr
                                             Recorded on {format(new Date(latestAssessment.measured_at), 'MMMM d, yyyy')}
                                         </p>
                                         {history.length > 1 && (param.type === 'numeric' || (param.name === 'Blood Pressure' && typeof latestAssessment.value === 'string')) && (
-                                             <div className="h-[100px] w-full">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <LineChart data={history} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                                                         <XAxis dataKey="date" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickLine={false} axisLine={false} />
-                                                        <YAxis hide={true} domain={['dataMin - 5', 'dataMax + 5']} />
-                                                        <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
-                                                        <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                                                    </LineChart>
-                                                </ResponsiveContainer>
-                                            </div>
+                                             <ChartContainer config={chartConfig} className="h-[100px] w-full">
+                                                <LineChart accessibilityLayer data={history} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                                                    <XAxis dataKey="date" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickLine={false} axisLine={false} />
+                                                    <YAxis hide={true} domain={['dataMin - 5', 'dataMax + 5']} />
+                                                    <ChartTooltip
+                                                        cursor={false}
+                                                        content={<ChartTooltipContent indicator="line" />}
+                                                    />
+                                                    <Line
+                                                        dataKey="value"
+                                                        type="monotone"
+                                                        stroke="var(--color-value)"
+                                                        strokeWidth={2}
+                                                        dot={false}
+                                                    />
+                                                </LineChart>
+                                            </ChartContainer>
                                         )}
                                     </div>
                                 ) : (
