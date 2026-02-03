@@ -1,6 +1,6 @@
 'use client';
 
-import type { Patient, Corporate, User, ClinicalParameter } from '@/lib/types';
+import type { Patient, Corporate, User, ClinicalParameter, Assessment, Goal } from '@/lib/types';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -62,6 +62,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ReportViewer from '@/components/report-viewer';
 import MetricGrid from './metric-grid';
 import GoalList from './goal-list';
+import { fetchCorporates } from '@/lib/data';
 
 const DetailItem = ({
   label,
@@ -117,17 +118,12 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
       setCurrentUser(JSON.parse(storedUser));
     }
 
-    const fetchCorporates = async () => {
-        try {
-            const res = await fetch('/api/corporates');
-            const data = await res.json();
-            setCorporates(data);
-        } catch (error) {
-            console.error("Failed to fetch corporates", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to load corporate list.' });
-        }
-    };
-    fetchCorporates();
+    fetchCorporates()
+      .then(setCorporates)
+      .catch(error => {
+        console.error("Failed to fetch corporates", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to load corporate list.' });
+      });
   }, [toast]);
 
 
@@ -143,45 +139,21 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
   const handleUpdatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    try {
-        const res = await fetch(`/api/patients/${patient.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(editFormData),
-        });
-        if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.message || 'Failed to update patient.');
-        }
-        const { patient: updatedPatient } = await res.json();
-        setPatient(updatedPatient);
-        toast({ title: 'Success!', description: 'Patient details updated.' });
-        setIsEditModalOpen(false);
-        router.refresh();
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
-    } finally {
-        setIsSubmitting(false);
-    }
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const updatedPatient = { ...patient, ...editFormData };
+    setPatient(updatedPatient);
+    
+    toast({ title: 'Success!', description: 'Patient details updated. (Mock)' });
+    setIsEditModalOpen(false);
+    setIsSubmitting(false);
   }
   
   const handleDeletePatient = async () => {
     setIsDeleting(true);
-    try {
-        const res = await fetch(`/api/patients/${patient.id}`, {
-            method: 'DELETE',
-        });
-        if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.message || 'Failed to delete patient.');
-        }
-        toast({ title: 'Success', description: 'Patient record deleted.' });
-        router.push('/dashboard');
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
-    } finally {
-        setIsDeleting(false);
-    }
+    await new Promise(resolve => setTimeout(resolve, 500));
+    toast({ title: 'Success', description: 'Patient record deleted. (Mock)' });
+    router.push('/dashboard');
   };
   
   const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,6 +165,20 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
     setEditFormData({ ...editFormData, [name]: processedValue });
   };
   
+  const handleAssessmentAdded = (newAssessment: Assessment) => {
+    setPatient(prevPatient => ({
+      ...prevPatient,
+      assessments: [newAssessment, ...(prevPatient.assessments || [])]
+    }));
+  };
+
+  const handleGoalAdded = (newGoal: Goal) => {
+    setPatient(prevPatient => ({
+      ...prevPatient,
+      goals: [newGoal, ...(prevPatient.goals || [])]
+    }));
+  };
+
   if (!isClient) {
     return <div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
@@ -313,10 +299,20 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
                     <TabsTrigger value="goals">Goals</TabsTrigger>
                 </TabsList>
                 <TabsContent value="metrics" className="mt-6">
-                    <MetricGrid patient={patient} clinicalParameters={clinicalParameters} />
+                    <MetricGrid 
+                      patientId={patient.id} 
+                      assessments={patient.assessments || []} 
+                      clinicalParameters={clinicalParameters} 
+                      onAssessmentAdded={handleAssessmentAdded}
+                    />
                 </TabsContent>
                 <TabsContent value="goals" className="mt-6">
-                    <GoalList patient={patient} clinicalParameters={clinicalParameters} />
+                    <GoalList 
+                      patientId={patient.id}
+                      goals={patient.goals || []} 
+                      clinicalParameters={clinicalParameters} 
+                      onGoalAdded={handleGoalAdded}
+                    />
                 </TabsContent>
             </Tabs>
           </div>

@@ -36,34 +36,18 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
 
-    try {
-        const res = await fetch('/api/patients', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData),
-        });
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-        if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.message || 'Failed to register patient.');
-        }
-
-        const data = await res.json();
-        toast({
-            title: 'Patient Registered',
-            description: 'Next, complete the onboarding process.',
-        });
-        router.push(`/patient/${data.patientId}`);
-
-    } catch (error) {
-        toast({
-            variant: 'destructive',
-            title: 'Registration Error',
-            description: (error as Error).message,
-        });
-    } finally {
-        setLoading(false);
-    }
+    // Since we are not using an API, we can't save the new patient.
+    // We will just show a success message and redirect.
+    toast({
+        title: 'Patient Registered (Simulation)',
+        description: 'In a real app, you would be taken to the onboarding page. In this mock version, we will return to the dashboard.',
+    });
+    
+    router.push('/dashboard');
+    setLoading(false);
   }
 
   return (

@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import type { Patient, ClinicalParameter } from '@/lib/types';
+import type { Assessment, ClinicalParameter } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -10,17 +10,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { format, formatISO } from 'date-fns';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 
 interface MetricGridProps {
-    patient: Patient;
+    patientId: number;
+    assessments: Assessment[];
     clinicalParameters: ClinicalParameter[];
+    onAssessmentAdded: (newAssessment: Assessment) => void;
 }
 
-export default function MetricGrid({ patient, clinicalParameters }: MetricGridProps) {
+export default function MetricGrid({ patientId, assessments, clinicalParameters, onAssessmentAdded }: MetricGridProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedParam, setSelectedParam] = useState<ClinicalParameter | null>(null);
     const [assessmentValue, setAssessmentValue] = useState('');
@@ -28,7 +29,6 @@ export default function MetricGrid({ patient, clinicalParameters }: MetricGridPr
     const [measuredAt, setMeasuredAt] = useState(new Date().toISOString().split('T')[0]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
-    const router = useRouter();
 
     const handleOpenModal = (param: ClinicalParameter) => {
         setSelectedParam(param);
@@ -49,44 +49,46 @@ export default function MetricGrid({ patient, clinicalParameters }: MetricGridPr
             return;
         }
         setIsSubmitting(true);
-        try {
-            const res = await fetch('/api/assessments', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    patient_id: patient.id,
-                    clinical_parameter_id: selectedParam.id,
-                    value: assessmentValue,
-                    notes: assessmentNotes,
-                    measured_at: measuredAt,
-                }),
-            });
-            if (!res.ok) throw new Error('Failed to save assessment');
-            toast({ title: 'Success', description: 'New assessment recorded.' });
-            handleCloseModal();
-            router.refresh();
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not save assessment.' });
-        } finally {
-            setIsSubmitting(false);
-        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const newAssessment: Assessment = {
+            id: Math.random(),
+            patient_id: patientId,
+            clinical_parameter_id: selectedParam.id,
+            value: assessmentValue,
+            notes: assessmentNotes,
+            measured_at: formatISO(new Date(measuredAt)),
+            created_at: formatISO(new Date()),
+            is_normal: null,
+            parameter: selectedParam,
+        };
+
+        onAssessmentAdded(newAssessment);
+        
+        toast({ title: 'Success', description: 'New assessment recorded. (Mock)' });
+        handleCloseModal();
+        setIsSubmitting(false);
     };
     
     const getMetricHistory = (paramId: number) => {
-        return patient.assessments
+        return assessments
             ?.filter(a => a.clinical_parameter_id === paramId && a.parameter?.type === 'numeric' && !isNaN(parseFloat(a.value)))
             .map(a => ({
-                date: format(new Date(a.measured_at), 'MMM d'),
+                date: new Date(a.measured_at),
                 value: parseFloat(a.value)
             }))
-            .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()) || [];
+            .sort((a,b) => a.date.getTime() - b.date.getTime())
+            .map(a => ({
+                date: format(a.date, 'MMM d'),
+                value: a.value
+            })) || [];
     };
 
     return (
         <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {clinicalParameters.map(param => {
-                    const latestAssessment = patient.assessments
+                    const latestAssessment = assessments
                         ?.filter(a => a.clinical_parameter_id === param.id)
                         .sort((a,b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())[0];
                     

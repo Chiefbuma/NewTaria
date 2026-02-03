@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Logo from '@/components/logo';
+import { users } from '@/lib/mock-data';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('admin@taria.com');
@@ -21,36 +22,33 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Login failed');
-      }
+    // Simulate a network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-      const user = await res.json();
-      localStorage.setItem('loggedInUser', JSON.stringify(user));
-      
-      toast({
-        title: 'Success!',
-        description: 'Logged in successfully. Redirecting...',
-      });
+    const user = users.find(u => u.email === email);
 
-      router.push('/dashboard');
-    } catch (error) {
+    // In a real app, you'd compare a hashed password.
+    // For this mock setup, we'll use a simple plain text password.
+    if (!user || password !== 'password') {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: (error as Error).message,
+        description: 'Invalid credentials',
       });
-    } finally {
       setLoading(false);
+      return;
     }
+
+    localStorage.setItem('loggedInUser', JSON.stringify(user));
+    
+    toast({
+      title: 'Success!',
+      description: 'Logged in successfully. Redirecting...',
+    });
+
+    router.push('/dashboard');
+    // No finally block needed, as redirection will unmount the component
   };
   
   return (

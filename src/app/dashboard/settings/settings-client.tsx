@@ -37,16 +37,6 @@ export default function SettingsClient({ initialParameters }: { initialParameter
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const fetchParameters = async () => {
-    try {
-      const res = await fetch('/api/clinical-parameters');
-      const data = await res.json();
-      setParameters(data);
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to fetch parameters." });
-    }
-  };
-
   const handleOpenModal = (param: ClinicalParameter | null) => {
     setEditingParam(param);
     if (param) {
@@ -84,12 +74,12 @@ export default function SettingsClient({ initialParameters }: { initialParameter
       handleFormChange('options', newOptions);
   }
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const url = editingParam ? `/api/clinical-parameters/${editingParam.id}` : '/api/clinical-parameters';
-    const method = editingParam ? 'PUT' : 'POST';
+    
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     const body: any = { ...formData };
     if (body.type !== 'choice') {
@@ -99,40 +89,31 @@ export default function SettingsClient({ initialParameters }: { initialParameter
         body.unit = null;
     }
 
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || `Failed to ${editingParam ? 'update' : 'create'} parameter.`);
-      }
-
-      toast({
-        title: "Success",
-        description: `Parameter ${editingParam ? 'updated' : 'created'} successfully.`,
-      });
-      await fetchParameters();
-      handleCloseModal();
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: (error as Error).message });
-    } finally {
-      setIsSubmitting(false);
+    if (editingParam) {
+        setParameters(parameters.map(p => p.id === editingParam.id ? { ...editingParam, ...body } : p));
+    } else {
+        const newParam: ClinicalParameter = {
+            id: Math.max(0, ...parameters.map(p => p.id)) + 1,
+            ...body,
+        };
+        setParameters(prev => [...prev, newParam].sort((a, b) => a.name.localeCompare(b.name)));
     }
+
+    toast({
+      title: "Success",
+      description: `Parameter ${editingParam ? 'updated' : 'created'} successfully. (Mock)`,
+    });
+
+    handleCloseModal();
+    setIsSubmitting(false);
   };
   
   const handleDelete = async (id: number) => {
-    try {
-        const res = await fetch(`/api/clinical-parameters/${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error('Failed to delete parameter');
-        toast({ title: "Success", description: "Parameter deleted successfully." });
-        await fetchParameters();
-    } catch (error) {
-        toast({ variant: "destructive", title: "Error", description: (error as Error).message });
-    }
+    setIsSubmitting(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setParameters(parameters.filter(p => p.id !== id));
+    toast({ title: "Success", description: "Parameter deleted successfully. (Mock)" });
+    setIsSubmitting(false);
   };
   
   const columns = getColumns({

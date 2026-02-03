@@ -32,18 +32,16 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
 
     useEffect(() => {
         const fetchData = async () => {
-            try {
-                const [navData, corpData] = await Promise.all([
-                    fetchUsers(),
-                    fetchCorporates()
-                ]);
-                setNavigators(navData.filter((u: User) => u.role === 'navigator'));
-                setCorporates(corpData);
-            } catch (error) {
-                toast({ variant: 'destructive', title: 'Error', description: 'Failed to load necessary data.' });
-            }
+            const [navData, corpData] = await Promise.all([
+                fetchUsers(),
+                fetchCorporates()
+            ]);
+            setNavigators(navData.filter((u: User) => u.role === 'navigator'));
+            setCorporates(corpData);
         };
-        fetchData();
+        fetchData().catch(error => {
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to load necessary data.' });
+        });
     }, [toast]);
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -63,39 +61,18 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
         e.preventDefault();
         setIsSubmitting(true);
         
-        const submissionData = {
-            ...formData,
-            status: 'Active',
-            date_of_onboarding: new Date().toISOString().split('T')[0],
-        };
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-        try {
-            const res = await fetch(`/api/patients/${patient.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(submissionData),
-            });
+        toast({
+            title: 'Onboarding Complete (Mock)',
+            description: `${patient.first_name} is now marked as Active. This will not persist on page refresh.`,
+        });
 
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || 'Failed to complete onboarding.');
-            }
-
-            toast({
-                title: 'Onboarding Complete',
-                description: `${patient.first_name} is now an active patient.`,
-            });
-            router.refresh(); 
-
-        } catch (error) {
-            toast({
-                variant: 'destructive',
-                title: 'Onboarding Error',
-                description: (error as Error).message,
-            });
-        } finally {
-            setIsSubmitting(false);
-        }
+        // We can't persist the change, but we can refresh the router
+        // which will effectively show the "Active" patient view until a hard refresh.
+        // For a true mock experience, we just need to let the user know.
+        router.refresh(); 
+        setIsSubmitting(false);
     };
 
     return (

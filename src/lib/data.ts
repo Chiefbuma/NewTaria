@@ -9,12 +9,8 @@ import {
     goals as mockGoals,
 } from './mock-data';
 
-// Simulate network delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 export async function fetchPatients(): Promise<Patient[]> {
     noStore();
-    await delay(100); 
     
     // Join navigator and corporate names
     const enrichedPatients = mockPatients.map(patient => {
@@ -32,7 +28,6 @@ export async function fetchPatients(): Promise<Patient[]> {
 
 export async function fetchPatientById(id: string): Promise<Patient | null> {
     noStore();
-    await delay(150);
     
     const patient = mockPatients.find(p => p.id === parseInt(id));
 
@@ -71,18 +66,15 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
 
 export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
     noStore();
-    await delay(50);
     return mockClinicalParameters.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function fetchUsers(): Promise<User[]> {
     noStore();
-    await delay(50);
     return mockUsers;
 }
 
 export async function fetchCorporates(): Promise<Corporate[]> {
     noStore();
-    await delay(50);
     return mockCorporates.sort((a, b) => a.name.localeCompare(b.name));
 }
