@@ -1,7 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Patient, Corporate, User } from '@/lib/types';
+import type { Patient, Assessment, Goal, ClinicalParameter } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { ArrowLeft, Edit, RefreshCw } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { placeholderImages } from '@/lib/placeholder-images';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import {
   Card,
   CardContent,
@@ -9,50 +17,11 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import {
-  ArrowLeft,
-  User as UserIcon,
-  Cake,
-  Phone,
-  Mail,
-  Building2,
-  Binary,
-  Loader2,
-  CalendarDays,
-  Trash2,
-  Edit,
-  RefreshCw
-} from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
-import { placeholderImages } from '@/lib/placeholder-images';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import ReportViewer from '@/components/report-viewer';
-import { MedicalInfoSection } from '@/components/patient/medical-info-section';
-import { EmergencyContactSection } from '@/components/patient/emergency-contact-section';
-import { MedicationUseSection } from '@/components/patient/medication-use-section';
-import { GoalsSettingSection } from '@/components/patient/goals-setting-section';
-import { ClinicalAssessments } from '@/components/patient/clinical-assessments-section';
-import { AssessmentHistorySection } from '@/components/patient/assessment-history-section';
-import { UpcomingAppointmentsSection } from '@/components/patient/upcoming-appointments-section';
-import { QuickActionsPanel } from '@/components/patient/quick-actions-panel';
-import { PatientTimeline } from '@/components/patient/patient-timeline';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import MetricGrid from '@/components/patient/metric-grid';
+import GoalList from '@/components/patient/goal-list';
+import AssessmentList from '@/components/patient/assessment-list';
+import { fetchClinicalParameters } from '@/lib/data';
 
 const DetailItem = ({
   label,
@@ -82,33 +51,33 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
   const { toast } = useToast();
 
   const [patient, setPatient] = useState<Patient>(initialPatient);
+  const [clinicalParameters, setClinicalParameters] = useState<ClinicalParameter[]>([]);
   const [isClient, setIsClient] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    const storedUser = localStorage.getItem('loggedInUser');
-    if (storedUser) {
-      setCurrentUser(JSON.parse(storedUser));
+    const loadParams = async () => {
+      const params = await fetchClinicalParameters();
+      setClinicalParameters(params);
     }
+    loadParams();
   }, []);
 
   const handleUpdate = () => {
     toast({ title: 'Data refreshed (simulation)' });
-    // In a real app, this would re-fetch data. Here we just show a toast.
+    // This is where you would re-fetch patient data in a real app
     setPatient(prev => ({...prev})); // Force re-render of children
   };
   
-  const handleDeletePatient = async () => {
-    setIsDeleting(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    toast({ title: 'Success', description: 'Patient record deleted. (Mock)' });
-    // In a real app, you would redirect after deletion.
-    setIsDeleting(false);
-  };
+  const handleAssessmentsUpdate = (updatedAssessments: Assessment[]) => {
+    setPatient(prev => ({ ...prev, assessments: updatedAssessments }));
+    toast({ title: 'Success', description: 'Assessments updated locally.' });
+  }
+
+  const handleGoalsUpdate = (updatedGoals: Goal[]) => {
+    setPatient(prev => ({ ...prev, goals: updatedGoals }));
+    toast({ title: 'Success', description: 'Goals updated locally.' });
+  }
 
   const getStatusDisplayName = (status: Patient['status']) => {
     const statusMap = {
@@ -124,7 +93,7 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
   const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
 
   if (!isClient) {
-    return <div className="flex h-screen items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    return null;
   }
 
   return (
@@ -167,34 +136,41 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            <div className="xl:col-span-2 space-y-8">
-                <MedicalInfoSection patient={patient} onUpdate={handleUpdate} />
-                <EmergencyContactSection patient={patient} onUpdate={handleUpdate} />
-                <MedicationUseSection patient={patient} onUpdate={handleUpdate} />
-                <GoalsSettingSection patient={patient} onUpdate={handleUpdate} />
-                <ClinicalAssessments patient={patient} onUpdate={handleUpdate} />
-            </div>
-            <div className="space-y-8">
-                <AssessmentHistorySection patient={patient} onUpdate={handleUpdate} />
-                <UpcomingAppointmentsSection patient={patient} onUpdate={handleUpdate} />
-                <QuickActionsPanel 
-                  onEditPatient={() => {}}
-                  onScheduleFollowUp={() => {}}
-                  onManageParams={() => {}}
-                />
-                <PatientTimeline patient={patient} />
-            </div>
-        </div>
+        <Card>
+            <CardContent className="p-6">
+                <Tabs defaultValue="metrics">
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="metrics">Metrics</TabsTrigger>
+                        <TabsTrigger value="assessments">Assessments</TabsTrigger>
+                        <TabsTrigger value="goals">Goals</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="metrics">
+                       <MetricGrid 
+                            patient={patient}
+                            clinicalParameters={clinicalParameters}
+                            onAssessmentsUpdate={handleAssessmentsUpdate}
+                        />
+                    </TabsContent>
+                    <TabsContent value="assessments">
+                        <AssessmentList 
+                             patient={patient}
+                             assessments={patient.assessments}
+                             clinicalParameters={clinicalParameters}
+                             onAssessmentsUpdate={handleAssessmentsUpdate}
+                        />
+                    </TabsContent>
+                    <TabsContent value="goals">
+                        <GoalList 
+                            patient={patient}
+                            goals={patient.goals}
+                            clinicalParameters={clinicalParameters}
+                            onGoalsUpdate={handleGoalsUpdate}
+                        />
+                    </TabsContent>
+                </Tabs>
+            </CardContent>
+        </Card>
       </div>
-      {isReportModalOpen && (
-        <ReportViewer
-          isOpen={isReportModalOpen}
-          onClose={() => setIsReportModalOpen(false)}
-          patient={patient}
-          corporate={patient.corporate_id ? { id: patient.corporate_id, name: patient.corporate_name!, wellness_date: patient.wellness_date! } : null}
-        />
-      )}
     </div>
   );
 }

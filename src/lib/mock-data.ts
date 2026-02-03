@@ -1,4 +1,4 @@
-import type { User, Corporate, Patient, ClinicalParameter, Assessment, Goal, Medication, Prescription, Appointment, Review, Diagnosis } from './types';
+import type { User, Corporate, Patient, ClinicalParameter, Assessment, Goal } from './types';
 
 export const users: User[] = [
     { id: 1, name: 'Dr. Emily Carter', email: 'admin@taria.com', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=emily' },
@@ -20,17 +20,6 @@ export const clinicalParameters: ClinicalParameter[] = [
     { id: 6, name: 'Height', type: 'numeric', unit: 'cm', options: null, category: 'clinical_measurement' },
     { id: 7, name: 'Mood', type: 'choice', unit: null, options: ['Happy', 'Anxious', 'Sad', 'Calm', 'Irritable'], category: 'assessment' },
     { id: 8, name: 'Pain Level', type: 'numeric', unit: '/ 10', options: null, category: 'symptom' },
-    { id: 9, name: 'Temperature', type: 'numeric', unit: '°C', options: null, category: 'vital_sign' },
-    { id: 10, name: 'RBS', type: 'numeric', unit: 'mmol/L', options: null, category: 'lab_result' },
-    { id: 11, name: 'BMI', type: 'numeric', unit: null, options: null, category: 'clinical_measurement' },
-    { id: 12, name: 'Visceral Fat', type: 'numeric', unit: null, options: null, category: 'clinical_measurement' },
-    { id: 13, name: 'Body Fat %', type: 'numeric', unit: '%', options: null, category: 'clinical_measurement' },
-];
-
-export const diagnoses: Diagnosis[] = [
-    { id: 1, name: 'Type 2 Diabetes', code: 'E11' },
-    { id: 2, name: 'Hypertension', code: 'I10' },
-    { id: 3, name: 'General Checkup', code: 'Z00.0' },
 ];
 
 export const assessments: Assessment[] = [
@@ -46,27 +35,7 @@ export const goals: Goal[] = [
     { id: 2, patient_id: 3, clinical_parameter_id: 1, target_value: '130', target_operator: '<=', status: 'active', notes: 'Monitor BP twice daily.', deadline: '2023-08-19', created_at: '2023-06-19T09:00:00Z' },
 ];
 
-export const medications: Medication[] = [
-    { id: 1, name: 'Metformin', dosage: '500mg' },
-    { id: 2, name: 'Lisinopril', dosage: '10mg' },
-];
-
-export const prescriptions: Prescription[] = [
-    { id: 1, patient_id: 1, medication_id: 1, frequency: 'Once daily', notes: 'Take with breakfast.', start_date: '2023-05-16', end_date: null, created_at: '2023-05-16T09:00:00Z' },
-    { id: 2, patient_id: 3, medication_id: 2, frequency: 'Once daily', notes: 'Monitor for cough.', start_date: '2023-05-17', end_date: null, created_at: '2023-05-17T09:00:00Z' },
-];
-
-export const appointments: Appointment[] = [
-    { id: 1, patient_id: 1, user_id: 3, title: 'Quarterly Checkup', appointment_date: '2023-08-15T14:00:00Z', end_date: '2023-08-15T14:30:00Z', notes: 'Review lab results.', status: 'scheduled' },
-    { id: 2, patient_id: 3, user_id: 3, title: 'BP Follow-up', appointment_date: '2023-07-01T10:00:00Z', end_date: '2023-07-01T10:15:00Z', notes: 'Check response to new medication.', status: 'confirmed' },
-];
-
-export const reviews: Review[] = [
-    { id: 1, patient_id: 1, user_id: 3, subjective_findings: 'Patient reports feeling well, occasional fatigue.', objective_findings: 'BP 120/80, HR 75. Labs stable.', assessment: 'Diabetes well-controlled.', plan: 'Continue current medication. Follow up in 3 months.', recommendations: 'Encourage daily walks.', created_at: '2023-06-20T14:00:00Z', review_date: '2023-06-20' },
-    { id: 2, patient_id: 3, user_id: 3, subjective_findings: 'Patient reports headaches.', objective_findings: 'BP 145/92.', assessment: 'Uncontrolled hypertension.', plan: 'Adjust Lisinopril dosage. Recommend low-sodium diet.', recommendations: null, created_at: '2023-06-19T09:30:00Z', review_date: '2023-06-19' }
-];
-
-export let patients: Omit<Patient, 'diagnoses' | 'prescriptions' | 'appointments' | 'reviews' | 'goals' | 'assessments'>[] = [
+export let patients: Omit<Patient, 'assessments' | 'goals'>[] = [
     {
         id: 1,
         first_name: 'John',
@@ -92,9 +61,6 @@ export let patients: Omit<Patient, 'diagnoses' | 'prescriptions' | 'appointments
         consent_date: '2023-05-15',
         navigator_id: 2,
         middle_name: 'A',
-        stats: { totalGoals: 1, activeGoals: 1, totalAssessments: 4, assessmentCoverage: 100, needsAttention: false },
-        date_of_diagnosis: '2020-01-15',
-        payer_id: 1
     },
     {
         id: 2,
@@ -121,7 +87,6 @@ export let patients: Omit<Patient, 'diagnoses' | 'prescriptions' | 'appointments
         consent_date: null,
         navigator_id: null,
         middle_name: null,
-        stats: { totalGoals: 0, activeGoals: 0, totalAssessments: 0, assessmentCoverage: 0, needsAttention: true }
     },
     {
         id: 3,
@@ -148,8 +113,5 @@ export let patients: Omit<Patient, 'diagnoses' | 'prescriptions' | 'appointments
         consent_date: '2023-05-15',
         navigator_id: 2,
         middle_name: 'B',
-        stats: { totalGoals: 1, activeGoals: 1, totalAssessments: 2, assessmentCoverage: 100, needsAttention: true },
-        date_of_diagnosis: '2013-03-20',
-        payer_id: 2
     }
 ];

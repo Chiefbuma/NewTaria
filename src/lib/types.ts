@@ -44,61 +44,6 @@ export type Goal = {
   created_at: string;
 };
 
-export type Medication = {
-  id: number;
-  name: string;
-  dosage: string;
-};
-
-export type Prescription = {
-  id: number;
-  patient_id: number;
-  medication_id: number;
-  frequency: string;
-  notes: string | null;
-  start_date: string;
-  end_date: string | null;
-  created_at: string;
-};
-
-export type Appointment = {
-    id: number;
-    patient_id: number;
-    user_id: number; // clinician
-    title: string;
-    appointment_date: string; // ISO timestamp
-    end_date: string | null;
-    notes: string | null;
-    status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show' | 'rescheduled';
-};
-
-export type Review = {
-    id: number;
-    patient_id: number;
-    user_id: number; // reviewer
-    subjective_findings: string | null;
-    objective_findings: string | null;
-    assessment: string;
-    plan: string;
-    recommendations: string | null;
-    created_at: string; // ISO timestamp
-    review_date: string; // ISO date
-};
-
-export type Diagnosis = {
-    id: number;
-    name: string;
-    code: string;
-};
-
-export type PatientStats = {
-  totalGoals: number;
-  activeGoals: number;
-  totalAssessments: number;
-  assessmentCoverage: number;
-  needsAttention: boolean;
-};
-
 export type Patient = {
   id: number;
   first_name: string;
@@ -125,20 +70,9 @@ export type Patient = {
   consent_date: string | null;
   navigator_id: number | null;
   
-  // Joined/related data from example
-  date_of_diagnosis?: string | null;
-  payer_id?: number | null;
-
   // Joined/related data
   corporate_name?: string;
   navigator_name?: string;
-  stats?: PatientStats;
-  
-  // For mock data structure
-  diagnoses?: Diagnosis[];
-  prescriptions?: Prescription[];
-  appointments?: Appointment[];
-  reviews?: Review[];
-  goals?: Goal[];
-  assessments?: Assessment[];
+  assessments: Assessment[];
+  goals: Goal[];
 };

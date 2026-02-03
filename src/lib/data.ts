@@ -1,4 +1,4 @@
-import type { Patient, User, Corporate, ClinicalParameter, Assessment, Goal, Medication, Prescription, Appointment, Review, Diagnosis } from '@/lib/types';
+import type { Patient, User, Corporate, ClinicalParameter, Assessment, Goal } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { 
     patients as mockPatients, 
@@ -7,11 +7,6 @@ import {
     clinicalParameters as mockClinicalParameters,
     assessments as mockAssessments,
     goals as mockGoals,
-    medications as mockMedications,
-    prescriptions as mockPrescriptions,
-    appointments as mockAppointments,
-    reviews as mockReviews,
-    diagnoses as mockDiagnoses
 } from './mock-data';
 
 export async function fetchPatients(): Promise<Patient[]> {
@@ -24,6 +19,8 @@ export async function fetchPatients(): Promise<Patient[]> {
             ...patient,
             navigator_name: navigator?.name,
             corporate_name: corporate?.name,
+            assessments: mockAssessments.filter(a => a.patient_id === patient.id),
+            goals: mockGoals.filter(g => g.patient_id === patient.id),
         };
     });
 
@@ -43,12 +40,6 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
     const corporate = mockCorporates.find(c => c.id === patient.corporate_id);
     const patientAssessments = mockAssessments.filter(a => a.patient_id === patient.id);
     const patientGoals = mockGoals.filter(g => g.patient_id === patient.id);
-    const patientPrescriptions = mockPrescriptions.filter(p => p.patient_id === patient.id);
-    const patientAppointments = mockAppointments.filter(a => a.patient_id === patient.id);
-    const patientReviews = mockReviews.filter(r => r.patient_id === patient.id);
-    
-    // For simplicity, we're attaching all diagnoses to patients, but in a real app, you'd have a join table.
-    const patientDiagnoses = mockDiagnoses; 
 
     return {
         ...patient,
@@ -56,10 +47,6 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
         corporate_name: corporate?.name,
         assessments: patientAssessments,
         goals: patientGoals,
-        prescriptions: patientPrescriptions,
-        appointments: patientAppointments,
-        reviews: patientReviews,
-        diagnoses: patientDiagnoses,
     };
 }
 
@@ -76,14 +63,4 @@ export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
 export async function fetchCorporates(): Promise<Corporate[]> {
     noStore();
     return mockCorporates.sort((a, b) => a.name.localeCompare(b.name));
-}
-
-export async function fetchMedications(): Promise<Medication[]> {
-    noStore();
-    return mockMedications;
-}
-
-export async function fetchDiagnoses(): Promise<Diagnosis[]> {
-    noStore();
-    return mockDiagnoses;
 }
