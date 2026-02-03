@@ -12,6 +12,45 @@ export type Corporate = {
   wellness_date: string;
 };
 
+export type Vital = {
+  id: number;
+  patient_id: number;
+  bp_systolic: string;
+  bp_diastolic: string;
+  pulse: string;
+  temp: string;
+  rbs: string;
+  created_at: string;
+};
+
+export type Nutrition = {
+  id: number;
+  patient_id: number;
+  height: string;
+  weight: string;
+  bmi: string;
+  visceral_fat: string;
+  body_fat_percent: string;
+  notes_nutritionist: string | null;
+  created_at: string;
+};
+
+export type Goal = {
+  id: number;
+  patient_id: number;
+  discussion: string;
+  goal: string;
+  created_at: string;
+};
+
+export type Clinical = {
+  id: number;
+  patient_id: number;
+  notes_doctor: string | null;
+  notes_psychologist: string | null;
+  created_at: string;
+};
+
 export type ClinicalParameter = {
     id: number;
     name: string;
@@ -29,18 +68,6 @@ export type Assessment = {
     created_at: string;
     measured_at: string;
     is_normal: boolean | null;
-}
-
-export type Goal = {
-    id: number;
-    patient_id: number;
-    clinical_parameter_id: number;
-    target_value: string;
-    target_operator: '<' | '<=' | '=' | '>=' | '>';
-    status: 'active' | 'completed' | 'cancelled';
-    notes: string | null;
-    deadline: string;
-    created_at: string;
 }
 
 export type PatientStats = {
@@ -79,7 +106,9 @@ export type Patient = {
   // Joined/related data
   corporate_name?: string;
   navigator_name?: string;
-  assessments: Assessment[];
-  goals: Goal[];
   stats?: PatientStats;
+  vitals?: Vital[];
+  nutrition?: Nutrition[];
+  goals?: Goal[];
+  clinicals?: Clinical[];
 };

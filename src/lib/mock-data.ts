@@ -1,4 +1,4 @@
-import type { User, Corporate, Patient, ClinicalParameter, Assessment, Goal } from './types';
+import type { User, Corporate, Patient, ClinicalParameter, Vital, Nutrition, Goal, Clinical } from './types';
 
 export const users: User[] = [
     { id: 1, name: 'Dr. Emily Carter', email: 'admin@taria.com', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=emily' },
@@ -20,19 +20,26 @@ export const clinicalParameters: ClinicalParameter[] = [
     { id: 7, name: 'Pain Level', type: 'numeric', unit: '/ 10', options: null },
 ];
 
-export let assessments: Assessment[] = [
-    { id: 1, patient_id: 1, clinical_parameter_id: 1, value: '120/80', notes: 'Normal reading', created_at: '2023-06-20T10:00:00Z', measured_at: '2023-06-20T10:00:00Z', is_normal: true },
-    { id: 2, patient_id: 1, clinical_parameter_id: 2, value: '75', notes: null, created_at: '2023-06-20T10:00:00Z', measured_at: '2023-06-20T10:00:00Z', is_normal: true },
-    { id: 3, patient_id: 1, clinical_parameter_id: 3, value: '95', notes: 'Fasting', created_at: '2023-06-20T10:00:00Z', measured_at: '2023-06-20T10:00:00Z', is_normal: true },
-    { id: 4, patient_id: 1, clinical_parameter_id: 6, value: 'Calm', notes: 'After meditation session', created_at: '2023-06-21T11:00:00Z', measured_at: '2023-06-21T11:00:00Z', is_normal: true },
-    { id: 5, patient_id: 3, clinical_parameter_id: 1, value: '145/92', notes: 'Slightly elevated', created_at: '2023-06-19T09:00:00Z', measured_at: '2023-06-19T09:00:00Z', is_normal: false },
-    { id: 6, patient_id: 3, clinical_parameter_id: 2, value: '88', notes: 'Resting', created_at: '2023-06-19T09:00:00Z', measured_at: '2023-06-19T09:00:00Z', is_normal: false },
+export const vitals: Vital[] = [
+    { id: 1, patient_id: 1, bp_systolic: '120', bp_diastolic: '80', pulse: '75', temp: '36.8', rbs: '5.5', created_at: '2023-06-20T10:00:00Z' },
+    { id: 2, patient_id: 3, bp_systolic: '145', bp_diastolic: '92', pulse: '88', temp: '37.1', rbs: '6.2', created_at: '2023-06-19T09:00:00Z' },
 ];
 
-export let goals: Goal[] = [
-    { id: 1, patient_id: 1, clinical_parameter_id: 4, target_value: '80', target_operator: '<=', status: 'active', notes: 'Lose 5kg in 3 months', deadline: '2023-09-20', created_at: '2023-06-20T10:00:00Z' },
-    { id: 2, patient_id: 3, clinical_parameter_id: 1, target_value: '130/85', target_operator: '<=', status: 'active', notes: 'Lower blood pressure', deadline: '2023-08-19', created_at: '2023-06-19T09:00:00Z' },
+export const nutrition: Nutrition[] = [
+    { id: 1, patient_id: 1, height: '175', weight: '85', bmi: '27.7', visceral_fat: '10', body_fat_percent: '22', notes_nutritionist: 'Recommended to reduce carbohydrate intake.', created_at: '2023-06-20T10:00:00Z' },
+    { id: 2, patient_id: 3, height: '180', weight: '95', bmi: '29.3', visceral_fat: '13', body_fat_percent: '25', notes_nutritionist: 'Focus on portion control and increased vegetable consumption.', created_at: '2023-06-19T09:00:00Z' },
 ];
+
+export const goals: Goal[] = [
+    { id: 1, patient_id: 1, discussion: 'Patient wants to lose weight to improve overall health.', goal: 'Lose 5kg in the next 3 months.', created_at: '2023-06-20T10:00:00Z' },
+    { id: 2, patient_id: 3, discussion: 'Patient needs to lower blood pressure.', goal: 'Achieve a blood pressure reading of 130/85 mmHg or lower.', created_at: '2023-06-19T09:00:00Z' },
+];
+
+export const clinicals: Clinical[] = [
+    { id: 1, patient_id: 1, notes_doctor: 'Patient is responding well to treatment. Continue monitoring blood pressure.', notes_psychologist: 'Patient reports feeling less anxious this week. Keep up with mindfulness exercises.', created_at: '2023-06-20T14:00:00Z'},
+    { id: 2, patient_id: 3, notes_doctor: 'High blood pressure reading is concerning. Adjusting medication and recommending a low-sodium diet.', notes_psychologist: null, created_at: '2023-06-19T09:30:00Z'}
+];
+
 
 export let patients: Patient[] = [
     {
@@ -60,8 +67,6 @@ export let patients: Patient[] = [
         consent_date: '2023-05-15',
         navigator_id: 2,
         middle_name: 'A',
-        assessments: assessments.filter(a => a.patient_id === 1),
-        goals: goals.filter(g => g.patient_id === 1),
         stats: { totalGoals: 1, activeGoals: 1, totalAssessments: 4, assessmentCoverage: 100, needsAttention: false }
     },
     {
@@ -89,8 +94,6 @@ export let patients: Patient[] = [
         consent_date: null,
         navigator_id: null,
         middle_name: null,
-        assessments: [],
-        goals: [],
         stats: { totalGoals: 0, activeGoals: 0, totalAssessments: 0, assessmentCoverage: 0, needsAttention: true }
     },
     {
@@ -118,8 +121,6 @@ export let patients: Patient[] = [
         consent_date: '2023-05-15',
         navigator_id: 2,
         middle_name: 'B',
-        assessments: assessments.filter(a => a.patient_id === 3),
-        goals: goals.filter(g => g.patient_id === 3),
         stats: { totalGoals: 1, activeGoals: 1, totalAssessments: 2, assessmentCoverage: 100, needsAttention: true }
     }
 ];
