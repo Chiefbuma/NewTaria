@@ -53,7 +53,7 @@ import ReportViewer from '@/components/report-viewer';
 import MetricGrid from './metric-grid';
 import GoalList from './goal-list';
 import AssessmentList from './assessment-list';
-import { fetchCorporates } from '@/lib/data';
+import { fetchCorporates, fetchUsers } from '@/lib/data';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';

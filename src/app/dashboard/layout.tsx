@@ -44,7 +44,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-muted/40">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-background dark:to-slate-900/50">
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/dashboard" className="flex items-center gap-2">

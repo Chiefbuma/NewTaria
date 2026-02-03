@@ -1,4 +1,4 @@
-import type { Patient, Corporate } from '@/lib/types';
+import type { Patient, Corporate, Assessment } from '@/lib/types';
 import { format } from 'date-fns';
 
 type ReportProps = {
@@ -23,10 +23,28 @@ function getDaySuffix(day: number) {
   }
 }
 
+const findLatestAssessment = (assessments: Assessment[] | undefined, parameterName: string) => {
+    if (!assessments) return undefined;
+    return assessments
+        .filter(a => a.parameter?.name === parameterName)
+        .sort((a,b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())[0];
+}
+
 export default function Report({ patient, corporate }: ReportProps) {
-  const vitals = patient.vitals?.[0];
-  const nutrition = patient.nutrition?.[0];
-  const clinical = patient.clinicals?.[0];
+  const bp = findLatestAssessment(patient.assessments, 'Blood Pressure')?.value.split('/');
+  const bpSystolic = bp ? bp[0] : undefined;
+  const bpDiastolic = bp ? bp[1] : undefined;
+  const pulse = findLatestAssessment(patient.assessments, 'Pulse')?.value;
+  const temp = findLatestAssessment(patient.assessments, 'Temperature')?.value;
+  const weight = findLatestAssessment(patient.assessments, 'Weight')?.value;
+  const height = findLatestAssessment(patient.assessments, 'Height')?.value;
+  const rbs = findLatestAssessment(patient.assessments, 'Blood Glucose')?.value;
+  
+  // These might not exist in the new schema, so handle gracefully
+  const visceral_fat = findLatestAssessment(patient.assessments, 'Visceral Fat')?.value;
+  const body_fat_percent = findLatestAssessment(patient.assessments, 'Body Fat %')?.value;
+  const bmi = (weight && height) ? (parseFloat(weight) / ((parseFloat(height)/100) * (parseFloat(height)/100))).toFixed(1) : undefined;
+  
   const goal = patient.goals?.[0];
 
   const reportDate = patient.wellness_date ? new Date(patient.wellness_date) : null;
@@ -44,9 +62,9 @@ export default function Report({ patient, corporate }: ReportProps) {
   }
 
   const discussionParagraphs = [
-    clinical?.notes_doctor,
-    clinical?.notes_psychologist,
-    nutrition?.notes_nutritionist,
+    // This part is difficult to map from the new schema without more context
+    // on where clinical notes are stored. Assuming they might be in a 'Daily Notes' assessment.
+    findLatestAssessment(patient.assessments, 'Daily Notes')?.notes,
   ].filter(Boolean) as string[];
 
   const mainDoctor = "Emily Carter"; // Placeholder, can be dynamically assigned
@@ -76,46 +94,46 @@ export default function Report({ patient, corporate }: ReportProps) {
 
           <div className="screening-grid force-together">
             <div className="screening-left">
-              {vitals?.bp_systolic && vitals?.bp_diastolic && (
+              {bpSystolic && bpDiastolic && (
                 <div className="body-text screening-item">
-                  Blood Pressure: {vitals.bp_systolic}/{vitals.bp_diastolic} mmHg
+                  Blood Pressure: {bpSystolic}/{bpDiastolic} mmHg
                 </div>
               )}
-              {vitals?.pulse && (
+              {pulse && (
                 <div className="body-text screening-item">
-                  Pulse: {vitals.pulse} bpm
+                  Pulse: {pulse} bpm
                 </div>
               )}
-              {vitals?.temp && (
+              {temp && (
                 <div className="body-text screening-item">
-                  Temperature: {vitals.temp}°C
+                  Temperature: {temp}°C
                 </div>
               )}
-              {nutrition?.weight && (
+              {weight && (
                 <div className="body-text screening-item">
-                  Weight: {nutrition.weight} kgs
+                  Weight: {weight} kgs
                 </div>
               )}
-              {nutrition?.height && (
+              {height && (
                 <div className="body-text screening-item">
-                  Height: {nutrition.height} cm
+                  Height: {height} cm
                 </div>
               )}
-              {nutrition?.visceral_fat && (
-                  <div className="body-text screening-item">Visceral Fat: {nutrition.visceral_fat}</div>
+              {visceral_fat && (
+                  <div className="body-text screening-item">Visceral Fat: {visceral_fat}</div>
               )}
             </div>
             <div className="screening-right">
-              {nutrition?.bmi && (
-                  <div className="body-text screening-item">BMI: {nutrition.bmi}</div>
+              {bmi && (
+                  <div className="body-text screening-item">BMI: {bmi}</div>
               )}
-              {vitals?.rbs && (
+              {rbs && (
                   <div className="body-text screening-item">
-                      Blood sugar: {vitals.rbs} mmol/dL
+                      Blood sugar: {rbs} mg/dL
                   </div>
               )}
-              {nutrition?.body_fat_percent && (
-                  <div className="body-text screening-item">Body fat percentage: {nutrition.body_fat_percent}%</div>
+              {body_fat_percent && (
+                  <div className="body-text screening-item">Body fat percentage: {body_fat_percent}%</div>
               )}
             </div>
           </div>
@@ -143,8 +161,8 @@ export default function Report({ patient, corporate }: ReportProps) {
                <>
                   <div className="section-heading min-space-before">Personalized Health Goal</div>
                   <div className="content-section">
-                      {goal.discussion && <div className="content-item">{goal.discussion}</div>}
-                      {goal.goal && <div className="target-text keep-together">Target: {goal.goal}</div>}
+                      {goal.notes && <div className="content-item">{goal.notes}</div>}
+                      {goal.target_value && <div className="target-text keep-together">Target: {goal.target_operator.replace(/_/g, ' ')} {goal.target_value} {goal.parameter?.unit} by {format(new Date(goal.deadline), 'MMMM d, yyyy')}</div>}
                   </div>
               </>
           )}
