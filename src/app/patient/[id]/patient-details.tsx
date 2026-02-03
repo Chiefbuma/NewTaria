@@ -101,6 +101,7 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
 
   const [patient, setPatient] = useState<Patient>(initialPatient);
   const [loading, setLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [corporates, setCorporates] = useState<Corporate[]>([]);
@@ -122,6 +123,10 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
   const [editFormData, setEditFormData] = useState<Partial<Patient>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('loggedInUser');
@@ -282,7 +287,7 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
     }
   };
 
-  if (loading) {
+  if (loading || !isClient) {
     return <div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
@@ -430,11 +435,11 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
                     </DialogHeader>
                     <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('vitals', vitalsForm, setIsVitalsModalOpen, 'Vitals'); }}>
                       <div className="grid grid-cols-1 gap-6 py-4">
-                        <div className="space-y-2"><Label htmlFor="bp_systolic">Systolic (mmHg)</Label><Input id="bp_systolic" type="number" value={vitalsForm.bp_systolic} onChange={(e) => setVitalsForm({...vitalsForm, bp_systolic: e.target.value})}/></div>
-                        <div className="space-y-2"><Label htmlFor="bp_diastolic">Diastolic (mmHg)</Label><Input id="bp_diastolic" type="number" value={vitalsForm.bp_diastolic} onChange={(e) => setVitalsForm({...vitalsForm, bp_diastolic: e.target.value})} /></div>
-                        <div className="space-y-2"><Label htmlFor="pulse">Pulse (bpm)</Label><Input id="pulse" type="number" value={vitalsForm.pulse} onChange={(e) => setVitalsForm({...vitalsForm, pulse: e.target.value})} /></div>
-                        <div className="space-y-2"><Label htmlFor="temp">Temp (°C)</Label><Input id="temp" type="number" step="0.1" value={vitalsForm.temp} onChange={(e) => setVitalsForm({...vitalsForm, temp: e.target.value})} /></div>
-                        <div className="space-y-2"><Label htmlFor="rbs">RBS (mmol/L)</Label><Input id="rbs" value={vitalsForm.rbs} onChange={(e) => setVitalsForm({...vitalsForm, rbs: e.target.value})} /></div>
+                        <div className="space-y-2"><Label htmlFor="bp_systolic">Systolic (mmHg)</Label><Input id="bp_systolic" type="number" value={vitalsForm.bp_systolic || ''} onChange={(e) => setVitalsForm({...vitalsForm, bp_systolic: e.target.value})}/></div>
+                        <div className="space-y-2"><Label htmlFor="bp_diastolic">Diastolic (mmHg)</Label><Input id="bp_diastolic" type="number" value={vitalsForm.bp_diastolic || ''} onChange={(e) => setVitalsForm({...vitalsForm, bp_diastolic: e.target.value})} /></div>
+                        <div className="space-y-2"><Label htmlFor="pulse">Pulse (bpm)</Label><Input id="pulse" type="number" value={vitalsForm.pulse || ''} onChange={(e) => setVitalsForm({...vitalsForm, pulse: e.target.value})} /></div>
+                        <div className="space-y-2"><Label htmlFor="temp">Temp (°C)</Label><Input id="temp" type="number" step="0.1" value={vitalsForm.temp || ''} onChange={(e) => setVitalsForm({...vitalsForm, temp: e.target.value})} /></div>
+                        <div className="space-y-2"><Label htmlFor="rbs">RBS (mmol/L)</Label><Input id="rbs" value={vitalsForm.rbs || ''} onChange={(e) => setVitalsForm({...vitalsForm, rbs: e.target.value})} /></div>
                       </div>
                       <DialogFooter>
                         <DialogClose asChild>
@@ -488,10 +493,10 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
                      <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('nutrition', nutritionForm, setIsNutritionModalOpen, 'Nutrition'); }}>
                         <div className="py-4 space-y-6">
                           <div className="grid grid-cols-1 gap-6">
-                              <div className="space-y-2"><Label htmlFor="height">Height (cm)</Label><Input id="height" type="number" value={nutritionForm.height} onChange={(e) => setNutritionForm({...nutritionForm, height: e.target.value})} /></div>
-                              <div className="space-y-2"><Label htmlFor="weight">Weight (kg)</Label><Input id="weight" type="number" step="0.1" value={nutritionForm.weight} onChange={(e) => setNutritionForm({...nutritionForm, weight: e.target.value})} /></div>
-                              <div className="space-y-2"><Label htmlFor="visceral_fat">Visceral Fat</Label><Input id="visceral_fat" type="number" value={nutritionForm.visceral_fat} onChange={(e) => setNutritionForm({...nutritionForm, visceral_fat: e.target.value})} /></div>
-                              <div className="space-y-2"><Label htmlFor="body_fat_percent">Body Fat %</Label><Input id="body_fat_percent" type="number" step="0.1" value={nutritionForm.body_fat_percent} onChange={(e) => setNutritionForm({...nutritionForm, body_fat_percent: e.target.value})} /></div>
+                              <div className="space-y-2"><Label htmlFor="height">Height (cm)</Label><Input id="height" type="number" value={nutritionForm.height || ''} onChange={(e) => setNutritionForm({...nutritionForm, height: e.target.value})} /></div>
+                              <div className="space-y-2"><Label htmlFor="weight">Weight (kg)</Label><Input id="weight" type="number" step="0.1" value={nutritionForm.weight || ''} onChange={(e) => setNutritionForm({...nutritionForm, weight: e.target.value})} /></div>
+                              <div className="space-y-2"><Label htmlFor="visceral_fat">Visceral Fat</Label><Input id="visceral_fat" type="number" value={nutritionForm.visceral_fat || ''} onChange={(e) => setNutritionForm({...nutritionForm, visceral_fat: e.target.value})} /></div>
+                              <div className="space-y-2"><Label htmlFor="body_fat_percent">Body Fat %</Label><Input id="body_fat_percent" type="number" step="0.1" value={nutritionForm.body_fat_percent || ''} onChange={(e) => setNutritionForm({...nutritionForm, body_fat_percent: e.target.value})} /></div>
                           </div>
                           <div className="space-y-2"><Label htmlFor="notes_nutritionist">Nutritionist Notes</Label><Textarea id="notes_nutritionist" value={nutritionForm.notes_nutritionist || ''} onChange={(e) => setNutritionForm({...nutritionForm, notes_nutritionist: e.target.value})} /></div>
                         </div>
