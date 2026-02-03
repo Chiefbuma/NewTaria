@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { goals } from '@/lib/mock-data';
+import type { Goal } from '@/lib/types';
+import { formatISO } from 'date-fns';
 
 export async function POST(request: Request) {
   try {
@@ -9,18 +11,22 @@ export async function POST(request: Request) {
     if (!patient_id || !clinical_parameter_id || !target_value || !target_operator || !status || !deadline) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
-
-    const connection = await db.getConnection();
-    const [result] = await connection.query(
-      'INSERT INTO goals (patient_id, clinical_parameter_id, target_value, target_operator, status, notes, deadline) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [patient_id, clinical_parameter_id, target_value, target_operator, status, notes, deadline]
-    );
     
-    const insertId = (result as any).insertId;
-    const [rows] = await connection.query('SELECT * FROM goals WHERE id = ?', [insertId]);
-    connection.release();
+    const newGoal: Goal = {
+      id: Math.max(0, ...goals.map(g => g.id)) + 1,
+      patient_id,
+      clinical_parameter_id: Number(clinical_parameter_id),
+      target_value,
+      target_operator,
+      status,
+      notes,
+      deadline,
+      created_at: formatISO(new Date()),
+    };
 
-    return NextResponse.json({ message: 'Goal added successfully', goal: (rows as any)[0] }, { status: 201 });
+    goals.push(newGoal);
+
+    return NextResponse.json({ message: 'Goal added successfully', goal: newGoal }, { status: 201 });
 
   } catch (error) {
     console.error('Error adding goal:', error);

@@ -1,4 +1,4 @@
-import { fetchPatientById } from '@/lib/data';
+import { fetchPatientById, fetchClinicalParameters } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import PatientDetails from './patient-details';
 import OnboardingForm from './onboarding-form';
@@ -17,19 +17,21 @@ async function getPatientData(id: string) {
 
 export default async function PatientPage({ params }: { params: { id: string } }) {
   const patient = await getPatientData(params.id);
-
+  
   if (!patient) {
     notFound();
   }
   
   if (patient.status === 'Pending') {
     return (
-      <div className="container mx-auto max-w-4xl py-6">
+      <div className="container mx-auto max-w-4xl py-12 px-4 sm:px-6 lg:px-8">
         <PatientHeader patient={patient} />
         <OnboardingForm patient={patient} />
       </div>
     );
   }
 
-  return <PatientDetails initialPatient={patient} />;
+  const clinicalParameters = await fetchClinicalParameters();
+
+  return <PatientDetails patient={patient} clinicalParameters={clinicalParameters} />;
 }

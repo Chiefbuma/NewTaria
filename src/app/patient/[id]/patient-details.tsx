@@ -1,8 +1,8 @@
 'use client';
 
+import type { Patient, Corporate, User, ClinicalParameter } from '@/lib/types';
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import type { Patient, Corporate, User, Vitals, Nutrition, Goal, Clinical } from '@/lib/types';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -17,7 +17,6 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -34,29 +33,21 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
   ArrowLeft,
-  Stethoscope,
-  HeartPulse,
-  Scale,
-  Target,
   User as UserIcon,
   Cake,
   Phone,
   Mail,
   Building2,
   Binary,
-  PlusCircle,
-  Save,
-  XCircle,
   FileText,
   Loader2,
   CalendarDays,
   Trash2,
-  Edit
+  Edit,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -64,10 +55,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from '@/hooks/use-toast';
 import { placeholderImages } from '@/lib/placeholder-images';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ReportViewer from '@/components/report-viewer';
+import MetricGrid from './metric-grid';
+import GoalList from './goal-list';
 
 const DetailItem = ({
   label,
@@ -93,42 +87,31 @@ const DetailItem = ({
   </div>
 );
 
-export default function PatientDetails({ initialPatient }: { initialPatient: Patient }) {
-  const params = useParams();
-  const patientId = params.id as string;
+interface PatientDetailsProps {
+    patient: Patient;
+    clinicalParameters: ClinicalParameter[];
+}
+
+export default function PatientDetails({ patient: initialPatient, clinicalParameters }: PatientDetailsProps) {
   const router = useRouter();
   const { toast } = useToast();
 
   const [patient, setPatient] = useState<Patient>(initialPatient);
-  const [loading, setLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [corporates, setCorporates] = useState<Corporate[]>([]);
 
-  const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
-  const [isNutritionModalOpen, setIsNutritionModalOpen] = useState(false);
-  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
-  const [isClinicalModalOpen, setIsClinicalModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
 
-  // Form states
-  const [vitalsForm, setVitalsForm] = useState<Partial<Vitals>>({ bp_systolic: '', bp_diastolic: '', pulse: '', temp: '', rbs: '' });
-  const [nutritionForm, setNutritionForm] = useState<Partial<Nutrition>>({ height: '', weight: '', visceral_fat: '', body_fat_percent: '', notes_nutritionist: '' });
-  const [goalForm, setGoalForm] = useState<Partial<Goal>>({ discussion: '', goal: '' });
-  const [clinicalForm, setClinicalForm] = useState<Partial<Clinical>>({ notes_doctor: '', notes_psychologist: '' });
   const [editFormData, setEditFormData] = useState<Partial<Patient>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
   useEffect(() => {
     setIsClient(true);
-  }, []);
-
-  useEffect(() => {
     const storedUser = localStorage.getItem('loggedInUser');
     if (storedUser) {
       setCurrentUser(JSON.parse(storedUser));
@@ -148,56 +131,6 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
   }, [toast]);
 
 
-  const fetchPatient = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/patients/${patientId}`);
-      if (!res.ok) {
-        throw new Error('Patient not found');
-      }
-      const data = await res.json();
-      setPatient(data);
-    } catch (error) {
-      setPatient(initialPatient); // Revert to initial on error
-      toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleFormSubmit = async (endpoint: string, body: object, modalSetter: React.Dispatch<React.SetStateAction<boolean>>, sectionName: string) => {
-    setIsSubmitting(true);
-    try {
-      const res = await fetch(`/api/patients/${patient.id}/${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || `Failed to save ${sectionName} record.`);
-      }
-
-      toast({
-        title: 'Success!',
-        description: `${sectionName} record saved successfully.`,
-      });
-
-      modalSetter(false);
-      fetchPatient(); // Refresh data
-
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Uh oh! Something went wrong.',
-        description: (error as Error).message,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleOpenEditModal = () => {
     setEditFormData({
         ...patient,
@@ -207,43 +140,6 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
     setIsEditModalOpen(true);
   };
   
-  const handleOpenVitalsModal = () => {
-    if (patient.vitals && patient.vitals.length > 0) {
-      setVitalsForm(patient.vitals[0]);
-    } else {
-      setVitalsForm({ bp_systolic: '', bp_diastolic: '', pulse: '', temp: '', rbs: '' });
-    }
-    setIsVitalsModalOpen(true);
-  };
-  
-  const handleOpenNutritionModal = () => {
-    if (patient.nutrition && patient.nutrition.length > 0) {
-      setNutritionForm(patient.nutrition[0]);
-    } else {
-      setNutritionForm({ height: '', weight: '', visceral_fat: '', body_fat_percent: '', notes_nutritionist: '' });
-    }
-    setIsNutritionModalOpen(true);
-  };
-
-  const handleOpenGoalModal = () => {
-    if (patient.goals && patient.goals.length > 0) {
-      setGoalForm(patient.goals[0]);
-    } else {
-      setGoalForm({ discussion: '', goal: '' });
-    }
-    setIsGoalModalOpen(true);
-  };
-
-  const handleOpenClinicalModal = () => {
-    if (patient.clinicals && patient.clinicals.length > 0) {
-      setClinicalForm(patient.clinicals[0]);
-    } else {
-      setClinicalForm({ notes_doctor: '', notes_psychologist: '' });
-    }
-    setIsClinicalModalOpen(true);
-  };
-
-
   const handleUpdatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -261,6 +157,7 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
         setPatient(updatedPatient);
         toast({ title: 'Success!', description: 'Patient details updated.' });
         setIsEditModalOpen(false);
+        router.refresh();
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
     } finally {
@@ -286,19 +183,19 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
         setIsDeleting(false);
     }
   };
-
-  if (loading || !isClient) {
-    return <div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-  }
-
-  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  
+  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEditFormData({ ...editFormData, [e.target.id]: e.target.value });
   };
   
   const handleEditSelectChange = (name: string, value: string) => {
-    setEditFormData({ ...editFormData, [name]: value });
+    const processedValue = value === 'null' ? null : value;
+    setEditFormData({ ...editFormData, [name]: processedValue });
   };
-
+  
+  if (!isClient) {
+    return <div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  }
 
   return (
     <div className="container mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
@@ -322,7 +219,7 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           <div className="lg:col-span-1 space-y-6">
             <Card>
               <CardHeader className="flex flex-col items-center text-center gap-4">
@@ -360,7 +257,7 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
                 <CardHeader>
                   <CardTitle className="flex items-center gap-3">
                     <Building2 className="w-6 h-6" />
-                    <span>Corporate</span>
+                    <span>Corporate Partner</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -384,7 +281,7 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
                 {currentUser?.role === 'admin' && (
                      <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="destructive">
+                            <Button variant="destructive" className="w-full">
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete Patient Record
                             </Button>
@@ -398,7 +295,7 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeletePatient} disabled={isDeleting}>
+                            <AlertDialogAction onClick={handleDeletePatient} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
                                 {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Continue
                             </AlertDialogAction>
@@ -410,234 +307,18 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
             </Card>
           </div>
           <div className="lg:col-span-2 space-y-6">
-            {/* Vitals Section */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div className="flex items-center gap-4">
-                   <HeartPulse className="w-6 h-6 text-primary" />
-                  <div>
-                    <CardTitle>Vitals</CardTitle>
-                    <CardDescription>
-                      Latest vital signs measurement.
-                    </CardDescription>
-                  </div>
-                </div>
-                <Dialog open={isVitalsModalOpen} onOpenChange={setIsVitalsModalOpen}>
-                  <DialogTrigger asChild>
-                     <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleOpenVitalsModal}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      {patient.vitals && patient.vitals.length > 0 ? 'Edit Vitals' : 'Add Vitals'}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{patient.vitals && patient.vitals.length > 0 ? 'Edit Vitals' : 'Add New Vitals'}</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('vitals', vitalsForm, setIsVitalsModalOpen, 'Vitals'); }}>
-                      <div className="grid grid-cols-1 gap-6 py-4">
-                        <div className="space-y-2"><Label htmlFor="bp_systolic">Systolic (mmHg)</Label><Input id="bp_systolic" type="number" value={vitalsForm.bp_systolic || ''} onChange={(e) => setVitalsForm({...vitalsForm, bp_systolic: e.target.value})}/></div>
-                        <div className="space-y-2"><Label htmlFor="bp_diastolic">Diastolic (mmHg)</Label><Input id="bp_diastolic" type="number" value={vitalsForm.bp_diastolic || ''} onChange={(e) => setVitalsForm({...vitalsForm, bp_diastolic: e.target.value})} /></div>
-                        <div className="space-y-2"><Label htmlFor="pulse">Pulse (bpm)</Label><Input id="pulse" type="number" value={vitalsForm.pulse || ''} onChange={(e) => setVitalsForm({...vitalsForm, pulse: e.target.value})} /></div>
-                        <div className="space-y-2"><Label htmlFor="temp">Temp (°C)</Label><Input id="temp" type="number" step="0.1" value={vitalsForm.temp || ''} onChange={(e) => setVitalsForm({...vitalsForm, temp: e.target.value})} /></div>
-                        <div className="space-y-2"><Label htmlFor="rbs">RBS (mmol/L)</Label><Input id="rbs" value={vitalsForm.rbs || ''} onChange={(e) => setVitalsForm({...vitalsForm, rbs: e.target.value})} /></div>
-                      </div>
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button type="button" variant="outline"><XCircle className="mr-2 h-4 w-4" />Cancel</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={isSubmitting}>
-                          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                          {isSubmitting ? 'Saving...' : 'Save Record'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {patient.vitals && patient.vitals.length > 0 ? (
-                    patient.vitals.map((vital) => (
-                      <div key={vital.id} className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm p-4 bg-muted/50 rounded-lg">
-                          <DetailItem label="Systolic (mmHg)" value={vital.bp_systolic} />
-                          <DetailItem label="Diastolic (mmHg)" value={vital.bp_diastolic} />
-                          <DetailItem label="Pulse (bpm)" value={vital.pulse} />
-                          <DetailItem label="Temp (°C)" value={vital.temp} />
-                          <DetailItem label="RBS (mmol/L)" value={vital.rbs} />
-                      </div>
-                    ))
-                ) : ( <p className="text-muted-foreground text-center py-4">No vitals recorded.</p> )}
-              </CardContent>
-            </Card>
-
-            {/* Nutrition Section */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Scale className="w-6 h-6 text-primary" />
-                  <div>
-                    <CardTitle>Nutrition</CardTitle>
-                    <CardDescription>Latest nutrition assessment details.</CardDescription>
-                  </div>
-                </div>
-                 <Dialog open={isNutritionModalOpen} onOpenChange={setIsNutritionModalOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleOpenNutritionModal}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      {patient.nutrition && patient.nutrition.length > 0 ? 'Edit Assessment' : 'Add Assessment'}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{patient.nutrition && patient.nutrition.length > 0 ? 'Edit Nutrition Assessment' : 'Add Nutrition Assessment'}</DialogTitle>
-                    </DialogHeader>
-                     <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('nutrition', nutritionForm, setIsNutritionModalOpen, 'Nutrition'); }}>
-                        <div className="py-4 space-y-6">
-                          <div className="grid grid-cols-1 gap-6">
-                              <div className="space-y-2"><Label htmlFor="height">Height (cm)</Label><Input id="height" type="number" value={nutritionForm.height || ''} onChange={(e) => setNutritionForm({...nutritionForm, height: e.target.value})} /></div>
-                              <div className="space-y-2"><Label htmlFor="weight">Weight (kg)</Label><Input id="weight" type="number" step="0.1" value={nutritionForm.weight || ''} onChange={(e) => setNutritionForm({...nutritionForm, weight: e.target.value})} /></div>
-                              <div className="space-y-2"><Label htmlFor="visceral_fat">Visceral Fat</Label><Input id="visceral_fat" type="number" value={nutritionForm.visceral_fat || ''} onChange={(e) => setNutritionForm({...nutritionForm, visceral_fat: e.target.value})} /></div>
-                              <div className="space-y-2"><Label htmlFor="body_fat_percent">Body Fat %</Label><Input id="body_fat_percent" type="number" step="0.1" value={nutritionForm.body_fat_percent || ''} onChange={(e) => setNutritionForm({...nutritionForm, body_fat_percent: e.target.value})} /></div>
-                          </div>
-                          <div className="space-y-2"><Label htmlFor="notes_nutritionist">Nutritionist Notes</Label><Textarea id="notes_nutritionist" value={nutritionForm.notes_nutritionist || ''} onChange={(e) => setNutritionForm({...nutritionForm, notes_nutritionist: e.target.value})} /></div>
-                        </div>
-                        <DialogFooter>
-                          <DialogClose asChild>
-                            <Button type="button" variant="outline"><XCircle className="mr-2 h-4 w-4" />Cancel</Button>
-                          </DialogClose>
-                          <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                            {isSubmitting ? 'Saving...' : 'Save Record'}
-                          </Button>
-                        </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {patient.nutrition && patient.nutrition.length > 0 ? (
-                    patient.nutrition.map((nutri) => (
-                    <div key={nutri.id} className="space-y-4">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm p-4 bg-muted/50 rounded-lg">
-                          <DetailItem label="Height (cm)" value={nutri.height} />
-                          <DetailItem label="Weight (kg)" value={nutri.weight} />
-                          <DetailItem label="BMI" value={nutri.bmi} />
-                          <DetailItem label="Visceral Fat" value={nutri.visceral_fat} />
-                          <DetailItem label="Body Fat %" value={nutri.body_fat_percent} />
-                        </div>
-                        {nutri.notes_nutritionist && (<> <Separator className="my-4" /> <div><p className="text-sm font-medium text-muted-foreground">Nutritionist Notes</p><p className="text-foreground mt-1 whitespace-pre-wrap text-sm">{nutri.notes_nutritionist}</p></div></>)}
-                    </div>
-                    ))
-                ) : ( <p className="text-muted-foreground text-center py-4">No nutrition assessment recorded.</p> )}
-              </CardContent>
-            </Card>
-            
-            {/* Goals Section */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Target className="w-6 h-6 text-primary" />
-                  <div>
-                    <CardTitle>Goals</CardTitle>
-                    <CardDescription>Patient's health and wellness goals.</CardDescription>
-                  </div>
-                </div>
-                 <Dialog open={isGoalModalOpen} onOpenChange={setIsGoalModalOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleOpenGoalModal}>
-                        <PlusCircle className="mr-2 h-4 w-4"/>
-                        {patient.goals && patient.goals.length > 0 ? 'Edit Goal' : 'Set Goal'}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{patient.goals && patient.goals.length > 0 ? 'Edit Goal' : 'Set New Goal'}</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('goals', goalForm, setIsGoalModalOpen, 'Goal'); }}>
-                      <div className="space-y-6 py-4">
-                          <div className="space-y-2"><Label htmlFor="discussion">Discussion</Label><Textarea id="discussion" value={goalForm.discussion || ''} onChange={(e) => setGoalForm({...goalForm, discussion: e.target.value})} /></div>
-                          <div className="space-y-2"><Label htmlFor="goal">Goal</Label><Textarea id="goal" value={goalForm.goal || ''} onChange={(e) => setGoalForm({...goalForm, goal: e.target.value})} /></div>
-                      </div>
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button type="button" variant="outline"><XCircle className="mr-2 h-4 w-4" />Cancel</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={isSubmitting}>
-                          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                          {isSubmitting ? 'Saving...' : 'Save Record'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {patient.goals && patient.goals.length > 0 ? (
-                    <div className="space-y-4">
-                    {patient.goals.map((goal) => (
-                    <div key={goal.id} className="space-y-4 p-4 border rounded-xl bg-background/50">
-                        <div><h4 className="font-semibold text-primary">Discussion</h4><p className="text-foreground mt-1 text-sm">{goal.discussion || '-'}</p></div>
-                        <Separator />
-                        <div><h4 className="font-semibold text-primary">Goal</h4><p className="text-foreground mt-1 text-sm">{goal.goal || '-'}</p></div>
-                    </div>
-                    ))}
-                    </div>
-                ) : ( <p className="text-muted-foreground text-center py-4">No goals set.</p> )}
-              </CardContent>
-            </Card>
-
-            {/* Clinical Review Section */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Stethoscope className="w-6 h-6 text-primary" />
-                  <div>
-                    <CardTitle>Clinical Review</CardTitle>
-                    <CardDescription>Notes from clinical staff.</CardDescription>
-                  </div>
-                </div>
-                 <Dialog open={isClinicalModalOpen} onOpenChange={setIsClinicalModalOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleOpenClinicalModal}>
-                        <PlusCircle className="mr-2 h-4 w-4"/>
-                        {patient.clinicals && patient.clinicals.length > 0 ? 'Edit Review' : 'Add Review'}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{patient.clinicals && patient.clinicals.length > 0 ? 'Edit Clinical Review' : 'Add Clinical Review'}</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('clinical', clinicalForm, setIsClinicalModalOpen, 'Clinical Review'); }}>
-                      <div className="space-y-6 py-4">
-                          <div className="space-y-2"><Label htmlFor="notes_doctor">Doctor's Notes</Label><Textarea id="notes_doctor" value={clinicalForm.notes_doctor || ''} onChange={(e) => setClinicalForm({...clinicalForm, notes_doctor: e.target.value})}/></div>
-                          <div className="space-y-2"><Label htmlFor="notes_psychologist">Psychologist's Notes</Label><Textarea id="notes_psychologist" value={clinicalForm.notes_psychologist || ''} onChange={(e) => setClinicalForm({...clinicalForm, notes_psychologist: e.target.value})}/></div>
-                      </div>
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button type="button" variant="outline"><XCircle className="mr-2 h-4 w-4" />Cancel</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={isSubmitting}>
-                          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                          {isSubmitting ? 'Saving...' : 'Save Record'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {patient.clinicals && patient.clinicals.length > 0 ? (
-                    <div className="space-y-6">
-                    {patient.clinicals.map((clinic) => (
-                    <div key={clinic.id} className="space-y-6">
-                        {clinic.notes_doctor && (<div className="p-4 border rounded-xl bg-background/50"><h4 className="font-semibold text-primary">Doctor's Notes</h4><p className="text-foreground mt-2 text-sm">{clinic.notes_doctor}</p></div>)}
-                        {clinic.notes_psychologist && (<div className="p-4 border rounded-xl bg-background/50"><h4 className="font-semibold text-primary">Psychologist's Notes</h4><p className="text-foreground mt-2 text-sm">{clinic.notes_psychologist}</p></div>)}
-                        {!clinic.notes_doctor && !clinic.notes_psychologist && (<p className="text-muted-foreground text-sm text-center">No clinical notes recorded for this entry.</p>)}
-                    </div>
-                    ))}
-                    </div>
-                ) : ( <p className="text-muted-foreground text-center py-4">No clinical review found.</p> )}
-              </CardContent>
-            </Card>
+             <Tabs defaultValue="metrics">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="metrics">Metrics</TabsTrigger>
+                    <TabsTrigger value="goals">Goals</TabsTrigger>
+                </TabsList>
+                <TabsContent value="metrics" className="mt-6">
+                    <MetricGrid patient={patient} clinicalParameters={clinicalParameters} />
+                </TabsContent>
+                <TabsContent value="goals" className="mt-6">
+                    <GoalList patient={patient} clinicalParameters={clinicalParameters} />
+                </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>
@@ -656,7 +337,7 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
                 <CardDescription>Update the patient's registration information below.</CardDescription>
             </DialogHeader>
             <form onSubmit={handleUpdatePatient}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4 max-h-[70vh] overflow-y-auto pr-6">
                     <div className="space-y-2">
                         <Label htmlFor="first_name">First Name</Label>
                         <Input id="first_name" value={editFormData.first_name || ''} onChange={handleEditFormChange} required />
@@ -700,7 +381,7 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
                         <Label htmlFor="wellness_date">Wellness Date</Label>
                         <Input id="wellness_date" type="date" value={editFormData.wellness_date || ''} onChange={handleEditFormChange} required />
                     </div>
-                    <div className="space-y-2 md:col-span-2">
+                    <div className="space-y-2">
                         <Label htmlFor="corporate_id">Corporate</Label>
                         <Select value={String(editFormData.corporate_id || 'null')} onValueChange={(value) => handleEditSelectChange('corporate_id', value)}>
                             <SelectTrigger id="corporate_id"><SelectValue placeholder="Select corporate" /></SelectTrigger>
@@ -712,8 +393,21 @@ export default function PatientDetails({ initialPatient }: { initialPatient: Pat
                             </SelectContent>
                         </Select>
                     </div>
+                    <div className="space-y-2">
+                         <Label htmlFor="status">Patient Status</Label>
+                        <Select value={editFormData.status || ''} onValueChange={(value) => handleEditSelectChange('status', value)} required>
+                            <SelectTrigger id="status"><SelectValue placeholder="Select status" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Active">Active</SelectItem>
+                                <SelectItem value="Pending">Pending</SelectItem>
+                                <SelectItem value="In Review">In Review</SelectItem>
+                                <SelectItem value="Critical">Critical</SelectItem>
+                                <SelectItem value="Discharged">Discharged</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
-                <DialogFooter>
+                <DialogFooter className="mt-4">
                     <DialogClose asChild>
                         <Button type="button" variant="outline">Cancel</Button>
                     </DialogClose>

@@ -1,9 +1,9 @@
 'use client';
 import { useState } from 'react';
-import { Patient, ClinicalParameter } from '@/lib/types';
+import type { Patient, ClinicalParameter } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -33,7 +33,16 @@ export default function GoalList({ patient, clinicalParameters }: GoalListProps)
     });
 
     const handleOpenModal = () => setIsModalOpen(true);
-    const handleCloseModal = () => setIsModalOpen(false);
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setFormData({
+            clinical_parameter_id: '',
+            target_value: '',
+            target_operator: 'less_than',
+            deadline: '',
+            notes: ''
+        });
+    }
     
     const handleFormChange = (field: string, value: string) => {
         setFormData(prev => ({...prev, [field]: value}));
@@ -153,7 +162,9 @@ export default function GoalList({ patient, clinicalParameters }: GoalListProps)
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={handleCloseModal}>Cancel</Button>
+                        <DialogClose asChild>
+                            <Button type="button" variant="outline">Cancel</Button>
+                        </DialogClose>
                         <Button onClick={handleSubmit} disabled={isSubmitting}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Set Goal

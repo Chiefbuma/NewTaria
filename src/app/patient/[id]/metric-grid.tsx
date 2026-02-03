@@ -1,9 +1,9 @@
 'use client';
 import { useState } from 'react';
-import { Patient, ClinicalParameter, Assessment } from '@/lib/types';
+import type { Patient, ClinicalParameter } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -74,19 +74,22 @@ export default function MetricGrid({ patient, clinicalParameters }: MetricGridPr
     
     const getMetricHistory = (paramId: number) => {
         return patient.assessments
-            ?.filter(a => a.clinical_parameter_id === paramId && (a.parameter?.type === 'numeric' || (typeof a.value === 'string' && !isNaN(parseFloat(a.value)))))
+            ?.filter(a => a.clinical_parameter_id === paramId && a.parameter?.type === 'numeric' && !isNaN(parseFloat(a.value)))
             .map(a => ({
                 date: format(new Date(a.measured_at), 'MMM d'),
                 value: parseFloat(a.value)
             }))
-            .reverse() || [];
+            .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()) || [];
     };
 
     return (
         <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {clinicalParameters.map(param => {
-                    const latestAssessment = patient.assessments?.find(a => a.clinical_parameter_id === param.id);
+                    const latestAssessment = patient.assessments
+                        ?.filter(a => a.clinical_parameter_id === param.id)
+                        .sort((a,b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())[0];
+                    
                     const history = getMetricHistory(param.id);
                     
                     const chartConfig = {
@@ -118,7 +121,7 @@ export default function MetricGrid({ patient, clinicalParameters }: MetricGridPr
                                         <p className="text-sm text-muted-foreground">
                                             Recorded on {format(new Date(latestAssessment.measured_at), 'MMMM d, yyyy')}
                                         </p>
-                                        {history.length > 1 && (param.type === 'numeric' || (param.name === 'Blood Pressure' && typeof latestAssessment.value === 'string')) && (
+                                        {history.length > 1 && param.type === 'numeric' && (
                                              <ChartContainer config={chartConfig} className="h-[100px] w-full">
                                                 <LineChart accessibilityLayer data={history} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -162,7 +165,6 @@ export default function MetricGrid({ patient, clinicalParameters }: MetricGridPr
                             <Label htmlFor="value">Value {selectedParam?.unit && `(${selectedParam.unit})`}</Label>
                             {selectedParam?.type === 'numeric' && <Input id="value" type="number" value={assessmentValue} onChange={e => setAssessmentValue(e.target.value)} />}
                             {selectedParam?.type === 'text' && <Input id="value" value={assessmentValue} onChange={e => setAssessmentValue(e.target.value)} />}
-                             {selectedParam?.name === 'Blood Pressure' && <Input id="value" placeholder="e.g. 120/80" value={assessmentValue} onChange={e => setAssessmentValue(e.target.value)} />}
                             {selectedParam?.type === 'choice' && selectedParam.options && (
                                 <Select onValueChange={setAssessmentValue} value={assessmentValue}>
                                     <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
@@ -178,7 +180,9 @@ export default function MetricGrid({ patient, clinicalParameters }: MetricGridPr
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={handleCloseModal}>Cancel</Button>
+                         <DialogClose asChild>
+                            <Button type="button" variant="outline">Cancel</Button>
+                        </DialogClose>
                         <Button onClick={handleSubmit} disabled={isSubmitting}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Save Assessment

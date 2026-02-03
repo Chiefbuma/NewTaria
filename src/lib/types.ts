@@ -12,43 +12,39 @@ export type Corporate = {
   wellness_date: string;
 };
 
-export type Vitals = {
+export type ClinicalParameter = {
   id: number;
-  patient_id: number;
-  bp_systolic: string;
-  bp_diastolic: string;
-  pulse: string;
-  temp: string;
-  rbs: string;
-  created_at: string;
+  name: string;
+  type: 'numeric' | 'text' | 'choice';
+  unit: string | null;
+  options: string[] | null; // from JSON
 };
 
-export type Nutrition = {
+export type Assessment = {
   id: number;
   patient_id: number;
-  height: string;
-  weight: string;
-  bmi?: string;
-  visceral_fat: string;
-  body_fat_percent: string;
-  notes_nutritionist: string | null;
+  clinical_parameter_id: number;
+  value: string;
+  notes: string | null;
+  is_normal: boolean | null;
   created_at: string;
+  measured_at: string;
+  // Joined data
+  parameter?: Partial<ClinicalParameter>;
 };
 
 export type Goal = {
   id: number;
   patient_id: number;
-  discussion: string | null;
-  goal: string | null;
+  clinical_parameter_id: number;
+  target_value: string;
+  target_operator: string;
+  status: 'active' | 'completed' | 'cancelled';
+  notes: string | null;
+  deadline: string;
   created_at: string;
-};
-
-export type Clinical = {
-  id: number;
-  patient_id: number;
-  notes_doctor: string | null;
-  notes_psychologist: string | null;
-  created_at: string;
+   // Joined data
+  parameter?: Partial<ClinicalParameter>;
 };
 
 export type Patient = {
@@ -79,29 +75,6 @@ export type Patient = {
   // Joined/related data
   corporate_name?: string;
   navigator_name?: string;
-  vitals?: Vitals[];
-  nutrition?: Nutrition[];
-  clinicals?: Clinical[];
+  assessments?: Assessment[];
   goals?: Goal[];
-};
-
-export type ClinicalParameter = {
-  id: number;
-  name: string;
-  type: 'numeric' | 'text' | 'choice';
-  unit: string | null;
-  options: string[] | null; // from JSON
-};
-
-export type Assessment = {
-  id: number;
-  patient_id: number;
-  clinical_parameter_id: number;
-  value: string;
-  notes: string | null;
-  is_normal: boolean | null;
-  created_at: string;
-  measured_at: string;
-  // Joined data
-  parameter?: Partial<ClinicalParameter>;
 };

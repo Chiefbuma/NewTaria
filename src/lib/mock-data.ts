@@ -1,4 +1,4 @@
-import type { User, Corporate, Patient, ClinicalParameter, Assessment, Goal, Vitals, Nutrition, Clinical } from './types';
+import type { User, Corporate, Patient, ClinicalParameter, Assessment, Goal } from './types';
 import { subDays, formatISO } from 'date-fns';
 
 export const users: User[] = [
@@ -102,23 +102,6 @@ export let patients: Patient[] = [
     }
 ];
 
-export let vitals: Vitals[] = [
-    { id: 1, patient_id: 1, bp_systolic: '120', bp_diastolic: '80', pulse: '75', temp: '36.8', rbs: '5.5', created_at: formatISO(subDays(new Date(), 1)) }
-];
-
-export let nutrition: Nutrition[] = [
-    { id: 1, patient_id: 1, height: '175', weight: '85', visceral_fat: '9', body_fat_percent: '22', notes_nutritionist: 'Patient is advised to increase vegetable intake.', created_at: formatISO(subDays(new Date(), 1)), bmi: '27.8' }
-];
-
-export let goals: Goal[] = [
-    { id: 1, patient_id: 1, discussion: 'Patient wants to lose weight and feel more energetic.', goal: 'Walk for 30 minutes, 5 days a week. Reduce sugar intake.', created_at: formatISO(subDays(new Date(), 1)) }
-];
-
-export let clinicals: Clinical[] = [
-    { id: 1, patient_id: 1, notes_doctor: 'Patient is stable. Continue current medication. Follow up in 3 months.', notes_psychologist: 'Patient reports feeling positive about health journey.', created_at: formatISO(subDays(new Date(), 1)) }
-];
-
-
 export let assessments: Assessment[] = [
     // John Doe's Assessments
     { id: 1, patient_id: 1, clinical_parameter_id: 1, value: '120/80', notes: 'Normal reading', is_normal: true, created_at: formatISO(subDays(new Date(), 10)), measured_at: formatISO(subDays(new Date(), 10)) },
@@ -136,4 +119,29 @@ export let assessments: Assessment[] = [
     { id: 11, patient_id: 3, clinical_parameter_id: 3, value: '95', notes: '', is_normal: null, created_at: formatISO(subDays(new Date(), 7)), measured_at: formatISO(subDays(new Date(), 7)) },
     { id: 12, patient_id: 3, clinical_parameter_id: 1, value: '135/88', notes: 'Slightly better', is_normal: false, created_at: formatISO(subDays(new Date(), 3)), measured_at: formatISO(subDays(new Date(), 3)) },
     { id: 13, patient_id: 3, clinical_parameter_id: 6, value: 'Fair', notes: 'Woke up a few times.', is_normal: null, created_at: formatISO(subDays(new Date(), 3)), measured_at: formatISO(subDays(new Date(), 3)) },
+];
+
+export let goals: Goal[] = [
+    { 
+        id: 1, 
+        patient_id: 1, 
+        clinical_parameter_id: 3, // Weight
+        target_value: '80',
+        target_operator: 'less_than',
+        status: 'active',
+        notes: 'Patient wants to lose 5kg.',
+        deadline: '2024-09-30',
+        created_at: formatISO(subDays(new Date(), 20))
+    },
+     { 
+        id: 2, 
+        patient_id: 3, 
+        clinical_parameter_id: 1, // Blood Pressure
+        target_value: '130/85',
+        target_operator: 'less_than',
+        status: 'active',
+        notes: 'Target BP for hypertension management.',
+        deadline: '2024-08-31',
+        created_at: formatISO(subDays(new Date(), 7))
+    }
 ];
