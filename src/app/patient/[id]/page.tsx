@@ -26,7 +26,7 @@ export default async function PatientPage({ params }: { params: { id: string } }
     return (
       <div className="container mx-auto max-w-4xl py-6">
         <PatientHeader patient={patient} />
-        <OnboardingForm patient={patient} clinicalParameters={[]} />
+        <OnboardingForm patient={patient} />
       </div>
     );
   }
