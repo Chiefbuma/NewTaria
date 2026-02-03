@@ -12,52 +12,14 @@ export type Corporate = {
   wellness_date: string;
 };
 
-export type Vital = {
-  id: number;
-  patient_id: number;
-  bp_systolic: string;
-  bp_diastolic: string;
-  pulse: string;
-  temp: string;
-  rbs: string;
-  created_at: string;
-};
-
-export type Nutrition = {
-  id: number;
-  patient_id: number;
-  height: string;
-  weight: string;
-  bmi: string;
-  visceral_fat: string;
-  body_fat_percent: string;
-  notes_nutritionist: string | null;
-  created_at: string;
-};
-
-export type Goal = {
-  id: number;
-  patient_id: number;
-  discussion: string;
-  goal: string;
-  created_at: string;
-};
-
-export type Clinical = {
-  id: number;
-  patient_id: number;
-  notes_doctor: string | null;
-  notes_psychologist: string | null;
-  created_at: string;
-};
-
 export type ClinicalParameter = {
     id: number;
     name: string;
     type: 'numeric' | 'text' | 'choice';
     unit: string | null;
     options: string[] | null;
-}
+    category: 'vital_sign' | 'lab_result' | 'clinical_measurement' | 'symptom' | 'assessment';
+};
 
 export type Assessment = {
     id: number;
@@ -65,10 +27,69 @@ export type Assessment = {
     clinical_parameter_id: number;
     value: string;
     notes: string | null;
+    is_normal: boolean | null;
     created_at: string;
     measured_at: string;
-    is_normal: boolean | null;
-}
+};
+
+export type Goal = {
+  id: number;
+  patient_id: number;
+  clinical_parameter_id: number;
+  target_value: string;
+  target_operator: '<' | '<=' | '=' | '>=' | '>';
+  status: 'active' | 'completed' | 'cancelled';
+  notes: string | null;
+  deadline: string;
+  created_at: string;
+};
+
+export type Medication = {
+  id: number;
+  name: string;
+  dosage: string;
+};
+
+export type Prescription = {
+  id: number;
+  patient_id: number;
+  medication_id: number;
+  frequency: string;
+  notes: string | null;
+  start_date: string;
+  end_date: string | null;
+  created_at: string;
+};
+
+export type Appointment = {
+    id: number;
+    patient_id: number;
+    user_id: number; // clinician
+    title: string;
+    appointment_date: string; // ISO timestamp
+    end_date: string | null;
+    notes: string | null;
+    status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show' | 'rescheduled';
+};
+
+export type Review = {
+    id: number;
+    patient_id: number;
+    user_id: number; // reviewer
+    subjective_findings: string | null;
+    objective_findings: string | null;
+    assessment: string;
+    plan: string;
+    recommendations: string | null;
+    created_at: string; // ISO timestamp
+    review_date: string; // ISO date
+};
+
+export type Diagnosis = {
+    id: number;
+    name: string;
+    code: string;
+};
 
 export type PatientStats = {
   totalGoals: number;
@@ -103,12 +124,21 @@ export type Patient = {
   emergency_contact_relation: string | null;
   consent_date: string | null;
   navigator_id: number | null;
+  
+  // Joined/related data from example
+  date_of_diagnosis?: string | null;
+  payer_id?: number | null;
+
   // Joined/related data
   corporate_name?: string;
   navigator_name?: string;
   stats?: PatientStats;
-  vitals?: Vital[];
-  nutrition?: Nutrition[];
+  
+  // For mock data structure
+  diagnoses?: Diagnosis[];
+  prescriptions?: Prescription[];
+  appointments?: Appointment[];
+  reviews?: Review[];
   goals?: Goal[];
-  clinicals?: Clinical[];
+  assessments?: Assessment[];
 };

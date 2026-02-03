@@ -1,6 +1,7 @@
 import { fetchPatientById } from '@/lib/data';
 import { notFound } from 'next/navigation';
-import PatientDetails from './patient-details';
+import PatientDetailsPage from './patient-details-page';
+import OnboardingForm from './onboarding-form';
 
 async function getPatientData(id: string) {
     try {
@@ -19,6 +20,9 @@ export default async function PatientPage({ params }: { params: { id: string } }
     notFound();
   }
   
-  // The logic for Pending vs. Active is now handled within PatientDetails
-  return <PatientDetails initialPatient={patient} />;
+  if (patient.status === 'Pending') {
+      return <OnboardingForm patient={patient} />;
+  }
+
+  return <PatientDetailsPage initialPatient={patient} />;
 }
