@@ -12,6 +12,45 @@ export type Corporate = {
   wellness_date: string;
 };
 
+export type Vitals = {
+  id: number;
+  patient_id: number;
+  bp_systolic: string;
+  bp_diastolic: string;
+  pulse: string;
+  temp: string;
+  rbs: string;
+  created_at: string;
+};
+
+export type Nutrition = {
+  id: number;
+  patient_id: number;
+  height: string;
+  weight: string;
+  bmi?: string;
+  visceral_fat: string;
+  body_fat_percent: string;
+  notes_nutritionist: string | null;
+  created_at: string;
+};
+
+export type Goal = {
+  id: number;
+  patient_id: number;
+  discussion: string | null;
+  goal: string | null;
+  created_at: string;
+};
+
+export type Clinical = {
+  id: number;
+  patient_id: number;
+  notes_doctor: string | null;
+  notes_psychologist: string | null;
+  created_at: string;
+};
+
 export type Patient = {
   id: number;
   first_name: string;
@@ -40,7 +79,9 @@ export type Patient = {
   // Joined/related data
   corporate_name?: string;
   navigator_name?: string;
-  assessments?: Assessment[];
+  vitals?: Vitals[];
+  nutrition?: Nutrition[];
+  clinicals?: Clinical[];
   goals?: Goal[];
 };
 
@@ -61,20 +102,6 @@ export type Assessment = {
   is_normal: boolean | null;
   created_at: string;
   measured_at: string;
-  // Joined data
-  parameter?: Partial<ClinicalParameter>;
-};
-
-export type Goal = {
-  id: number;
-  patient_id: number;
-  clinical_parameter_id: number;
-  target_value: string;
-  target_operator: string;
-  status: 'active' | 'completed' | 'cancelled';
-  notes: string | null;
-  deadline: string;
-  created_at: string;
   // Joined data
   parameter?: Partial<ClinicalParameter>;
 };

@@ -1,12 +1,14 @@
-import type { Patient, ClinicalParameter, User, Assessment, Goal, Corporate } from '@/lib/types';
+import type { Patient, ClinicalParameter, User, Corporate } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { 
     patients as mockPatients, 
     clinicalParameters as mockClinicalParameters,
     users as mockUsers,
-    assessments as mockAssessments,
-    goals as mockGoals,
     corporates as mockCorporates,
+    vitals as mockVitals,
+    nutrition as mockNutrition,
+    goals as mockGoals,
+    clinicals as mockClinicals,
 } from './mock-data';
 
 // Simulate network delay
@@ -32,7 +34,7 @@ export async function fetchPatients(): Promise<Patient[]> {
 
 export async function fetchPatientById(id: string): Promise<Patient | null> {
     noStore();
-    await delay(150); // Simulate API latency
+    await delay(150);
     
     const patient = mockPatients.find(p => p.id === parseInt(id));
 
@@ -40,28 +42,22 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
         return null;
     }
 
-    // Aggregate and join related data, similar to how the API would
-    const patientAssessments = mockAssessments.filter(a => a.patient_id === patient.id)
-        .map(a => ({
-            ...a,
-            parameter: mockClinicalParameters.find(p => p.id === a.clinical_parameter_id)
-        }));
-    
-    const patientGoals = mockGoals.filter(g => g.patient_id === patient.id && g.status === 'active')
-        .map(g => ({
-            ...g,
-            parameter: mockClinicalParameters.find(p => p.id === g.clinical_parameter_id)
-        }));
-
     const navigator = mockUsers.find(u => u.id === patient.navigator_id);
     const corporate = mockCorporates.find(c => c.id === patient.corporate_id);
 
+    const patientVitals = mockVitals.filter(v => v.patient_id === patient.id).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const patientNutrition = mockNutrition.filter(n => n.patient_id === patient.id).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const patientGoals = mockGoals.filter(g => g.patient_id === patient.id).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const patientClinicals = mockClinicals.filter(c => c.patient_id === patient.id).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
     return {
         ...patient,
-        assessments: patientAssessments.sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime()),
-        goals: patientGoals.sort((a,b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()),
         navigator_name: navigator?.name,
         corporate_name: corporate?.name,
+        vitals: patientVitals,
+        nutrition: patientNutrition,
+        goals: patientGoals,
+        clinicals: patientClinicals,
     };
 }
 
@@ -75,4 +71,10 @@ export async function fetchUsers(): Promise<User[]> {
     noStore();
     await delay(50);
     return mockUsers;
+}
+
+export async function fetchCorporates(): Promise<Corporate[]> {
+    noStore();
+    await delay(50);
+    return mockCorporates.sort((a, b) => a.name.localeCompare(b.name));
 }

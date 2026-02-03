@@ -107,7 +107,7 @@ export default function Report({ patient, corporate }: ReportProps) {
             </div>
             <div className="screening-right">
               {nutrition?.bmi && (
-                  <div className="body-text screening-item">BMI: {nutrition.bmi.toFixed(1)}</div>
+                  <div className="body-text screening-item">BMI: {nutrition.bmi}</div>
               )}
               {vitals?.rbs && (
                   <div className="body-text screening-item">
