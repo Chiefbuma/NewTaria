@@ -1,4 +1,4 @@
-import type { Patient, Corporate, Assessment } from '@/lib/types';
+import type { Patient, Corporate, Vital, Nutrition } from '@/lib/types';
 import { format } from 'date-fns';
 
 type ReportProps = {
@@ -23,29 +23,11 @@ function getDaySuffix(day: number) {
   }
 }
 
-const findLatestAssessment = (assessments: Assessment[] | undefined, parameterName: string) => {
-    if (!assessments) return undefined;
-    return assessments
-        .filter(a => a.parameter?.name === parameterName)
-        .sort((a,b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())[0];
-}
-
 export default function Report({ patient, corporate }: ReportProps) {
-  const bp = findLatestAssessment(patient.assessments, 'Blood Pressure')?.value.split('/');
-  const bpSystolic = bp ? bp[0] : undefined;
-  const bpDiastolic = bp ? bp[1] : undefined;
-  const pulse = findLatestAssessment(patient.assessments, 'Pulse')?.value;
-  const temp = findLatestAssessment(patient.assessments, 'Temperature')?.value;
-  const weight = findLatestAssessment(patient.assessments, 'Weight')?.value;
-  const height = findLatestAssessment(patient.assessments, 'Height')?.value;
-  const rbs = findLatestAssessment(patient.assessments, 'Blood Glucose')?.value;
-  
-  // These might not exist in the new schema, so handle gracefully
-  const visceral_fat = findLatestAssessment(patient.assessments, 'Visceral Fat')?.value;
-  const body_fat_percent = findLatestAssessment(patient.assessments, 'Body Fat %')?.value;
-  const bmi = (weight && height) ? (parseFloat(weight) / ((parseFloat(height)/100) * (parseFloat(height)/100))).toFixed(1) : undefined;
-  
-  const goal = patient.goals?.[0];
+  const latestVital = patient.vitals?.[0];
+  const latestNutrition = patient.nutrition?.[0];
+  const latestGoal = patient.goals?.[0];
+  const latestClinical = patient.clinicals?.[0];
 
   const reportDate = patient.wellness_date ? new Date(patient.wellness_date) : null;
 
@@ -62,9 +44,8 @@ export default function Report({ patient, corporate }: ReportProps) {
   }
 
   const discussionParagraphs = [
-    // This part is difficult to map from the new schema without more context
-    // on where clinical notes are stored. Assuming they might be in a 'Daily Notes' assessment.
-    findLatestAssessment(patient.assessments, 'Daily Notes')?.notes,
+    latestClinical?.notes_doctor,
+    latestClinical?.notes_psychologist,
   ].filter(Boolean) as string[];
 
   const mainDoctor = "Emily Carter"; // Placeholder, can be dynamically assigned
@@ -94,46 +75,46 @@ export default function Report({ patient, corporate }: ReportProps) {
 
           <div className="screening-grid force-together">
             <div className="screening-left">
-              {bpSystolic && bpDiastolic && (
+              {latestVital?.bp_systolic && latestVital?.bp_diastolic && (
                 <div className="body-text screening-item">
-                  Blood Pressure: {bpSystolic}/{bpDiastolic} mmHg
+                  Blood Pressure: {latestVital.bp_systolic}/{latestVital.bp_diastolic} mmHg
                 </div>
               )}
-              {pulse && (
+              {latestVital?.pulse && (
                 <div className="body-text screening-item">
-                  Pulse: {pulse} bpm
+                  Pulse: {latestVital.pulse} bpm
                 </div>
               )}
-              {temp && (
+              {latestVital?.temp && (
                 <div className="body-text screening-item">
-                  Temperature: {temp}°C
+                  Temperature: {latestVital.temp}°C
                 </div>
               )}
-              {weight && (
+               {latestNutrition?.weight && (
                 <div className="body-text screening-item">
-                  Weight: {weight} kgs
+                  Weight: {latestNutrition.weight} kgs
                 </div>
               )}
-              {height && (
+              {latestNutrition?.height && (
                 <div className="body-text screening-item">
-                  Height: {height} cm
+                  Height: {latestNutrition.height} cm
                 </div>
               )}
-              {visceral_fat && (
-                  <div className="body-text screening-item">Visceral Fat: {visceral_fat}</div>
+               {latestNutrition?.visceral_fat && (
+                  <div className="body-text screening-item">Visceral Fat: {latestNutrition.visceral_fat}</div>
               )}
             </div>
             <div className="screening-right">
-              {bmi && (
-                  <div className="body-text screening-item">BMI: {bmi}</div>
+              {latestNutrition?.bmi && (
+                  <div className="body-text screening-item">BMI: {latestNutrition.bmi}</div>
               )}
-              {rbs && (
+              {latestVital?.rbs && (
                   <div className="body-text screening-item">
-                      Blood sugar: {rbs} mg/dL
+                      Blood sugar: {latestVital.rbs} mg/dL
                   </div>
               )}
-              {body_fat_percent && (
-                  <div className="body-text screening-item">Body fat percentage: {body_fat_percent}%</div>
+              {latestNutrition?.body_fat_percent && (
+                  <div className="body-text screening-item">Body fat percentage: {latestNutrition.body_fat_percent}%</div>
               )}
             </div>
           </div>
@@ -157,12 +138,12 @@ export default function Report({ patient, corporate }: ReportProps) {
               </>
           )}
 
-          {goal && (
+          {latestGoal && (
                <>
                   <div className="section-heading min-space-before">Personalized Health Goal</div>
                   <div className="content-section">
-                      {goal.notes && <div className="content-item">{goal.notes}</div>}
-                      {goal.target_value && <div className="target-text keep-together">Target: {goal.target_operator.replace(/_/g, ' ')} {goal.target_value} {goal.parameter?.unit} by {format(new Date(goal.deadline), 'MMMM d, yyyy')}</div>}
+                      {latestGoal.discussion && <div className="content-item">{latestGoal.discussion}</div>}
+                      {latestGoal.goal && <div className="target-text keep-together">Target: {latestGoal.goal}</div>}
                   </div>
               </>
           )}

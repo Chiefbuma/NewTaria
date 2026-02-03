@@ -1,5 +1,4 @@
-import type { User, Corporate, Patient, ClinicalParameter, Assessment, Goal } from './types';
-import { subDays, formatISO } from 'date-fns';
+import type { User, Corporate, Patient, Vital, Nutrition, Goal, Clinical } from './types';
 
 export const users: User[] = [
     { id: 1, name: 'Dr. Emily Carter', email: 'admin@taria.com', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=emily' },
@@ -9,16 +8,6 @@ export const users: User[] = [
 export const corporates: Corporate[] = [
     { id: 1, name: 'Innovate Inc.', wellness_date: '2023-05-15' },
     { id: 2, name: 'HealthForward', wellness_date: '2023-06-01' }
-];
-
-export const clinicalParameters: ClinicalParameter[] = [
-    { id: 1, name: 'Blood Pressure', type: 'numeric', unit: 'mmHg', options: null },
-    { id: 2, name: 'Blood Glucose', type: 'numeric', unit: 'mg/dL', options: null },
-    { id: 3, name: 'Weight', type: 'numeric', unit: 'kg', options: null },
-    { id: 4, name: 'Height', type: 'numeric', unit: 'cm', options: null },
-    { id: 5, name: 'Mood', type: 'choice', unit: null, options: ['Happy', 'Neutral', 'Sad', 'Anxious'] },
-    { id: 6, name: 'Sleep Quality', type: 'choice', unit: null, options: ['Excellent', 'Good', 'Fair', 'Poor'] },
-    { id: 7, name: 'Daily Notes', type: 'text', unit: null, options: null }
 ];
 
 export let patients: Patient[] = [
@@ -102,46 +91,19 @@ export let patients: Patient[] = [
     }
 ];
 
-export let assessments: Assessment[] = [
-    // John Doe's Assessments
-    { id: 1, patient_id: 1, clinical_parameter_id: 1, value: '120/80', notes: 'Normal reading', is_normal: true, created_at: formatISO(subDays(new Date(), 10)), measured_at: formatISO(subDays(new Date(), 10)) },
-    { id: 2, patient_id: 1, clinical_parameter_id: 2, value: '110', notes: 'Post-meal', is_normal: true, created_at: formatISO(subDays(new Date(), 10)), measured_at: formatISO(subDays(new Date(), 10)) },
-    { id: 3, patient_id: 1, clinical_parameter_id: 3, value: '85', notes: '', is_normal: null, created_at: formatISO(subDays(new Date(), 10)), measured_at: formatISO(subDays(new Date(), 10)) },
-    { id: 4, patient_id: 1, clinical_parameter_id: 1, value: '122/81', notes: 'Slightly elevated', is_normal: false, created_at: formatISO(subDays(new Date(), 5)), measured_at: formatISO(subDays(new Date(), 5)) },
-    { id: 5, patient_id: 1, clinical_parameter_id: 2, value: '115', notes: '', is_normal: true, created_at: formatISO(subDays(new Date(), 5)), measured_at: formatISO(subDays(new Date(), 5)) },
-    { id: 6, patient_id: 1, clinical_parameter_id: 3, value: '85.5', notes: '', is_normal: null, created_at: formatISO(subDays(new Date(), 5)), measured_at: formatISO(subDays(new Date(), 5)) },
-    { id: 7, patient_id: 1, clinical_parameter_id: 5, value: 'Happy', notes: 'Feeling good today', is_normal: null, created_at: formatISO(subDays(new Date(), 1)), measured_at: formatISO(subDays(new Date(), 1)) },
-    { id: 8, patient_id: 1, clinical_parameter_id: 1, value: '118/79', notes: 'Back to normal', is_normal: true, created_at: formatISO(subDays(new Date(), 1)), measured_at: formatISO(subDays(new Date(), 1)) },
-    { id: 9, patient_id: 1, clinical_parameter_id: 2, value: '105', notes: 'Fasting', is_normal: true, created_at: formatISO(subDays(new Date(), 1)), measured_at: formatISO(subDays(new Date(), 1)) },
+export let vitals: Vital[] = [
+    { id: 1, patient_id: 1, bp_systolic: 120, bp_diastolic: 80, pulse: 75, temp: 36.8, rbs: '5.5', created_at: '2023-06-20T10:00:00Z' },
+    { id: 2, patient_id: 3, bp_systolic: 145, bp_diastolic: 92, pulse: 88, temp: 37.1, rbs: '6.1', created_at: '2023-06-19T09:00:00Z' },
+];
 
-    // Peter Jones's Assessments
-    { id: 10, patient_id: 3, clinical_parameter_id: 1, value: '140/90', notes: 'High reading', is_normal: false, created_at: formatISO(subDays(new Date(), 7)), measured_at: formatISO(subDays(new Date(), 7)) },
-    { id: 11, patient_id: 3, clinical_parameter_id: 3, value: '95', notes: '', is_normal: null, created_at: formatISO(subDays(new Date(), 7)), measured_at: formatISO(subDays(new Date(), 7)) },
-    { id: 12, patient_id: 3, clinical_parameter_id: 1, value: '135/88', notes: 'Slightly better', is_normal: false, created_at: formatISO(subDays(new Date(), 3)), measured_at: formatISO(subDays(new Date(), 3)) },
-    { id: 13, patient_id: 3, clinical_parameter_id: 6, value: 'Fair', notes: 'Woke up a few times.', is_normal: null, created_at: formatISO(subDays(new Date(), 3)), measured_at: formatISO(subDays(new Date(), 3)) },
+export let nutrition: Nutrition[] = [
+    { id: 1, patient_id: 1, height: 180, weight: 85, bmi: 26.2, visceral_fat: 9, body_fat_percent: 22, notes_nutritionist: 'Patient is slightly overweight. Recommended to increase physical activity and reduce processed foods.', created_at: '2023-06-20T10:00:00Z' },
 ];
 
 export let goals: Goal[] = [
-    { 
-        id: 1, 
-        patient_id: 1, 
-        clinical_parameter_id: 3, // Weight
-        target_value: '80',
-        target_operator: 'less_than',
-        status: 'active',
-        notes: 'Patient wants to lose 5kg.',
-        deadline: '2024-09-30',
-        created_at: formatISO(subDays(new Date(), 20))
-    },
-     { 
-        id: 2, 
-        patient_id: 3, 
-        clinical_parameter_id: 1, // Blood Pressure
-        target_value: '130/85',
-        target_operator: 'less_than',
-        status: 'active',
-        notes: 'Target BP for hypertension management.',
-        deadline: '2024-08-31',
-        created_at: formatISO(subDays(new Date(), 7))
-    }
+    { id: 1, patient_id: 1, discussion: 'Patient wants to improve cardiovascular health and lose some weight.', goal: 'Walk for 30 minutes, 5 times a week. Reduce sugar intake.', created_at: '2023-06-20T10:00:00Z' },
+];
+
+export let clinicals: Clinical[] = [
+    { id: 1, patient_id: 1, notes_doctor: 'Patient is responding well to Metformin. Continue monitoring blood glucose levels.', notes_psychologist: 'Patient reports feeling positive about managing their condition.', created_at: '2023-06-20T10:00:00Z' },
 ];

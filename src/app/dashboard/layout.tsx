@@ -51,14 +51,6 @@ export default function DashboardLayout({
             <Logo className="h-7 w-auto" />
           </Link>
           <div className="flex items-center gap-4">
-              {user && user.role === 'admin' && (
-                <Button asChild variant="ghost" size="sm">
-                    <Link href="/settings">
-                        <Settings className="mr-2 h-4 w-4" />
-                        Settings
-                    </Link>
-                </Button>
-             )}
             <Header user={user} />
           </div>
         </div>

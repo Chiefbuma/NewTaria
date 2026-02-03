@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { fetchUsers, fetchCorporates } from '@/lib/data';
+import PatientHeader from './patient-header';
 
 interface OnboardingFormProps {
     patient: Patient;
@@ -67,147 +68,151 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
             title: 'Onboarding Complete (Mock)',
             description: `${patient.first_name} is now marked as Active. This will not persist on page refresh.`,
         });
-
-        // We can't persist the change, but we can refresh the router
-        // which will effectively show the "Active" patient view until a hard refresh.
-        // For a true mock experience, we just need to let the user know.
+        
+        // In a real app, this would trigger a database update.
+        // For this mock, we'll just refresh the page which re-fetches from our "database" (mock-data.ts)
+        // To simulate the state change, we'd need to lift state up, which is a larger refactor.
+        // For now, the toast notification provides user feedback.
         router.refresh(); 
         setIsSubmitting(false);
     };
 
     return (
-        <form onSubmit={handleSubmit}>
-            <div className="space-y-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Demographics (Step 2 of 2)</CardTitle>
-                        <CardDescription>Complete the patient's profile with their demographic information.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="first_name">First Name</Label>
-                            <Input id="first_name" value={formData.first_name || ''} onChange={handleInputChange} required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="middle_name">Middle Name</Label>
-                            <Input id="middle_name" value={formData.middle_name || ''} onChange={handleInputChange} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="surname">Surname</Label>
-                            <Input id="surname" value={formData.surname || ''} onChange={handleInputChange} required />
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="dob">Date of Birth</Label>
-                            <Input id="dob" type="date" value={formData.dob || ''} onChange={handleInputChange} />
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="age">Age</Label>
-                            <Input id="age" type="number" value={formData.age || ''} onChange={handleInputChange} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="sex">Sex</Label>
-                            <Select value={formData.sex || ''} onValueChange={(value) => handleSelectChange('sex', value)}>
-                                <SelectTrigger id="sex"><SelectValue placeholder="Select sex" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Male">Male</SelectItem>
-                                    <SelectItem value="Female">Female</SelectItem>
-                                    <SelectItem value="Other">Other</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                         <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input id="email" type="email" value={formData.email || ''} onChange={handleInputChange} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="phone">Phone</Label>
-                            <Input id="phone" type="tel" value={formData.phone || ''} onChange={handleInputChange} />
-                        </div>
-                    </CardContent>
-                </Card>
-                
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Medical & Lifestyle</CardTitle>
-                        <CardDescription>Capture important medical history and lifestyle factors.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="space-y-2">
-                             <Label htmlFor="brief_medical_history">Brief Medical History</Label>
-                            <Textarea id="brief_medical_history" value={formData.brief_medical_history || ''} onChange={handleInputChange} placeholder="e.g. Diagnosed with Type 2 Diabetes in 2020..."/>
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="years_since_diagnosis">Years Since Diagnosis (if applicable)</Label>
-                            <Input id="years_since_diagnosis" type="number" value={formData.years_since_diagnosis || ''} onChange={handleInputChange} />
-                        </div>
-                        <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-2">
-                                <Switch id="has_glucometer" checked={formData.has_glucometer || false} onCheckedChange={(checked) => handleSwitchChange('has_glucometer', checked)} />
-                                <Label htmlFor="has_glucometer">Has Glucometer</Label>
+        <div className="container mx-auto max-w-4xl py-12 px-4 sm:px-6 lg:px-8">
+            <PatientHeader patient={patient} />
+            <form onSubmit={handleSubmit}>
+                <div className="space-y-8">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Demographics (Step 2 of 2)</CardTitle>
+                            <CardDescription>Complete the patient's profile with their demographic information.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="first_name">First Name</Label>
+                                <Input id="first_name" value={formData.first_name || ''} onChange={handleInputChange} required />
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <Switch id="has_bp_machine" checked={formData.has_bp_machine || false} onCheckedChange={(checked) => handleSwitchChange('has_bp_machine', checked)} />
-                                <Label htmlFor="has_bp_machine">Has BP Machine</Label>
+                            <div className="space-y-2">
+                                <Label htmlFor="middle_name">Middle Name</Label>
+                                <Input id="middle_name" value={formData.middle_name || ''} onChange={handleInputChange} />
                             </div>
-                             <div className="flex items-center space-x-2">
-                                <Switch id="has_tape_measure" checked={formData.has_tape_measure || false} onCheckedChange={(checked) => handleSwitchChange('has_tape_measure', checked)} />
-                                <Label htmlFor="has_tape_measure">Has Tape Measure</Label>
+                            <div className="space-y-2">
+                                <Label htmlFor="surname">Surname</Label>
+                                <Input id="surname" value={formData.surname || ''} onChange={handleInputChange} required />
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                            <div className="space-y-2">
+                                <Label htmlFor="dob">Date of Birth</Label>
+                                <Input id="dob" type="date" value={formData.dob || ''} onChange={handleInputChange} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="age">Age</Label>
+                                <Input id="age" type="number" value={formData.age || ''} onChange={handleInputChange} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="sex">Sex</Label>
+                                <Select value={formData.sex || ''} onValueChange={(value) => handleSelectChange('sex', value)}>
+                                    <SelectTrigger id="sex"><SelectValue placeholder="Select sex" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Male">Male</SelectItem>
+                                        <SelectItem value="Female">Female</SelectItem>
+                                        <SelectItem value="Other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="email">Email</Label>
+                                <Input id="email" type="email" value={formData.email || ''} onChange={handleInputChange} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="phone">Phone</Label>
+                                <Input id="phone" type="tel" value={formData.phone || ''} onChange={handleInputChange} />
+                            </div>
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Medical & Lifestyle</CardTitle>
+                            <CardDescription>Capture important medical history and lifestyle factors.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="brief_medical_history">Brief Medical History</Label>
+                                <Textarea id="brief_medical_history" value={formData.brief_medical_history || ''} onChange={handleInputChange} placeholder="e.g. Diagnosed with Type 2 Diabetes in 2020..."/>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="years_since_diagnosis">Years Since Diagnosis (if applicable)</Label>
+                                <Input id="years_since_diagnosis" type="number" value={formData.years_since_diagnosis || ''} onChange={handleInputChange} />
+                            </div>
+                            <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-2">
+                                    <Switch id="has_glucometer" checked={formData.has_glucometer || false} onCheckedChange={(checked) => handleSwitchChange('has_glucometer', checked)} />
+                                    <Label htmlFor="has_glucometer">Has Glucometer</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Switch id="has_bp_machine" checked={formData.has_bp_machine || false} onCheckedChange={(checked) => handleSwitchChange('has_bp_machine', checked)} />
+                                    <Label htmlFor="has_bp_machine">Has BP Machine</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Switch id="has_tape_measure" checked={formData.has_tape_measure || false} onCheckedChange={(checked) => handleSwitchChange('has_tape_measure', checked)} />
+                                    <Label htmlFor="has_tape_measure">Has Tape Measure</Label>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Emergency & Administrative</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                         <div className="space-y-2">
-                            <Label htmlFor="emergency_contact_name">Emergency Contact Name</Label>
-                            <Input id="emergency_contact_name" value={formData.emergency_contact_name || ''} onChange={handleInputChange} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="emergency_contact_phone">Emergency Contact Phone</Label>
-                            <Input id="emergency_contact_phone" type="tel" value={formData.emergency_contact_phone || ''} onChange={handleInputChange} />
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="emergency_contact_relation">Emergency Contact Relation</Label>
-                            <Input id="emergency_contact_relation" value={formData.emergency_contact_relation || ''} onChange={handleInputChange} />
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="navigator_id">Assign Navigator</Label>
-                            <Select value={String(formData.navigator_id || '')} onValueChange={(value) => handleSelectChange('navigator_id', value)}>
-                                <SelectTrigger><SelectValue placeholder="Select a navigator" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="null">Unassigned</SelectItem>
-                                    {navigators.map(n => <SelectItem key={n.id} value={String(n.id)}>{n.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="corporate_id">Assign Corporate</Label>
-                             <Select value={String(formData.corporate_id || 'null')} onValueChange={(value) => handleSelectChange('corporate_id', value)}>
-                                <SelectTrigger><SelectValue placeholder="Select a corporate" /></SelectTrigger>
-                                <SelectContent>
-                                     <SelectItem value="null">None</SelectItem>
-                                    {corporates.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="consent_date">Consent Date</Label>
-                            <Input id="consent_date" type="date" value={formData.consent_date || ''} onChange={handleInputChange} required />
-                        </div>
-                    </CardContent>
-                </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Emergency & Administrative</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="emergency_contact_name">Emergency Contact Name</Label>
+                                <Input id="emergency_contact_name" value={formData.emergency_contact_name || ''} onChange={handleInputChange} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="emergency_contact_phone">Emergency Contact Phone</Label>
+                                <Input id="emergency_contact_phone" type="tel" value={formData.emergency_contact_phone || ''} onChange={handleInputChange} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="emergency_contact_relation">Emergency Contact Relation</Label>
+                                <Input id="emergency_contact_relation" value={formData.emergency_contact_relation || ''} onChange={handleInputChange} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="navigator_id">Assign Navigator</Label>
+                                <Select value={String(formData.navigator_id || '')} onValueChange={(value) => handleSelectChange('navigator_id', value)}>
+                                    <SelectTrigger><SelectValue placeholder="Select a navigator" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="null">Unassigned</SelectItem>
+                                        {navigators.map(n => <SelectItem key={n.id} value={String(n.id)}>{n.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="corporate_id">Assign Corporate</Label>
+                                <Select value={String(formData.corporate_id || 'null')} onValueChange={(value) => handleSelectChange('corporate_id', value)}>
+                                    <SelectTrigger><SelectValue placeholder="Select a corporate" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="null">None</SelectItem>
+                                        {corporates.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="consent_date">Consent Date</Label>
+                                <Input id="consent_date" type="date" value={formData.consent_date || ''} onChange={handleInputChange} required />
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                <div className="flex justify-end gap-4">
-                    <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Complete Onboarding & Activate Patient
-                    </Button>
+                    <div className="flex justify-end gap-4">
+                        <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Complete Onboarding & Activate Patient
+                        </Button>
+                    </div>
                 </div>
-            </div>
-        </form>
+            </form>
+        </div>
     );
 }

@@ -1,8 +1,8 @@
 'use client';
 
-import type { Patient, Corporate, User, ClinicalParameter, Assessment, Goal } from '@/lib/types';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import type { Patient, Corporate, User, Vital, Nutrition, Goal, Clinical } from '@/lib/types';
 import {
   Card,
   CardContent,
@@ -10,6 +10,15 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,13 +40,23 @@ import {
   Mail,
   Building2,
   Binary,
+  PlusCircle,
+  Save,
+  XCircle,
   FileText,
   Loader2,
   CalendarDays,
   Trash2,
   Edit,
+  HeartPulse,
+  Scale,
+  Target,
+  Stethoscope
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -45,18 +64,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from '@/hooks/use-toast';
 import { placeholderImages } from '@/lib/placeholder-images';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ReportViewer from '@/components/report-viewer';
-import MetricGrid from './metric-grid';
-import GoalList from './goal-list';
-import AssessmentList from './assessment-list';
+import OnboardingForm from './onboarding-form';
 import { fetchCorporates, fetchUsers } from '@/lib/data';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogFooter } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+
 
 const DetailItem = ({
   label,
@@ -82,12 +96,7 @@ const DetailItem = ({
   </div>
 );
 
-interface PatientDetailsProps {
-    patient: Patient;
-    clinicalParameters: ClinicalParameter[];
-}
-
-export default function PatientDetails({ patient: initialPatient, clinicalParameters }: PatientDetailsProps) {
+export default function PatientDetails({ initialPatient }: { initialPatient: Patient }) {
   const router = useRouter();
   const { toast } = useToast();
 
@@ -96,11 +105,20 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [corporates, setCorporates] = useState<Corporate[]>([]);
 
+  const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
+  const [isNutritionModalOpen, setIsNutritionModalOpen] = useState(false);
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [isClinicalModalOpen, setIsClinicalModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
 
+  // Form states
+  const [vitalsForm, setVitalsForm] = useState({ bp_systolic: '', bp_diastolic: '', pulse: '', temp: '', rbs: '' });
+  const [nutritionForm, setNutritionForm] = useState({ height: '', weight: '', visceral_fat: '', body_fat_percent: '', notes_nutritionist: '' });
+  const [goalForm, setGoalForm] = useState({ discussion: '', goal: '' });
+  const [clinicalForm, setClinicalForm] = useState({ notes_doctor: '', notes_psychologist: '' });
   const [editFormData, setEditFormData] = useState<Partial<Patient>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -112,14 +130,41 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
       setCurrentUser(JSON.parse(storedUser));
     }
 
-    fetchCorporates()
-      .then(setCorporates)
-      .catch(error => {
-        console.error("Failed to fetch corporates", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to load corporate list.' });
-      });
-  }, [toast]);
+    async function getCorpData() {
+        const corps = await fetchCorporates();
+        setCorporates(corps);
+    }
+    getCorpData();
 
+  }, []);
+  
+  const handleFormSubmit = (sectionName: string, body: any, modalSetter: React.Dispatch<React.SetStateAction<boolean>>) => {
+    setIsSubmitting(true);
+    // Simulate network delay
+    setTimeout(() => {
+        toast({
+            title: 'Success!',
+            description: `${sectionName} record saved successfully. (Mock)`,
+        });
+        
+        // This part is tricky without a real backend.
+        // We'll just optimistically update the UI.
+        const newRecord = { id: Date.now(), patient_id: patient.id, created_at: new Date().toISOString(), ...body };
+        
+        if (sectionName.toLowerCase() === 'vitals') {
+            setPatient(p => ({...p, vitals: [newRecord as Vital, ...(p.vitals || [])]}));
+        } else if (sectionName.toLowerCase() === 'nutrition') {
+             setPatient(p => ({...p, nutrition: [newRecord as Nutrition, ...(p.nutrition || [])]}));
+        } else if (sectionName.toLowerCase() === 'goal') {
+             setPatient(p => ({...p, goals: [newRecord as Goal, ...(p.goals || [])]}));
+        } else if (sectionName.toLowerCase() === 'clinical review') {
+             setPatient(p => ({...p, clinicals: [newRecord as Clinical, ...(p.clinicals || [])]}));
+        }
+
+        modalSetter(false);
+        setIsSubmitting(false);
+    }, 500);
+  };
 
   const handleOpenEditModal = () => {
     setEditFormData({
@@ -129,7 +174,7 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
     });
     setIsEditModalOpen(true);
   };
-  
+
   const handleUpdatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -156,8 +201,8 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
     toast({ title: 'Success', description: 'Patient record deleted. (Mock)' });
     router.push('/dashboard');
   };
-  
-  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setEditFormData({ ...editFormData, [e.target.id]: e.target.value });
   };
   
@@ -166,38 +211,12 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
     setEditFormData({ ...editFormData, [name]: processedValue });
   };
   
-  const handleAssessmentAdded = (newAssessment: Assessment) => {
-    setPatient(prevPatient => ({
-      ...prevPatient,
-      assessments: [newAssessment, ...(prevPatient.assessments || [])]
-        .sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())
-    }));
-  };
-
-  const handleAssessmentUpdated = (updatedAssessment: Assessment) => {
-    setPatient(prevPatient => ({
-      ...prevPatient,
-      assessments: (prevPatient.assessments || []).map(a => a.id === updatedAssessment.id ? updatedAssessment : a)
-        .sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())
-    }));
-  };
-
-  const handleAssessmentDeleted = (assessmentId: number) => {
-    setPatient(prevPatient => ({
-      ...prevPatient,
-      assessments: (prevPatient.assessments || []).filter(a => a.id !== assessmentId)
-    }));
-  };
-
-  const handleGoalAdded = (newGoal: Goal) => {
-    setPatient(prevPatient => ({
-      ...prevPatient,
-      goals: [newGoal, ...(prevPatient.goals || [])]
-    }));
-  };
-
   if (!isClient) {
     return <div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  }
+  
+  if (patient.status === 'Pending') {
+      return <OnboardingForm patient={patient} />;
   }
 
   return (
@@ -222,7 +241,7 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-6">
             <Card>
               <CardHeader className="flex flex-col items-center text-center gap-4">
@@ -260,7 +279,7 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
                 <CardHeader>
                   <CardTitle className="flex items-center gap-3">
                     <Building2 className="w-6 h-6" />
-                    <span>Corporate Partner</span>
+                    <span>Corporate</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -284,7 +303,7 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
                 {currentUser?.role === 'admin' && (
                      <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="destructive" className="w-full">
+                            <Button variant="destructive">
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete Patient Record
                             </Button>
@@ -310,39 +329,231 @@ export default function PatientDetails({ patient: initialPatient, clinicalParame
             </Card>
           </div>
           <div className="lg:col-span-2 space-y-6">
-             <Tabs defaultValue="metrics">
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="metrics">Metrics</TabsTrigger>
-                    <TabsTrigger value="assessments">Assessments</TabsTrigger>
-                    <TabsTrigger value="goals">Goals</TabsTrigger>
-                </TabsList>
-                <TabsContent value="metrics" className="mt-6">
-                    <MetricGrid 
-                      patientId={patient.id} 
-                      assessments={patient.assessments || []} 
-                      clinicalParameters={clinicalParameters} 
-                      onAssessmentAdded={handleAssessmentAdded}
-                    />
-                </TabsContent>
-                 <TabsContent value="assessments" className="mt-6">
-                    <AssessmentList
-                      patientId={patient.id}
-                      assessments={patient.assessments || []}
-                      clinicalParameters={clinicalParameters}
-                      onAssessmentAdded={handleAssessmentAdded}
-                      onAssessmentUpdated={handleAssessmentUpdated}
-                      onAssessmentDeleted={handleAssessmentDeleted}
-                    />
-                </TabsContent>
-                <TabsContent value="goals" className="mt-6">
-                    <GoalList 
-                      patientId={patient.id}
-                      goals={patient.goals || []} 
-                      clinicalParameters={clinicalParameters} 
-                      onGoalAdded={handleGoalAdded}
-                    />
-                </TabsContent>
-            </Tabs>
+            {/* Vitals Section */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex items-center gap-4">
+                   <HeartPulse className="w-6 h-6 text-primary" />
+                  <div>
+                    <CardTitle>Vitals</CardTitle>
+                    <CardDescription>
+                      Latest vital signs measurement.
+                    </CardDescription>
+                  </div>
+                </div>
+                <Dialog open={isVitalsModalOpen} onOpenChange={setIsVitalsModalOpen}>
+                  <DialogTrigger asChild>
+                     <Button size="sm" variant="outline">
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      {patient.vitals && patient.vitals.length > 0 ? 'Edit Vitals' : 'Add Vitals'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{patient.vitals && patient.vitals.length > 0 ? 'Edit Vitals' : 'Add New Vitals'}</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('Vitals', vitalsForm, setIsVitalsModalOpen); }}>
+                      <div className="grid grid-cols-2 gap-4 py-4">
+                        <div className="space-y-2"><Label htmlFor="bp_systolic">Systolic (mmHg)</Label><Input id="bp_systolic" type="number" value={vitalsForm.bp_systolic} onChange={(e) => setVitalsForm({...vitalsForm, bp_systolic: e.target.value})}/></div>
+                        <div className="space-y-2"><Label htmlFor="bp_diastolic">Diastolic (mmHg)</Label><Input id="bp_diastolic" type="number" value={vitalsForm.bp_diastolic} onChange={(e) => setVitalsForm({...vitalsForm, bp_diastolic: e.target.value})} /></div>
+                        <div className="space-y-2"><Label htmlFor="pulse">Pulse (bpm)</Label><Input id="pulse" type="number" value={vitalsForm.pulse} onChange={(e) => setVitalsForm({...vitalsForm, pulse: e.target.value})} /></div>
+                        <div className="space-y-2"><Label htmlFor="temp">Temp (°C)</Label><Input id="temp" type="number" step="0.1" value={vitalsForm.temp} onChange={(e) => setVitalsForm({...vitalsForm, temp: e.target.value})} /></div>
+                        <div className="space-y-2 col-span-2"><Label htmlFor="rbs">RBS (mmol/L)</Label><Input id="rbs" value={vitalsForm.rbs} onChange={(e) => setVitalsForm({...vitalsForm, rbs: e.target.value})} /></div>
+                      </div>
+                      <DialogFooter>
+                        <DialogClose asChild>
+                          <Button type="button" variant="outline"><XCircle className="mr-2 h-4 w-4" />Cancel</Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={isSubmitting}>
+                          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                          {isSubmitting ? 'Saving...' : 'Save Record'}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {patient.vitals && patient.vitals.length > 0 ? (
+                    patient.vitals.map((vital) => (
+                      <div key={vital.id} className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm p-4 bg-muted/50 rounded-lg">
+                          <DetailItem label="Systolic (mmHg)" value={vital.bp_systolic} />
+                          <DetailItem label="Diastolic (mmHg)" value={vital.bp_diastolic} />
+                          <DetailItem label="Pulse (bpm)" value={vital.pulse} />
+                          <DetailItem label="Temp (°C)" value={vital.temp} />
+                          <DetailItem label="RBS (mmol/L)" value={vital.rbs} />
+                      </div>
+                    ))
+                ) : ( <p className="text-muted-foreground text-center py-4">No vitals recorded.</p> )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Scale className="w-6 h-6 text-primary" />
+                  <div>
+                    <CardTitle>Nutrition</CardTitle>
+                    <CardDescription>Latest nutrition assessment details.</CardDescription>
+                  </div>
+                </div>
+                 <Dialog open={isNutritionModalOpen} onOpenChange={setIsNutritionModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      {patient.nutrition && patient.nutrition.length > 0 ? 'Edit Assessment' : 'Add Assessment'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{patient.nutrition && patient.nutrition.length > 0 ? 'Edit Nutrition Assessment' : 'Add Nutrition Assessment'}</DialogTitle>
+                    </DialogHeader>
+                     <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('Nutrition', nutritionForm, setIsNutritionModalOpen); }}>
+                        <div className="py-4 space-y-6">
+                          <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2"><Label htmlFor="height">Height (cm)</Label><Input id="height" type="number" value={nutritionForm.height} onChange={(e) => setNutritionForm({...nutritionForm, height: e.target.value})} /></div>
+                              <div className="space-y-2"><Label htmlFor="weight">Weight (kg)</Label><Input id="weight" type="number" step="0.1" value={nutritionForm.weight} onChange={(e) => setNutritionForm({...nutritionForm, weight: e.target.value})} /></div>
+                              <div className="space-y-2"><Label htmlFor="visceral_fat">Visceral Fat</Label><Input id="visceral_fat" type="number" value={nutritionForm.visceral_fat} onChange={(e) => setNutritionForm({...nutritionForm, visceral_fat: e.target.value})} /></div>
+                              <div className="space-y-2"><Label htmlFor="body_fat_percent">Body Fat %</Label><Input id="body_fat_percent" type="number" step="0.1" value={nutritionForm.body_fat_percent} onChange={(e) => setNutritionForm({...nutritionForm, body_fat_percent: e.target.value})} /></div>
+                          </div>
+                          <div className="space-y-2"><Label htmlFor="notes_nutritionist">Nutritionist Notes</Label><Textarea id="notes_nutritionist" value={nutritionForm.notes_nutritionist} onChange={(e) => setNutritionForm({...nutritionForm, notes_nutritionist: e.target.value})} /></div>
+                        </div>
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <Button type="button" variant="outline"><XCircle className="mr-2 h-4 w-4" />Cancel</Button>
+                          </DialogClose>
+                          <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            {isSubmitting ? 'Saving...' : 'Save Record'}
+                          </Button>
+                        </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {patient.nutrition && patient.nutrition.length > 0 ? (
+                    patient.nutrition.map((nutri) => (
+                    <div key={nutri.id} className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm p-4 bg-muted/50 rounded-lg">
+                          <DetailItem label="Height (cm)" value={nutri.height} />
+                          <DetailItem label="Weight (kg)" value={nutri.weight} />
+                          <DetailItem label="BMI" value={nutri.bmi} />
+                          <DetailItem label="Visceral Fat" value={nutri.visceral_fat} />
+                          <DetailItem label="Body Fat %" value={nutri.body_fat_percent} />
+                        </div>
+                        {nutri.notes_nutritionist && (<> <Separator className="my-4" /> <div><p className="text-sm font-medium text-muted-foreground">Nutritionist Notes</p><p className="text-foreground mt-1 whitespace-pre-wrap text-sm">{nutri.notes_nutritionist}</p></div></>)}
+                    </div>
+                    ))
+                ) : ( <p className="text-muted-foreground text-center py-4">No nutrition assessment recorded.</p> )}
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Target className="w-6 h-6 text-primary" />
+                  <div>
+                    <CardTitle>Goals</CardTitle>
+                    <CardDescription>Patient's health and wellness goals.</CardDescription>
+                  </div>
+                </div>
+                 <Dialog open={isGoalModalOpen} onOpenChange={setIsGoalModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                        <PlusCircle className="mr-2 h-4 w-4"/>
+                        {patient.goals && patient.goals.length > 0 ? 'Edit Goal' : 'Set Goal'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{patient.goals && patient.goals.length > 0 ? 'Edit Goal' : 'Set New Goal'}</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('Goal', goalForm, setIsGoalModalOpen); }}>
+                      <div className="space-y-6 py-4">
+                          <div className="space-y-2"><Label htmlFor="discussion">Discussion</Label><Textarea id="discussion" value={goalForm.discussion} onChange={(e) => setGoalForm({...goalForm, discussion: e.target.value})} /></div>
+                          <div className="space-y-2"><Label htmlFor="goal">Goal</Label><Textarea id="goal" value={goalForm.goal} onChange={(e) => setGoalForm({...goalForm, goal: e.target.value})} /></div>
+                      </div>
+                      <DialogFooter>
+                        <DialogClose asChild>
+                          <Button type="button" variant="outline"><XCircle className="mr-2 h-4 w-4" />Cancel</Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={isSubmitting}>
+                          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                          {isSubmitting ? 'Saving...' : 'Save Record'}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {patient.goals && patient.goals.length > 0 ? (
+                    <div className="space-y-4">
+                    {patient.goals.map((goal) => (
+                    <div key={goal.id} className="space-y-4 p-4 border rounded-xl bg-background/50">
+                        <div><h4 className="font-semibold text-primary">Discussion</h4><p className="text-foreground mt-1 text-sm">{goal.discussion || '-'}</p></div>
+                        <Separator />
+                        <div><h4 className="font-semibold text-primary">Goal</h4><p className="text-foreground mt-1 text-sm">{goal.goal || '-'}</p></div>
+                    </div>
+                    ))}
+                    </div>
+                ) : ( <p className="text-muted-foreground text-center py-4">No goals set.</p> )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Stethoscope className="w-6 h-6 text-primary" />
+                  <div>
+                    <CardTitle>Clinical Review</CardTitle>
+                    <CardDescription>Notes from clinical staff.</CardDescription>
+                  </div>
+                </div>
+                 <Dialog open={isClinicalModalOpen} onOpenChange={setIsClinicalModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                        <PlusCircle className="mr-2 h-4 w-4"/>
+                        {patient.clinicals && patient.clinicals.length > 0 ? 'Edit Review' : 'Add Review'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{patient.clinicals && patient.clinicals.length > 0 ? 'Edit Clinical Review' : 'Add Clinical Review'}</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('Clinical Review', clinicalForm, setIsClinicalModalOpen); }}>
+                      <div className="space-y-6 py-4">
+                          <div className="space-y-2"><Label htmlFor="notes_doctor">Doctor's Notes</Label><Textarea id="notes_doctor" value={clinicalForm.notes_doctor} onChange={(e) => setClinicalForm({...clinicalForm, notes_doctor: e.target.value})}/></div>
+                          <div className="space-y-2"><Label htmlFor="notes_psychologist">Psychologist's Notes</Label><Textarea id="notes_psychologist" value={clinicalForm.notes_psychologist} onChange={(e) => setClinicalForm({...clinicalForm, notes_psychologist: e.target.value})}/></div>
+                      </div>
+                      <DialogFooter>
+                        <DialogClose asChild>
+                          <Button type="button" variant="outline"><XCircle className="mr-2 h-4 w-4" />Cancel</Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={isSubmitting}>
+                          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                          {isSubmitting ? 'Saving...' : 'Save Record'}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {patient.clinicals && patient.clinicals.length > 0 ? (
+                    <div className="space-y-6">
+                    {patient.clinicals.map((clinic) => (
+                    <div key={clinic.id} className="space-y-6">
+                        {clinic.notes_doctor && (<div className="p-4 border rounded-xl bg-background/50"><h4 className="font-semibold text-primary">Doctor's Notes</h4><p className="text-foreground mt-2 text-sm">{clinic.notes_doctor}</p></div>)}
+                        {clinic.notes_psychologist && (<div className="p-4 border rounded-xl bg-background/50"><h4 className="font-semibold text-primary">Psychologist's Notes</h4><p className="text-foreground mt-2 text-sm">{clinic.notes_psychologist}</p></div>)}
+                        {!clinic.notes_doctor && !clinic.notes_psychologist && (<p className="text-muted-foreground text-sm text-center">No clinical notes recorded for this entry.</p>)}
+                    </div>
+                    ))}
+                    </div>
+                ) : ( <p className="text-muted-foreground text-center py-4">No clinical review found.</p> )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
