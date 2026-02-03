@@ -1,4 +1,4 @@
-import type { Patient, User, Corporate, Vital, Nutrition, Goal, Clinical } from '@/lib/types';
+import type { Patient, User, Corporate, Vital, Nutrition, Goal, Clinical, ClinicalParameter } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { 
     patients as mockPatients, 
@@ -7,7 +7,8 @@ import {
     vitals as mockVitals,
     nutrition as mockNutrition,
     goals as mockGoals,
-    clinicals as mockClinicals
+    clinicals as mockClinicals,
+    clinicalParameters as mockClinicalParameters
 } from './mock-data';
 
 export async function fetchPatients(): Promise<Patient[]> {
@@ -52,6 +53,11 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
 export async function fetchUsers(): Promise<User[]> {
     noStore();
     return mockUsers;
+}
+
+export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
+    noStore();
+    return mockClinicalParameters;
 }
 
 export async function fetchCorporates(): Promise<Corporate[]> {
