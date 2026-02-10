@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Patient, ClinicalParameter, User } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Users, SlidersHorizontal, LogOut } from 'lucide-react';
+import { Users, SlidersHorizontal } from 'lucide-react';
 import PatientList from '@/components/dashboard/patient-list';
 import SettingsView from '@/components/settings/settings-view';
+import ActivityFeed from '@/components/dashboard/activity-feed';
 
 type View = 'patients' | 'settings';
 
@@ -71,7 +72,16 @@ export default function DashboardClient({
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.3 }}
         >
-          {activeView === 'patients' && <PatientList patients={patients} onAddPatientClick={() => handleAddPatient} />}
+          {activeView === 'patients' && (
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+              <div className="lg:col-span-2">
+                <PatientList patients={patients} onAddPatientClick={() => handleAddPatient} />
+              </div>
+              <div className="lg:col-span-1">
+                <ActivityFeed patients={patients} />
+              </div>
+            </div>
+          )}
           {activeView === 'settings' && <SettingsView 
               clinicalParameters={clinicalParameters} 
               onParametersUpdate={handleUpdateParameters}

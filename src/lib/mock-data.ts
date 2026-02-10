@@ -53,6 +53,7 @@ export const prescriptions: Prescription[] = [
 export const appointments: Appointment[] = [
     { id: 1, patient_id: 1, clinician_id: 3, title: 'Follow-up Consultation', appointment_date: '2023-07-15T14:00:00Z', end_date: '2023-07-15T14:30:00Z', description: 'Review recent blood sugar levels.', status: 'scheduled', cancellation_reason: null },
     { id: 2, patient_id: 3, clinician_id: 3, title: 'BP Check', appointment_date: '2023-07-10T09:00:00Z', end_date: '2023-07-10T09:15:00Z', description: null, status: 'confirmed', cancellation_reason: null },
+    { id: 3, patient_id: 1, clinician_id: 3, title: 'Quarterly Review', appointment_date: '2025-08-01T10:00:00Z', end_date: '2025-08-01T10:30:00Z', description: 'Review progress on goals.', status: 'scheduled', cancellation_reason: null },
 ];
 
 export const reviews: Review[] = [
