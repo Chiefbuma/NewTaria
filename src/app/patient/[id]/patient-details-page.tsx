@@ -315,7 +315,7 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
                 </div>
                 <Dialog open={isVitalsModalOpen} onOpenChange={setIsVitalsModalOpen}>
                   <DialogTrigger asChild>
-                     <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
+                     <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                       <PlusCircle className="mr-2 h-4 w-4" />
                       {patient.vitals && patient.vitals.length > 0 ? 'Edit Vitals' : 'Add Vitals'}
                     </Button>
@@ -372,7 +372,7 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
                 </div>
                  <Dialog open={isNutritionModalOpen} onOpenChange={setIsNutritionModalOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
+                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                       <PlusCircle className="mr-2 h-4 w-4" />
                       {patient.nutrition && patient.nutrition.length > 0 ? 'Edit Assessment' : 'Add Assessment'}
                     </Button>
@@ -434,7 +434,7 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
                 </div>
                  <Dialog open={isGoalModalOpen} onOpenChange={setIsGoalModalOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
+                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                         <PlusCircle className="mr-2 h-4 w-4"/>
                         {patient.goals && patient.goals.length > 0 ? 'Edit Goal' : 'Set Goal'}
                     </Button>
@@ -488,7 +488,7 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
                 </div>
                  <Dialog open={isClinicalModalOpen} onOpenChange={setIsClinicalModalOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
+                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                         <PlusCircle className="mr-2 h-4 w-4"/>
                         {patient.clinicals && patient.clinicals.length > 0 ? 'Edit Review' : 'Add Review'}
                     </Button>
