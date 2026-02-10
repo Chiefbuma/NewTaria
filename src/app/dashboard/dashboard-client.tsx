@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Patient, ClinicalParameter, User } from '@/lib/types';
+import type { Patient, ClinicalParameter, User, Corporate } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, SlidersHorizontal } from 'lucide-react';
 import PatientList from '@/components/dashboard/patient-list';
@@ -14,14 +14,17 @@ export default function DashboardClient({
   initialPatients, 
   initialClinicalParameters,
   initialUsers,
+  initialCorporates,
 }: { 
   initialPatients: Patient[],
   initialClinicalParameters: ClinicalParameter[],
   initialUsers: User[],
+  initialCorporates: Corporate[],
 }) {
   const [patients, setPatients] = useState(initialPatients);
   const [clinicalParameters, setClinicalParameters] = useState(initialClinicalParameters);
   const [users, setUsers] = useState(initialUsers);
+  const [corporates, setCorporates] = useState(initialCorporates);
   const [activeView, setActiveView] = useState<View>('patients');
 
   const handleUpdateParameters = (updatedParameters: ClinicalParameter[]) => {
@@ -39,16 +42,15 @@ export default function DashboardClient({
 
   return (
     <div className="space-y-8">
-       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {activeView === 'patients' ? 'Patient Dashboard' : 'Settings'}
-          </h1>
-          <p className="text-muted-foreground">
-            {activeView === 'patients' ? 'View and manage patient records' : 'Configure application settings'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 p-1 bg-muted rounded-xl border">
+       <div>
+        <h1 className="text-2xl font-bold text-foreground">
+          {activeView === 'patients' ? 'Patient Dashboard' : 'Settings'}
+        </h1>
+        <p className="text-muted-foreground">
+          {activeView === 'patients' ? 'View and manage patient records' : 'Configure application settings'}
+        </p>
+      </div>
+      <div className="flex items-center gap-2 p-1 bg-muted rounded-xl border w-fit">
            <NavButton 
              label="Patients" 
              icon={<Users />} 
@@ -62,7 +64,7 @@ export default function DashboardClient({
              onClick={() => setActiveView('settings')}
            />
         </div>
-      </div>
+      
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -78,7 +80,7 @@ export default function DashboardClient({
                 <PatientList patients={patients} onAddPatientClick={() => handleAddPatient} />
               </div>
               <div className="lg:col-span-1">
-                <ActivityFeed patients={patients} />
+                <ActivityFeed patients={patients} corporates={corporates} />
               </div>
             </div>
           )}
