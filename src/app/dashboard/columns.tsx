@@ -1,25 +1,50 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, User, MoreHorizontal, FileText, Trash2 } from "lucide-react"
+import { ArrowUpDown, User, Loader2, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { placeholderImages } from "@/lib/placeholder-images"
 import type { Patient } from "@/lib/types"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
+
+const ViewPatientButton = ({ patient }: { patient: Patient }) => {
+    const [isLoading, setIsLoading] = useState(false);
+    const router = useRouter();
+
+    const handleClick = () => {
+        setIsLoading(true);
+        // The router will take over. No need to set loading to false.
+        router.push(`/patient/${patient.id}`);
+    };
+
+    return (
+        <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClick}
+            disabled={isLoading}
+            className="w-[120px] transition-all duration-300 ease-in-out"
+        >
+            {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+                <>
+                    View Patient
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+            )}
+        </Button>
+    );
+};
+
 
 export const columns: ColumnDef<Patient>[] = [
   {
@@ -107,29 +132,7 @@ export const columns: ColumnDef<Patient>[] = [
       const patient = row.original
       return (
         <div className="text-right">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="h-4 w-4" />
-                <span className="sr-only">Actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link href={`/patient/${patient.id}`}>
-                  <User className="mr-2 h-4 w-4" /> View Patient
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <FileText className="mr-2 h-4 w-4" /> Generate Report
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/40">
-                <Trash2 className="mr-2 h-4 w-4" /> Delete Patient
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ViewPatientButton patient={patient} />
         </div>
       )
     },
