@@ -14,20 +14,20 @@ export default function ActivityFeed({ patients, corporates }: { patients: Patie
     {
       title: 'Total Patients',
       value: totalPatients,
-      icon: <Users className="h-6 w-6 text-blue-500" />,
-      color: 'bg-blue-100 dark:bg-blue-900/20',
+      icon: <Users className="h-6 w-6 text-primary" />,
+      color: 'bg-primary/10',
     },
     {
       title: 'Pending Onboarding',
       value: pendingOnboarding,
       icon: <UserRoundCog className="h-6 w-6 text-amber-500" />,
-      color: 'bg-amber-100 dark:bg-amber-900/20',
+      color: 'bg-amber-500/10',
     },
     {
       title: 'Total Corporates',
       value: totalCorporates,
       icon: <Building className="h-6 w-6 text-emerald-500" />,
-      color: 'bg-emerald-100 dark:bg-emerald-900/20',
+      color: 'bg-emerald-500/10',
     },
   ];
 
@@ -37,25 +37,22 @@ export default function ActivityFeed({ patients, corporates }: { patients: Patie
             <CardTitle>Summary Statistics</CardTitle>
             <CardDescription>An overview of key metrics.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="grid gap-4">
         {stats.map((stat, index) => (
             <motion.div
                 key={stat.title}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="p-4 bg-background rounded-xl border flex items-center gap-4 hover:border-primary/50 transition-colors"
             >
-                <Card className="shadow-sm hover:shadow-md transition-shadow">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                         <div className={`p-2 rounded-lg ${stat.color}`}>
-                            {stat.icon}
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-bold">{stat.value}</div>
-                    </CardContent>
-                </Card>
+                <div className={`p-3 rounded-full ${stat.color}`}>
+                    {stat.icon}
+                </div>
+                <div>
+                    <p className="text-2xl font-bold">{stat.value}</p>
+                    <p className="text-sm text-muted-foreground">{stat.title}</p>
+                </div>
             </motion.div>
         ))}
         </CardContent>
