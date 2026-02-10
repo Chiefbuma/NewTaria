@@ -2,7 +2,7 @@
 
 import type { Patient, Corporate } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Users, Building, UserRoundClock } from 'lucide-react';
+import { Users, Building, UserRoundCog } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function ActivityFeed({ patients, corporates }: { patients: Patient[], corporates: Corporate[] }) {
@@ -20,7 +20,7 @@ export default function ActivityFeed({ patients, corporates }: { patients: Patie
     {
       title: 'Pending Onboarding',
       value: pendingOnboarding,
-      icon: <UserRoundClock className="h-6 w-6 text-amber-500" />,
+      icon: <UserRoundCog className="h-6 w-6 text-amber-500" />,
       color: 'bg-amber-100 dark:bg-amber-900/20',
     },
     {
