@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Patient, Corporate, User, Vital, Nutrition, Goal, Clinical, ClinicalParameter, Assessment, Review } from '@/lib/types';
+import type { Patient, Corporate, User, Vital, Nutrition, Goal, Clinical, ClinicalParameter, Assessment, Review, Prescription, Medication } from '@/lib/types';
 import {
   Card,
   CardContent,
@@ -77,6 +77,8 @@ import ReportViewer from '@/components/report-viewer';
 import { corporates as mockCorporates } from '@/lib/mock-data';
 import { motion } from 'framer-motion';
 import AddAssessmentModal from '@/components/patient/add-assessment-modal';
+import PrescriptionManagement from '@/components/patient/prescription-management';
+import { fetchMedications } from '@/lib/data';
 
 const DetailItem = ({
   label,
@@ -111,6 +113,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
   
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [corporates, setCorporates] = useState<Corporate[]>(mockCorporates);
+  const [medications, setMedications] = useState<Medication[]>([]);
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -131,6 +134,11 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
     if (storedUser) {
       setCurrentUser(JSON.parse(storedUser));
     }
+    const getMeds = async () => {
+        const meds = await fetchMedications();
+        setMedications(meds);
+    }
+    getMeds();
   }, []);
 
 
@@ -215,6 +223,10 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
         goals: prev.goals.filter(g => g.id !== goalId)
     }));
     toast({title: 'Success', description: 'Goal deleted.'});
+  }
+  
+  const handlePrescriptionsUpdate = (updatedPrescriptions: Prescription[]) => {
+      setPatient(prev => ({ ...prev, prescriptions: updatedPrescriptions }));
   }
 
   const calculateAssessmentWeek = (assessment: Assessment) => {
@@ -417,6 +429,12 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
             </Card>
           </div>
           <div className="lg:col-span-2 space-y-6">
+            <PrescriptionManagement
+                patient={patient}
+                prescriptions={patient.prescriptions}
+                medications={medications}
+                onPrescriptionsUpdate={handlePrescriptionsUpdate}
+            />
             <Card>
               <CardHeader>
                 <CardTitle>Goals</CardTitle>
