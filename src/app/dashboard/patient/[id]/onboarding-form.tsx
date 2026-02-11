@@ -79,21 +79,21 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
     };
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-3xl mx-auto">
             <PatientHeader patient={patient} />
             <form onSubmit={handleSubmit}>
-                <div className="space-y-8">
+                <div className="space-y-6">
                     <Card>
                         <CardHeader>
                             <CardTitle>Medical History</CardTitle>
                             <CardDescription>Capture important medical history and diagnoses.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
+                        <CardContent className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="brief_medical_history">Brief Medical History</Label>
-                                <Textarea id="brief_medical_history" value={formData.brief_medical_history || ''} onChange={handleInputChange} placeholder="e.g. Diagnosed with Type 2 Diabetes in 2020..."/>
+                                <Textarea id="brief_medical_history" value={formData.brief_medical_history || ''} onChange={handleInputChange} />
                             </div>
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="years_since_diagnosis">Years Since Primary Diagnosis</Label>
                                     <Input id="years_since_diagnosis" type="number" value={formData.years_since_diagnosis || ''} onChange={handleInputChange} />
@@ -105,7 +105,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="relevant_family_history">Relevant Family History</Label>
-                                <Textarea id="relevant_family_history" value={formData.relevant_family_history || ''} onChange={handleInputChange} placeholder="e.g. Father has history of heart disease..."/>
+                                <Textarea id="relevant_family_history" value={formData.relevant_family_history || ''} onChange={handleInputChange} />
                             </div>
                         </CardContent>
                     </Card>
@@ -115,7 +115,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                             <CardTitle>Lifestyle & Environment</CardTitle>
                             <CardDescription>Understand the patient's daily life and environment.</CardDescription>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="dietary_restrictions">Dietary Restrictions or Preferences</Label>
                                 <Textarea id="dietary_restrictions" value={formData.dietary_restrictions || ''} onChange={handleInputChange} />
@@ -126,7 +126,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="lifestyle_factors">Lifestyle Factors</Label>
-                                <Textarea id="lifestyle_factors" value={formData.lifestyle_factors || ''} onChange={handleInputChange} placeholder="e.g. Smoker, exercises 3x/week, stressful job..." />
+                                <Textarea id="lifestyle_factors" value={formData.lifestyle_factors || ''} onChange={handleInputChange} />
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="physical_limitations">Physical Limitations</Label>
@@ -134,7 +134,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                             </div>
                              <div className="space-y-2 md:col-span-2">
                                 <Label htmlFor="psychosocial_factors">Psychosocial Factors</Label>
-                                <Textarea id="psychosocial_factors" value={formData.psychosocial_factors || ''} onChange={handleInputChange} placeholder="e.g. Lives alone, strong family support..."/>
+                                <Textarea id="psychosocial_factors" value={formData.psychosocial_factors || ''} onChange={handleInputChange} />
                             </div>
                         </CardContent>
                     </Card>
@@ -143,7 +143,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                         <CardHeader>
                             <CardTitle>Emergency Contact & Administrative</CardTitle>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="emergency_contact_name">Emergency Contact Name</Label>
                                 <Input id="emergency_contact_name" value={formData.emergency_contact_name || ''} onChange={handleInputChange} />
@@ -197,26 +197,26 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                         <CardHeader>
                             <CardTitle>Equipment & Consent</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-6">
+                        <CardContent className="space-y-4">
                             <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
                                 <div className="flex items-center space-x-2">
                                     <Switch id="has_weighing_scale" checked={formData.has_weighing_scale || false} onCheckedChange={(checked) => handleSwitchChange('has_weighing_scale', checked)} />
-                                    <Label htmlFor="has_weighing_scale">Has Weighing Scale</Label>
+                                    <Label htmlFor="has_weighing_scale">Weighing Scale</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Switch id="has_glucometer" checked={formData.has_glucometer || false} onCheckedChange={(checked) => handleSwitchChange('has_glucometer', checked)} />
-                                    <Label htmlFor="has_glucometer">Has Glucometer</Label>
+                                    <Label htmlFor="has_glucometer">Glucometer</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Switch id="has_bp_machine" checked={formData.has_bp_machine || false} onCheckedChange={(checked) => handleSwitchChange('has_bp_machine', checked)} />
-                                    <Label htmlFor="has_bp_machine">Has BP Machine</Label>
+                                    <Label htmlFor="has_bp_machine">BP Machine</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Switch id="has_tape_measure" checked={formData.has_tape_measure || false} onCheckedChange={(checked) => handleSwitchChange('has_tape_measure', checked)} />
-                                    <Label htmlFor="has_tape_measure">Has Tape Measure</Label>
+                                    <Label htmlFor="has_tape_measure">Tape Measure</Label>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                                <div className="space-y-2">
                                     <Label htmlFor="date_of_onboarding">Date of Onboarding</Label>
                                     <Input id="date_of_onboarding" type="date" value={formData.date_of_onboarding || ''} onChange={handleInputChange} required />
