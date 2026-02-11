@@ -24,8 +24,8 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
     const { toast } = useToast();
     const [formData, setFormData] = useState<Partial<Patient>>({ 
         ...patient,
-        dob: patient.dob ? new Date(patient.dob).toISOString().split('T')[0] : '',
         consent_date: patient.consent_date ? new Date(patient.consent_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        date_of_onboarding: patient.date_of_onboarding ? new Date(patient.date_of_onboarding).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
      });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [navigators, setNavigators] = useState<User[]>([]);
@@ -33,16 +33,18 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
 
     useEffect(() => {
         const fetchData = async () => {
-            const [navData, corpData] = await Promise.all([
-                fetchUsers(),
-                fetchCorporates()
-            ]);
-            setNavigators(navData.filter((u: User) => u.role === 'navigator'));
-            setCorporates(corpData);
+            try {
+                const [navData, corpData] = await Promise.all([
+                    fetchUsers(),
+                    fetchCorporates()
+                ]);
+                setNavigators(navData.filter((u: User) => u.role === 'navigator'));
+                setCorporates(corpData);
+            } catch (error) {
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to load necessary data.' });
+            }
         };
-        fetchData().catch(error => {
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to load necessary data.' });
-        });
+        fetchData();
     }, [toast]);
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -69,10 +71,6 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
             description: `${patient.first_name} is now marked as Active. This will not persist on page refresh.`,
         });
         
-        // In a real app, this would trigger a database update.
-        // For this mock, we'll just refresh the page which re-fetches from our "database" (mock-data.ts)
-        // To simulate the state change, we'd need to lift state up, which is a larger refactor.
-        // For now, the toast notification provides user feedback.
         router.refresh(); 
         setIsSubmitting(false);
     };
@@ -84,86 +82,63 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                 <div className="space-y-8">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Demographics (Step 2 of 2)</CardTitle>
-                            <CardDescription>Complete the patient's profile with their demographic information.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="first_name">First Name</Label>
-                                <Input id="first_name" value={formData.first_name || ''} onChange={handleInputChange} required />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="middle_name">Middle Name</Label>
-                                <Input id="middle_name" value={formData.middle_name || ''} onChange={handleInputChange} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="surname">Surname</Label>
-                                <Input id="surname" value={formData.surname || ''} onChange={handleInputChange} required />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="dob">Date of Birth</Label>
-                                <Input id="dob" type="date" value={formData.dob || ''} onChange={handleInputChange} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="age">Age</Label>
-                                <Input id="age" type="number" value={formData.age || ''} onChange={handleInputChange} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="sex">Sex</Label>
-                                <Select value={formData.sex || ''} onValueChange={(value) => handleSelectChange('sex', value)}>
-                                    <SelectTrigger id="sex"><SelectValue placeholder="Select sex" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Male">Male</SelectItem>
-                                        <SelectItem value="Female">Female</SelectItem>
-                                        <SelectItem value="Other">Other</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2 md:col-span-2">
-                                <Label htmlFor="email">Email</Label>
-                                <Input id="email" type="email" value={formData.email || ''} onChange={handleInputChange} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="phone">Phone</Label>
-                                <Input id="phone" type="tel" value={formData.phone || ''} onChange={handleInputChange} />
-                            </div>
-                        </CardContent>
-                    </Card>
-                    
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Medical & Lifestyle</CardTitle>
-                            <CardDescription>Capture important medical history and lifestyle factors.</CardDescription>
+                            <CardTitle>Medical History</CardTitle>
+                            <CardDescription>Capture important medical history and diagnoses.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="space-y-2">
                                 <Label htmlFor="brief_medical_history">Brief Medical History</Label>
                                 <Textarea id="brief_medical_history" value={formData.brief_medical_history || ''} onChange={handleInputChange} placeholder="e.g. Diagnosed with Type 2 Diabetes in 2020..."/>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="years_since_diagnosis">Years Since Diagnosis (if applicable)</Label>
-                                <Input id="years_since_diagnosis" type="number" value={formData.years_since_diagnosis || ''} onChange={handleInputChange} />
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="years_since_diagnosis">Years Since Primary Diagnosis</Label>
+                                    <Input id="years_since_diagnosis" type="number" value={formData.years_since_diagnosis || ''} onChange={handleInputChange} />
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="past_medical_interventions">Past Medical Interventions</Label>
+                                    <Input id="past_medical_interventions" value={formData.past_medical_interventions || ''} onChange={handleInputChange} />
+                                </div>
                             </div>
-                            <div className="flex items-center space-x-4">
-                                <div className="flex items-center space-x-2">
-                                    <Switch id="has_glucometer" checked={formData.has_glucometer || false} onCheckedChange={(checked) => handleSwitchChange('has_glucometer', checked)} />
-                                    <Label htmlFor="has_glucometer">Has Glucometer</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Switch id="has_bp_machine" checked={formData.has_bp_machine || false} onCheckedChange={(checked) => handleSwitchChange('has_bp_machine', checked)} />
-                                    <Label htmlFor="has_bp_machine">Has BP Machine</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Switch id="has_tape_measure" checked={formData.has_tape_measure || false} onCheckedChange={(checked) => handleSwitchChange('has_tape_measure', checked)} />
-                                    <Label htmlFor="has_tape_measure">Has Tape Measure</Label>
-                                </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="relevant_family_history">Relevant Family History</Label>
+                                <Textarea id="relevant_family_history" value={formData.relevant_family_history || ''} onChange={handleInputChange} placeholder="e.g. Father has history of heart disease..."/>
                             </div>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Emergency & Administrative</CardTitle>
+                            <CardTitle>Lifestyle & Environment</CardTitle>
+                            <CardDescription>Understand the patient's daily life and environment.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="dietary_restrictions">Dietary Restrictions or Preferences</Label>
+                                <Textarea id="dietary_restrictions" value={formData.dietary_restrictions || ''} onChange={handleInputChange} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="allergies_intolerances">Allergies or Intolerances</Label>
+                                <Textarea id="allergies_intolerances" value={formData.allergies_intolerances || ''} onChange={handleInputChange} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="lifestyle_factors">Lifestyle Factors</Label>
+                                <Textarea id="lifestyle_factors" value={formData.lifestyle_factors || ''} onChange={handleInputChange} placeholder="e.g. Smoker, exercises 3x/week, stressful job..." />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="physical_limitations">Physical Limitations</Label>
+                                <Textarea id="physical_limitations" value={formData.physical_limitations || ''} onChange={handleInputChange} />
+                            </div>
+                             <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="psychosocial_factors">Psychosocial Factors</Label>
+                                <Textarea id="psychosocial_factors" value={formData.psychosocial_factors || ''} onChange={handleInputChange} placeholder="e.g. Lives alone, strong family support..."/>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Emergency Contact & Administrative</CardTitle>
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="space-y-2">
@@ -175,8 +150,12 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                                 <Input id="emergency_contact_phone" type="tel" value={formData.emergency_contact_phone || ''} onChange={handleInputChange} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="emergency_contact_relation">Emergency Contact Relation</Label>
+                                <Label htmlFor="emergency_contact_relation">Relation</Label>
                                 <Input id="emergency_contact_relation" value={formData.emergency_contact_relation || ''} onChange={handleInputChange} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="emr_number">EMR Number</Label>
+                                <Input id="emr_number" value={formData.emr_number || ''} onChange={handleInputChange} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="navigator_id">Assign Navigator</Label>
@@ -198,10 +177,42 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="consent_date">Consent Date</Label>
-                                <Input id="consent_date" type="date" value={formData.consent_date || ''} onChange={handleInputChange} required />
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Equipment & Consent</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+                                <div className="flex items-center space-x-2">
+                                    <Switch id="has_weighing_scale" checked={formData.has_weighing_scale || false} onCheckedChange={(checked) => handleSwitchChange('has_weighing_scale', checked)} />
+                                    <Label htmlFor="has_weighing_scale">Has Weighing Scale</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Switch id="has_glucometer" checked={formData.has_glucometer || false} onCheckedChange={(checked) => handleSwitchChange('has_glucometer', checked)} />
+                                    <Label htmlFor="has_glucometer">Has Glucometer</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Switch id="has_bp_machine" checked={formData.has_bp_machine || false} onCheckedChange={(checked) => handleSwitchChange('has_bp_machine', checked)} />
+                                    <Label htmlFor="has_bp_machine">Has BP Machine</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Switch id="has_tape_measure" checked={formData.has_tape_measure || false} onCheckedChange={(checked) => handleSwitchChange('has_tape_measure', checked)} />
+                                    <Label htmlFor="has_tape_measure">Has Tape Measure</Label>
+                                </div>
                             </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                               <div className="space-y-2">
+                                    <Label htmlFor="date_of_onboarding">Date of Onboarding</Label>
+                                    <Input id="date_of_onboarding" type="date" value={formData.date_of_onboarding || ''} onChange={handleInputChange} required />
+                                </div>
+                               <div className="space-y-2">
+                                    <Label htmlFor="consent_date">Consent Date</Label>
+                                    <Input id="consent_date" type="date" value={formData.consent_date || ''} onChange={handleInputChange} required />
+                                </div>
+                           </div>
                         </CardContent>
                     </Card>
 

@@ -102,37 +102,54 @@ export type Review = {
 
 export type Patient = {
   id: number;
+  // Core Info from Registration
   first_name: string;
-  middle_name: string | null;
   surname: string | null;
-  dob: string | null;
   age: number | null;
   sex: 'Male' | 'Female' | 'Other' | null;
-  phone: string | null;
-  email: string | null;
-  wellness_date: string;
-  corporate_id: number | null;
-  status: 'Active' | 'Pending' | 'Critical' | 'Discharged' | 'In Review';
+  email: string | null; // For login & contact
+  diagnosis: string | null;
   created_at: string;
+
+  // Status & System Fields
+  status: 'Active' | 'Pending' | 'Critical' | 'Discharged' | 'In Review';
+
+  // Onboarding Data
+  emr_number: string | null;
   date_of_onboarding: string | null;
+  navigator_id: number | null;
+  consent_date: string | null;
+  brief_medical_history: string | null;
+  years_since_diagnosis: number | null;
+  past_medical_interventions: string | null;
+  relevant_family_history: string | null;
+  has_weighing_scale: boolean;
   has_glucometer: boolean;
   has_bp_machine: boolean;
   has_tape_measure: boolean;
-  brief_medical_history: string | null;
-  years_since_diagnosis: number | null;
+  dietary_restrictions: string | null;
+  allergies_intolerances: string | null;
+  lifestyle_factors: string | null;
+  physical_limitations: string | null;
+  psychosocial_factors: string | null;
+
+  // Emergency Contact
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
   emergency_contact_relation: string | null;
-  consent_date: string | null;
-  navigator_id: number | null;
-  date_of_diagnosis: string | null;
+
+  // Other Misc Fields
+  phone: string | null;
+  dob: string | null;
+  wellness_date: string; // Linked to corporate
+  corporate_id: number | null;
+  date_of_diagnosis: string | null; // Can be different from registration diagnosis date
   
-  // Joined/related data
+  // Joined/related data (from data.ts)
   corporate_name?: string;
   navigator_name?: string;
   assessments: Assessment[];
   goals: Goal[];
-  diagnoses: Diagnosis[];
   prescriptions: Prescription[];
   appointments: Appointment[];
   reviews: Review[];

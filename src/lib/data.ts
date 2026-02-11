@@ -26,7 +26,6 @@ export async function fetchPatients(): Promise<Patient[]> {
             corporate_name: corporate?.name,
             assessments: mockAssessments.filter(a => a.patient_id === patient.id),
             goals: mockGoals.filter(g => g.patient_id === patient.id),
-            diagnoses: mockDiagnoses.filter(d => d.id === 1 || d.id === 2), // Mock: assign some diagnoses
             prescriptions: mockPrescriptions.filter(p => p.patient_id === patient.id).map(p => ({...p, medication: mockMedications.find(m => m.id === p.medication_id)})),
             appointments: mockAppointments.filter(a => a.patient_id === patient.id).map(a => ({...a, clinician: mockUsers.find(u => u.id === a.clinician_id)})),
             reviews: mockReviews.filter(r => r.patient_id === patient.id).map(r => ({...r, reviewed_by: mockUsers.find(u => u.id === r.reviewed_by_id)?.name})),
@@ -54,7 +53,6 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
         corporate_name: corporate?.name,
         assessments: mockAssessments.filter(a => a.patient_id === patient.id),
         goals: mockGoals.filter(g => g.patient_id === patient.id),
-        diagnoses: (patient.id === 1) ? [mockDiagnoses[0]] : (patient.id === 3) ? [mockDiagnoses[1]] : [],
         prescriptions: mockPrescriptions.filter(p => p.patient_id === patient.id).map(p => ({...p, medication: mockMedications.find(m => m.id === p.medication_id)})),
         appointments: mockAppointments.filter(a => a.patient_id === patient.id).map(a => ({...a, clinician: mockUsers.find(u => u.id === a.clinician_id)})),
         reviews: mockReviews.filter(r => r.patient_id === patient.id).map(r => ({...r, reviewed_by: mockUsers.find(u => u.id === r.reviewed_by_id)?.name})),
