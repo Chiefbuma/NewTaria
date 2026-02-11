@@ -7,6 +7,8 @@ import { Users, SlidersHorizontal } from 'lucide-react';
 import PatientList from '@/components/dashboard/patient-list';
 import SettingsView from '@/components/settings/settings-view';
 import ActivityFeed from '@/components/dashboard/activity-feed';
+import UpcomingAppointments from '@/components/dashboard/upcoming-appointments';
+import CriticalPatients from '@/components/dashboard/critical-patients';
 
 type View = 'patients' | 'settings';
 
@@ -35,35 +37,32 @@ export default function DashboardClient({
     setUsers(updatedUsers);
   };
 
-  const handleAddPatient = (newPatient: Patient) => {
-    setPatients(prev => [newPatient, ...prev]);
-    setActiveView('patients');
-  }
-
   return (
     <div className="space-y-8">
-       <div>
-        <h1 className="text-2xl font-bold text-foreground">
-          {activeView === 'patients' ? 'Patient Dashboard' : 'Settings'}
-        </h1>
-        <p className="text-muted-foreground">
-          {activeView === 'patients' ? 'View and manage patient records' : 'Configure application settings'}
-        </p>
-      </div>
-      <div className="flex items-center gap-2 p-1 bg-muted rounded-xl border w-fit">
-           <NavButton 
-             label="Patients" 
-             icon={<Users />} 
-             isActive={activeView === 'patients'}
-             onClick={() => setActiveView('patients')}
-           />
-           <NavButton 
-             label="Settings" 
-             icon={<SlidersHorizontal />} 
-             isActive={activeView === 'settings'}
-             onClick={() => setActiveView('settings')}
-           />
-        </div>
+       <div className="flex justify-between items-start">
+            <div>
+                <h1 className="text-3xl font-bold text-foreground tracking-tight">
+                {activeView === 'patients' ? 'Patient Dashboard' : 'Settings'}
+                </h1>
+                <p className="text-muted-foreground">
+                {activeView === 'patients' ? 'An overview of your patient management activities.' : 'Configure application settings'}
+                </p>
+            </div>
+            <div className="flex items-center gap-2 p-1 bg-muted rounded-xl border w-fit">
+                <NavButton 
+                    label="Patients" 
+                    icon={<Users />} 
+                    isActive={activeView === 'patients'}
+                    onClick={() => setActiveView('patients')}
+                />
+                <NavButton 
+                    label="Settings" 
+                    icon={<SlidersHorizontal />} 
+                    isActive={activeView === 'settings'}
+                    onClick={() => setActiveView('settings')}
+                />
+            </div>
+       </div>
       
 
       <AnimatePresence mode="wait">
@@ -73,16 +72,21 @@ export default function DashboardClient({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.3 }}
+          className="space-y-8"
         >
           {activeView === 'patients' && (
-             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-              <div className="lg:col-span-2">
-                <PatientList patients={patients} onAddPatientClick={() => handleAddPatient} />
-              </div>
-              <div className="lg:col-span-1">
+             <>
                 <ActivityFeed patients={patients} corporates={corporates} />
-              </div>
-            </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    <div className="lg:col-span-2">
+                        <PatientList patients={patients} />
+                    </div>
+                    <div className="lg:col-span-1 space-y-8">
+                        <UpcomingAppointments patients={patients} />
+                        <CriticalPatients patients={patients} />
+                    </div>
+                </div>
+             </>
           )}
           {activeView === 'settings' && <SettingsView 
               clinicalParameters={clinicalParameters} 

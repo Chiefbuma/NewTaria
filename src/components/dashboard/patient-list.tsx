@@ -10,7 +10,7 @@ import { columns } from '../../app/dashboard/columns';
 import Link from 'next/link';
 import PatientCard from './patient-card';
 
-export default function PatientList({ patients, onAddPatientClick }: { patients: Patient[], onAddPatientClick: (patient: Patient) => void }) {
+export default function PatientList({ patients }: { patients: Patient[] }) {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
   return (
