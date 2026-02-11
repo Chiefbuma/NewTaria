@@ -25,7 +25,7 @@ const NavLink = ({ href, children, isActive, isCollapsed, title }: { href: strin
                             href={href}
                             className={cn(
                                 "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-primary md:h-8 md:w-8",
-                                isActive && "bg-muted text-primary"
+                                isActive && "bg-background text-primary shadow-sm"
                             )}
                         >
                             {children}
@@ -45,7 +45,7 @@ const NavLink = ({ href, children, isActive, isCollapsed, title }: { href: strin
             href={href}
             className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                isActive && "bg-muted text-primary"
+                isActive && "bg-background text-primary font-semibold shadow-sm"
             )}
         >
             {children}
@@ -61,7 +61,10 @@ function AppSidebarNav({ isCollapsed }: { isCollapsed: boolean }) {
     const settingsPath = '/dashboard';
 
     return (
-        <nav className={cn("grid items-start gap-1 text-sm font-medium", isCollapsed ? "justify-center px-2" : "px-2 lg:px-4")}>
+        <nav className={cn(
+                "grid items-start gap-1 text-sm font-medium", 
+                isCollapsed ? "justify-center px-2" : "bg-muted rounded-xl p-2 mx-4"
+            )}>
             <NavLink href={dashboardPath} isActive={pathname === dashboardPath} isCollapsed={isCollapsed} title="Dashboard">
                 <LayoutDashboard className="h-4 w-4" />
             </NavLink>
