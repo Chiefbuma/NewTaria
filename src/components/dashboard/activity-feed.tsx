@@ -15,22 +15,26 @@ export default function ActivityFeed({ patients, corporates }: { patients: Patie
     {
       title: 'Total Patients',
       value: totalPatients,
-      icon: <Users className="h-6 w-6 text-primary" />,
+      icon: Users,
+      color: 'text-primary',
     },
     {
       title: 'Pending Onboarding',
       value: pendingOnboarding,
-      icon: <UserRoundCog className="h-6 w-6 text-amber-500" />,
+      icon: UserRoundCog,
+      color: 'text-amber-500',
     },
     {
       title: 'Critical Patients',
       value: criticalPatients,
-      icon: <AlertTriangle className="h-6 w-6 text-red-500" />,
+      icon: AlertTriangle,
+      color: 'text-red-500',
     },
     {
       title: 'Corporate Partners',
       value: totalCorporates,
-      icon: <Building className="h-6 w-6 text-indigo-500" />,
+      icon: Building,
+      color: 'text-indigo-500',
     },
   ];
 
@@ -41,25 +45,28 @@ export default function ActivityFeed({ patients, corporates }: { patients: Patie
             <CardDescription>A quick summary of your operations.</CardDescription>
         </CardHeader>
         <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-                {stats.map((stat, index) => (
-                    <motion.div 
-                        key={stat.title}
-                        className="flex items-center gap-4 rounded-lg bg-muted/50 p-4 transition-all hover:bg-muted/80 hover:shadow-sm"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.05 }}
-                    >
-                        <div className="bg-background p-3 rounded-full shadow-inner">
-                            {stat.icon}
-                        </div>
-                        <div>
-                            <div className="text-2xl font-bold">{stat.value}</div>
-                            <div className="text-xs text-muted-foreground font-medium">{stat.title}</div>
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
+            <ul className="space-y-4">
+                {stats.map((stat, index) => {
+                    const Icon = stat.icon;
+                    return (
+                        <motion.li
+                            key={stat.title}
+                            className="flex items-center"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.1 }}
+                        >
+                            <div className={`p-3 bg-muted/50 rounded-lg mr-4`}>
+                                <Icon className={`h-5 w-5 ${stat.color}`} />
+                            </div>
+                            <div className="flex-grow">
+                                <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                            </div>
+                            <p className="text-xl font-bold">{stat.value}</p>
+                        </motion.li>
+                    );
+                })}
+            </ul>
         </CardContent>
      </Card>
   );

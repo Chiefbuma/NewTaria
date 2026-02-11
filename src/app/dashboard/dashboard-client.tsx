@@ -73,24 +73,21 @@ export default function DashboardClient({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.3 }}
-          className="space-y-8"
         >
           {activeView === 'patients' && (
-             <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <ActivityFeed patients={patients} corporates={corporates} />
-                    <UpcomingAppointments patients={patients} />
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                    <div className="lg:col-span-2">
-                        <PatientList patients={patients} />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <div className="lg:col-span-2 space-y-8">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <ActivityFeed patients={patients} corporates={corporates} />
+                        <UpcomingAppointments patients={patients} />
                     </div>
-                    <div className="lg:col-span-1 space-y-8">
-                        <Notifications />
-                        <CriticalPatients patients={patients} />
-                    </div>
+                    <PatientList patients={patients} />
                 </div>
-            </>
+                <div className="lg:col-span-1 space-y-8">
+                    <Notifications />
+                    <CriticalPatients patients={patients} />
+                </div>
+            </div>
           )}
           {activeView === 'settings' && <SettingsView 
               clinicalParameters={clinicalParameters} 
