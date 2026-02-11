@@ -52,18 +52,18 @@ export const medications: Medication[] = [
     { id: 2, name: 'Lisinopril', dosage: '10mg' },
 ];
 
-export const prescriptions: Prescription[] = [
-    { id: 1, patient_id: 1, medication_id: 1, dosage: '500mg', frequency: 'twice_daily', start_date: '2023-05-16', end_date: null, notes: 'Take with meals.', status: 'active' },
-    { id: 2, patient_id: 3, medication_id: 2, dosage: '10mg', frequency: 'daily', start_date: '2023-05-17', end_date: null, notes: 'Monitor for cough.', status: 'active' },
+export const prescriptions: Omit<Prescription, 'medication'>[] = [
+    { id: 1, patient_id: 1, medication_id: 1, dosage: '500mg', frequency: 'twice_daily', start_date: '2023-05-16', expiry_date: '2024-05-16', notes: 'Take with meals.', status: 'active' },
+    { id: 2, patient_id: 3, medication_id: 2, dosage: '10mg', frequency: 'daily', start_date: '2023-05-17', expiry_date: null, notes: 'Monitor for cough.', status: 'active' },
 ];
 
-export const appointments: Appointment[] = [
+export const appointments: Omit<Appointment, 'clinician'>[] = [
     { id: 1, patient_id: 1, clinician_id: 3, title: 'Follow-up Consultation', appointment_date: '2023-07-15T14:00:00Z', end_date: '2023-07-15T14:30:00Z', description: 'Review recent blood sugar levels.', status: 'scheduled', cancellation_reason: null },
     { id: 2, patient_id: 3, clinician_id: 3, title: 'BP Check', appointment_date: '2023-07-10T09:00:00Z', end_date: '2023-07-10T09:15:00Z', description: null, status: 'confirmed', cancellation_reason: null },
     { id: 3, patient_id: 1, clinician_id: 3, title: 'Quarterly Review', appointment_date: '2025-08-01T10:00:00Z', end_date: '2025-08-01T10:30:00Z', description: 'Review progress on goals.', status: 'scheduled', cancellation_reason: null },
 ];
 
-export const reviews: Review[] = [
+export const reviews: Omit<Review, 'reviewed_by'>[] = [
     { id: 1, patient_id: 1, reviewed_by_id: 3, review_date: '2023-06-20', subjective_findings: 'Patient reports feeling well.', objective_findings: 'Blood glucose levels are stable.', assessment: 'Good control of diabetes.', plan: 'Continue current medication and diet.', recommendations: 'Encourage regular exercise.', follow_up_date: '2023-07-15' },
     { id: 2, patient_id: 3, reviewed_by_id: 3, review_date: '2023-06-19', subjective_findings: 'Patient reports occasional headaches.', objective_findings: 'BP remains elevated.', assessment: 'Uncontrolled hypertension.', plan: 'Adjust medication (Lisinopril to 20mg).', recommendations: 'Low-sodium diet, stress management techniques.', follow_up_date: '2023-07-10' },
 ];

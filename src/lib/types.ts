@@ -72,7 +72,7 @@ export type Prescription = {
   dosage: string;
   frequency: string;
   start_date: string;
-  end_date: string | null;
+  expiry_date: string | null;
   notes: string | null;
   status: 'active' | 'completed' | 'discontinued';
 };

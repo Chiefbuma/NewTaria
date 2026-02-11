@@ -168,3 +168,24 @@ CREATE TABLE `goals` (
   FOREIGN KEY (`clinical_parameter_id`) REFERENCES `clinical_parameters`(`id`)
 );
 ```
+
+### `prescriptions`
+
+Stores medication prescriptions for patients.
+
+```sql
+CREATE TABLE `prescriptions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `patient_id` int NOT NULL,
+  `medication_id` int NOT NULL,
+  `dosage` varchar(255) NOT NULL,
+  `frequency` varchar(50) NOT NULL,
+  `start_date` date NOT NULL,
+  `expiry_date` date DEFAULT NULL,
+  `notes` text,
+  `status` enum('active','completed','discontinued') NOT NULL,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`patient_id`) REFERENCES `patients`(`id`),
+  FOREIGN KEY (`medication_id`) REFERENCES `medications`(`id`)
+);
+```

@@ -38,9 +38,9 @@ export const getPrescriptionColumns = ({ onEdit, onDelete }: GetPrescriptionColu
       cell: ({ row }) => new Date(row.original.start_date).toLocaleDateString(),
     },
     {
-      accessorKey: "end_date",
-      header: "End Date",
-      cell: ({ row }) => row.original.end_date ? new Date(row.original.end_date).toLocaleDateString() : 'N/A',
+      accessorKey: "expiry_date",
+      header: "Expiry Date",
+      cell: ({ row }) => row.original.expiry_date ? new Date(row.original.expiry_date).toLocaleDateString() : 'N/A',
     },
     {
       accessorKey: "status",

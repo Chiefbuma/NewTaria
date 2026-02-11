@@ -23,7 +23,7 @@ const emptyPrescription: Omit<Prescription, 'id' | 'patient_id' | 'medication'> 
     dosage: '',
     frequency: '',
     start_date: new Date().toISOString().split('T')[0],
-    end_date: null,
+    expiry_date: null,
     notes: null,
     status: 'active',
 };
@@ -38,7 +38,7 @@ export default function AddPrescriptionModal({ isOpen, onClose, onSave, medicati
             setFormData({
                 ...existingPrescription,
                 start_date: new Date(existingPrescription.start_date).toISOString().split('T')[0],
-                end_date: existingPrescription.end_date ? new Date(existingPrescription.end_date).toISOString().split('T')[0] : null,
+                expiry_date: existingPrescription.expiry_date ? new Date(existingPrescription.expiry_date).toISOString().split('T')[0] : null,
             });
         } else {
             setFormData(emptyPrescription);
@@ -109,8 +109,8 @@ export default function AddPrescriptionModal({ isOpen, onClose, onSave, medicati
                 <Input id="start_date" type="date" value={formData.start_date} onChange={handleInputChange} required />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="end_date">End Date</Label>
-                <Input id="end_date" type="date" value={formData.end_date || ''} onChange={handleInputChange} />
+                <Label htmlFor="expiry_date">Expiry Date</Label>
+                <Input id="expiry_date" type="date" value={formData.expiry_date || ''} onChange={handleInputChange} />
             </div>
              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="notes">Notes</Label>
