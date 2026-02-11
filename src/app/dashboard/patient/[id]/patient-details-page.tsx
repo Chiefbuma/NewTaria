@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Patient, Corporate, User, Vital, Nutrition, Goal, Clinical } from '@/lib/types';
+import type { Patient, Corporate, User, Vital, Nutrition, Goal, Clinical, ClinicalParameter, Assessment, Review } from '@/lib/types';
 import {
   Card,
   CardContent,
@@ -10,15 +10,6 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,7 +42,12 @@ import {
   Loader2,
   CalendarDays,
   Trash2,
-  Edit
+  Edit,
+  History,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
+  Circle,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
@@ -69,6 +65,7 @@ import { placeholderImages } from '@/lib/placeholder-images';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ReportViewer from '@/components/report-viewer';
 import { corporates as mockCorporates } from '@/lib/mock-data';
+import { motion } from 'framer-motion';
 
 const DetailItem = ({
   label,
@@ -94,7 +91,7 @@ const DetailItem = ({
   </div>
 );
 
-export default function PatientDetailsPage({ initialPatient }: { initialPatient: Patient }) {
+export default function PatientDetailsPage({ initialPatient, clinicalParameters }: { initialPatient: Patient, clinicalParameters: ClinicalParameter[] }) {
   const router = useRouter();
   const { toast } = useToast();
 
@@ -104,20 +101,12 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [corporates, setCorporates] = useState<Corporate[]>(mockCorporates);
 
-  const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
-  const [isNutritionModalOpen, setIsNutritionModalOpen] = useState(false);
-  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
-  const [isClinicalModalOpen, setIsClinicalModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
 
   // Form states
-  const [vitalsForm, setVitalsForm] = useState({ bp_systolic: '', bp_diastolic: '', pulse: '', temp: '', rbs: '' });
-  const [nutritionForm, setNutritionForm] = useState({ height: '', weight: '', visceral_fat: '', body_fat_percent: '', notes_nutritionist: '' });
-  const [goalForm, setGoalForm] = useState({ discussion: '', goal: '' });
-  const [clinicalForm, setClinicalForm] = useState({ notes_doctor: '', notes_psychologist: '' });
   const [editFormData, setEditFormData] = useState<Partial<Patient>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -129,24 +118,6 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
     }
   }, []);
 
-  const handleFormSubmit = (section: 'vitals' | 'nutrition' | 'goals' | 'clinicals', body: any, modalSetter: React.Dispatch<React.SetStateAction<boolean>>) => {
-    setIsSubmitting(true);
-    setTimeout(() => {
-        const newRecord = {
-            id: Date.now(),
-            patient_id: patient.id,
-            ...body,
-            created_at: new Date().toISOString(),
-        };
-
-        const updatedPatient = { ...patient, [section]: [newRecord] };
-        setPatient(updatedPatient);
-        
-        toast({ title: 'Success!', description: 'Record saved locally.' });
-        modalSetter(false);
-        setIsSubmitting(false);
-    }, 500);
-  };
 
   const handleOpenEditModal = () => {
     setEditFormData({
@@ -190,6 +161,132 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
     setEditFormData({ ...editFormData, [name]: value });
   };
 
+  // New state and logic from user's provided code
+  const [newGoal, setNewGoal] = useState({
+    clinical_parameter_id: '',
+    target_value: '',
+    target_operator: '<=',
+    deadline: '',
+    notes: ''
+  });
+
+  const onUpdate = () => {
+    // This is a placeholder for a real data refresh function
+    toast({title: "Data Updated", description: "In a real app, data would be re-fetched."})
+  }
+
+  const handleAddGoal = () => {
+    if (!newGoal.clinical_parameter_id || !newGoal.target_value || !newGoal.deadline) {
+      toast({variant: 'destructive', title: 'Error', description: 'Please fill in all required fields for the new goal.'});
+      return;
+    }
+    const newGoalData: Goal = {
+        id: Date.now(),
+        patient_id: patient.id,
+        created_at: new Date().toISOString(),
+        status: 'active',
+        clinical_parameter_id: parseInt(newGoal.clinical_parameter_id),
+        target_value: newGoal.target_value,
+        target_operator: newGoal.target_operator as any,
+        deadline: newGoal.deadline,
+        notes: newGoal.notes
+    };
+    setPatient(prev => ({...prev, goals: [...prev.goals, newGoalData]}));
+    setNewGoal({ clinical_parameter_id: '', target_value: '', target_operator: '<=', deadline: '', notes: '' });
+    toast({title: 'Success', description: 'Goal added successfully!'});
+  };
+
+  const handleDeleteGoal = (goalId: number) => {
+    setPatient(prev => ({
+        ...prev,
+        goals: prev.goals.filter(g => g.id !== goalId)
+    }));
+    toast({title: 'Success', description: 'Goal deleted.'});
+  }
+
+  const calculateAssessmentWeek = (assessment: Assessment) => {
+    if (!patient?.date_of_onboarding) return 'N/A';
+    const assessmentDate = new Date(assessment.measured_at);
+    const treatmentStartDate = new Date(patient.date_of_onboarding);
+    const timeDiff = assessmentDate.getTime() - treatmentStartDate.getTime();
+    const weeksDiff = Math.floor(timeDiff / (1000 * 3600 * 24 * 7)) + 1;
+    if (weeksDiff < 1) return 'Week 1';
+    if (weeksDiff > 64) return 'Week 64+';
+    return `Week ${weeksDiff}`;
+  };
+
+  const handleDeleteAssessment = (assessmentId: number) => {
+      setPatient(prev => ({
+          ...prev,
+          assessments: prev.assessments.filter(a => a.id !== assessmentId)
+      }));
+      toast({title: 'Success', description: 'Assessment deleted.'});
+  }
+
+  const handleSaveAssessment = (assessment: Omit<Assessment, 'id' | 'patient_id' | 'created_at'>) => {
+    const fullAssessment = {
+        id: Date.now(),
+        patient_id: patient.id,
+        created_at: new Date().toISOString(),
+        ...assessment
+    }
+    setPatient(prev => ({...prev, assessments: [...prev.assessments, fullAssessment]}));
+    toast({title: 'Success', description: 'Assessment saved.'});
+  };
+
+  const [reviewData, setReviewData] = useState({
+    subjective_findings: '',
+    objective_findings: '',
+    assessment: '',
+    plan: '',
+    recommendations: '',
+    follow_up_date: '',
+    review_date: new Date().toISOString().split('T')[0]
+  });
+
+  const submitReview = () => {
+    if (!reviewData.subjective_findings.trim() || !reviewData.objective_findings.trim()) {
+        toast({variant: 'destructive', title: 'Error', description: 'Please fill in at least subjective and objective findings'});
+        return;
+    }
+
+    const newReview: Review = {
+        id: Date.now(),
+        patient_id: patient.id,
+        reviewed_by_id: currentUser!.id,
+        reviewed_by: currentUser!.name,
+        ...reviewData
+    };
+    setPatient(prev => ({...prev, reviews: [...prev.reviews, newReview]}));
+    setReviewData({
+      subjective_findings: '',
+      objective_findings: '',
+      assessment: '',
+      plan: '',
+      recommendations: '',
+      follow_up_date: '',
+      review_date: new Date().toISOString().split('T')[0]
+    });
+    toast({title: 'Success', description: 'Clinical review submitted successfully!'});
+  };
+  
+  const getStatusBadge = (goal: Goal) => {
+    const isOverdue = new Date(goal.deadline) < new Date() && goal.status !== 'completed';
+    if (goal.status === 'completed') {
+      return <Badge variant="default" className='bg-green-500/20 text-green-700 dark:bg-green-500/10 dark:text-green-400 border-green-500/30'><CheckCircle className="mr-1 h-3 w-3"/>Goal Achieved</Badge>;
+    }
+    if (isOverdue) {
+      return <Badge variant="destructive"><Clock className="mr-1 h-3 w-3"/>Overdue</Badge>;
+    }
+    return <Badge variant="secondary"><Activity className="mr-1 h-3 w-3"/>In Progress</Badge>;
+  };
+
+  const getDisplayText = (goal: Goal) => {
+    const operatorSymbols: Record<string, string> = { '<': '<', '<=': '≤', '=': '=', '>=': '≥', '>': '>' };
+    const parameter = clinicalParameters.find(p => p.id === goal.clinical_parameter_id);
+    if (!parameter) return goal.target_value;
+    return `${operatorSymbols[goal.target_operator] || ''} ${goal.target_value} ${parameter.unit || ''}`.trim();
+  };
 
   return (
     <div className="container mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
@@ -289,7 +386,7 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeletePatient} disabled={isDeleting}>
+                            <AlertDialogAction onClick={handleDeletePatient} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
                                 {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Continue
                             </AlertDialogAction>
@@ -301,234 +398,144 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
             </Card>
           </div>
           <div className="lg:col-span-2 space-y-6">
-            {/* Vitals Section */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div className="flex items-center gap-4">
-                   <HeartPulse className="w-6 h-6 text-primary" />
-                  <div>
-                    <CardTitle>Vitals</CardTitle>
-                    <CardDescription>
-                      Latest vital signs measurement.
-                    </CardDescription>
-                  </div>
-                </div>
-                <Dialog open={isVitalsModalOpen} onOpenChange={setIsVitalsModalOpen}>
-                  <DialogTrigger asChild>
-                     <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      {patient.vitals && patient.vitals.length > 0 ? 'Edit Vitals' : 'Add Vitals'}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{patient.vitals && patient.vitals.length > 0 ? 'Edit Vitals' : 'Add New Vitals'}</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('vitals', vitalsForm, setIsVitalsModalOpen); }}>
-                      <div className="grid grid-cols-1 gap-6 py-4">
-                        <div className="space-y-2"><Label htmlFor="bp_systolic">Systolic (mmHg)</Label><Input id="bp_systolic" type="number" value={vitalsForm.bp_systolic} onChange={(e) => setVitalsForm({...vitalsForm, bp_systolic: e.target.value})}/></div>
-                        <div className="space-y-2"><Label htmlFor="bp_diastolic">Diastolic (mmHg)</Label><Input id="bp_diastolic" type="number" value={vitalsForm.bp_diastolic} onChange={(e) => setVitalsForm({...vitalsForm, bp_diastolic: e.target.value})} /></div>
-                        <div className="space-y-2"><Label htmlFor="pulse">Pulse (bpm)</Label><Input id="pulse" type="number" value={vitalsForm.pulse} onChange={(e) => setVitalsForm({...vitalsForm, pulse: e.target.value})} /></div>
-                        <div className="space-y-2"><Label htmlFor="temp">Temp (°C)</Label><Input id="temp" type="number" step="0.1" value={vitalsForm.temp} onChange={(e) => setVitalsForm({...vitalsForm, temp: e.target.value})} /></div>
-                        <div className="space-y-2"><Label htmlFor="rbs">RBS (mmol/L)</Label><Input id="rbs" value={vitalsForm.rbs} onChange={(e) => setVitalsForm({...vitalsForm, rbs: e.target.value})} /></div>
-                      </div>
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button type="button" variant="outline"><XCircle className="mr-2 h-4 w-4" />Cancel</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={isSubmitting}>
-                          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                          {isSubmitting ? 'Saving...' : 'Save Record'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
+              <CardHeader>
+                <CardTitle>Goals</CardTitle>
+                <CardDescription>Set and track patient health goals with assessment history</CardDescription>
               </CardHeader>
               <CardContent>
-                {patient.vitals && patient.vitals.length > 0 ? (
-                    patient.vitals.map((vital) => (
-                      <div key={vital.id} className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm p-4 bg-muted/50 rounded-lg">
-                          <DetailItem label="Systolic (mmHg)" value={vital.bp_systolic} />
-                          <DetailItem label="Diastolic (mmHg)" value={vital.bp_diastolic} />
-                          <DetailItem label="Pulse (bpm)" value={vital.pulse} />
-                          <DetailItem label="Temp (°C)" value={vital.temp} />
-                          <DetailItem label="RBS (mmol/L)" value={vital.rbs} />
+                  <div className="bg-muted/50 rounded-xl p-4 border mb-6">
+                      <h3 className="text-lg font-semibold text-foreground mb-4">Add New Goal</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                           <div>
+                                <Label className="mb-2">Parameter</Label>
+                                <Select value={newGoal.clinical_parameter_id} onValueChange={(value) => setNewGoal(prev => ({...prev, clinical_parameter_id: value}))}>
+                                    <SelectTrigger><SelectValue placeholder="Select Parameter" /></SelectTrigger>
+                                    <SelectContent>
+                                        {clinicalParameters.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name} ({p.unit})</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                           </div>
+                           <div>
+                                <Label className="mb-2">Target Value</Label>
+                                <Input type="text" placeholder="Target value" value={newGoal.target_value} onChange={(e) => setNewGoal(prev => ({...prev, target_value: e.target.value}))}/>
+                           </div>
+                            <div>
+                                <Label className="mb-2">Operator</Label>
+                                <Select value={newGoal.target_operator} onValueChange={(value) => setNewGoal(prev => ({...prev, target_operator: value as any}))}>
+                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="<">Below</SelectItem>
+                                      <SelectItem value="<=">At or below</SelectItem>
+                                      <SelectItem value="=">Equal to</SelectItem>
+                                      <SelectItem value=">=">At or above</SelectItem>
+                                      <SelectItem value=">">Above</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                           </div>
+                           <div>
+                                <Label className="mb-2">Deadline</Label>
+                                <Input type="date" value={newGoal.deadline} onChange={(e) => setNewGoal(prev => ({...prev, deadline: e.target.value}))}/>
+                           </div>
+                           <div className="md:col-span-2">
+                                <Label className="mb-2">Notes</Label>
+                                <Textarea placeholder="Additional notes..." value={newGoal.notes} onChange={(e) => setNewGoal(prev => ({...prev, notes: e.target.value}))}/>
+                           </div>
                       </div>
-                    ))
-                ) : ( <p className="text-muted-foreground text-center py-4">No vitals recorded.</p> )}
+                      <Button onClick={handleAddGoal}><PlusCircle className="mr-2 h-4 w-4" /> Add Goal</Button>
+                  </div>
+                  
+                  <div className="space-y-6">
+                      <h3 className="text-lg font-semibold text-foreground">Current Goals ({patient.goals.length})</h3>
+                      {patient.goals.map(goal => {
+                          const parameter = clinicalParameters.find(p => p.id === goal.clinical_parameter_id);
+                          const history = patient.assessments.filter(a => a.clinical_parameter_id === goal.clinical_parameter_id);
+
+                          return (
+                              <div key={goal.id} className="p-4 rounded-xl border bg-background hover:shadow-sm transition-shadow">
+                                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                                      <div className="flex-1">
+                                          <h4 className="font-semibold text-foreground">{parameter?.name}</h4>
+                                          <p className="text-sm text-muted-foreground">Target: {getDisplayText(goal)}</p>
+                                          <p className="text-sm text-muted-foreground">Deadline: {new Date(goal.deadline).toLocaleDateString()}</p>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                          {getStatusBadge(goal)}
+                                          <Button variant="ghost" size="icon" onClick={() => handleDeleteGoal(goal.id)}><Trash2 className="h-4 w-4 text-red-500"/></Button>
+                                      </div>
+                                  </div>
+
+                                  {history.length > 0 && (
+                                    <div className="mt-4">
+                                        <h5 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2"><History className="h-4 w-4"/> Assessment History</h5>
+                                        <div className="overflow-x-auto rounded-lg border">
+                                            <table className="min-w-full text-xs">
+                                                <thead>
+                                                    <tr className="bg-muted/50">
+                                                        <th className="text-left py-2 px-3 font-medium">Date</th>
+                                                        <th className="text-left py-2 px-3 font-medium">Week</th>
+                                                        <th className="text-left py-2 px-3 font-medium">Value</th>
+                                                        <th className="text-left py-2 px-3 font-medium">Status</th>
+                                                        <th className="text-left py-2 px-3 font-medium">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {history.map(assessment => (
+                                                        <tr key={assessment.id} className="hover:bg-muted/50">
+                                                            <td className="py-2 px-3 whitespace-nowrap">{new Date(assessment.measured_at).toLocaleDateString()}</td>
+                                                            <td className="py-2 px-3"><Badge variant="outline">{calculateAssessmentWeek(assessment)}</Badge></td>
+                                                            <td className="py-2 px-3 font-medium">{assessment.value} {parameter?.unit}</td>
+                                                            <td className="py-2 px-3">
+                                                                <Badge variant={assessment.is_normal ? "secondary" : "destructive"}>{assessment.is_normal ? 'Normal' : 'Abnormal'}</Badge>
+                                                            </td>
+                                                            <td className="py-2 px-3"><Button variant="ghost" size="icon" onClick={() => handleDeleteAssessment(assessment.id)}><Trash2 className="h-3 w-3 text-red-500"/></Button></td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                  )}
+
+                              </div>
+                          )
+                      })}
+                      {patient.goals.length === 0 && <p className="text-center text-muted-foreground py-4">No goals set.</p>}
+                  </div>
               </CardContent>
             </Card>
 
-            {/* Nutrition Section */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Scale className="w-6 h-6 text-primary" />
-                  <div>
-                    <CardTitle>Nutrition</CardTitle>
-                    <CardDescription>Latest nutrition assessment details.</CardDescription>
-                  </div>
-                </div>
-                 <Dialog open={isNutritionModalOpen} onOpenChange={setIsNutritionModalOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      {patient.nutrition && patient.nutrition.length > 0 ? 'Edit Assessment' : 'Add Assessment'}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{patient.nutrition && patient.nutrition.length > 0 ? 'Edit Nutrition Assessment' : 'Add Nutrition Assessment'}</DialogTitle>
-                    </DialogHeader>
-                     <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('nutrition', nutritionForm, setIsNutritionModalOpen); }}>
-                        <div className="py-4 space-y-6">
-                          <div className="grid grid-cols-1 gap-6">
-                              <div className="space-y-2"><Label htmlFor="height">Height (cm)</Label><Input id="height" type="number" value={nutritionForm.height} onChange={(e) => setNutritionForm({...nutritionForm, height: e.target.value})} /></div>
-                              <div className="space-y-2"><Label htmlFor="weight">Weight (kg)</Label><Input id="weight" type="number" step="0.1" value={nutritionForm.weight} onChange={(e) => setNutritionForm({...nutritionForm, weight: e.target.value})} /></div>
-                              <div className="space-y-2"><Label htmlFor="visceral_fat">Visceral Fat</Label><Input id="visceral_fat" type="number" value={nutritionForm.visceral_fat} onChange={(e) => setNutritionForm({...nutritionForm, visceral_fat: e.target.value})} /></div>
-                              <div className="space-y-2"><Label htmlFor="body_fat_percent">Body Fat %</Label><Input id="body_fat_percent" type="number" step="0.1" value={nutritionForm.body_fat_percent} onChange={(e) => setNutritionForm({...nutritionForm, body_fat_percent: e.target.value})} /></div>
-                          </div>
-                          <div className="space-y-2"><Label htmlFor="notes_nutritionist">Nutritionist Notes</Label><Textarea id="notes_nutritionist" value={nutritionForm.notes_nutritionist} onChange={(e) => setNutritionForm({...nutritionForm, notes_nutritionist: e.target.value})} /></div>
-                        </div>
-                        <DialogFooter>
-                          <DialogClose asChild>
-                            <Button type="button" variant="outline"><XCircle className="mr-2 h-4 w-4" />Cancel</Button>
-                          </DialogClose>
-                          <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                            {isSubmitting ? 'Saving...' : 'Save Record'}
-                          </Button>
-                        </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
+              <CardHeader>
+                <CardTitle>Clinical Review</CardTitle>
+                <CardDescription>Conduct comprehensive clinical evaluation</CardDescription>
               </CardHeader>
               <CardContent>
-                {patient.nutrition && patient.nutrition.length > 0 ? (
-                    patient.nutrition.map((nutri) => (
-                    <div key={nutri.id} className="space-y-4">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm p-4 bg-muted/50 rounded-lg">
-                          <DetailItem label="Height (cm)" value={nutri.height} />
-                          <DetailItem label="Weight (kg)" value={nutri.weight} />
-                          <DetailItem label="BMI" value={nutri.bmi} />
-                          <DetailItem label="Visceral Fat" value={nutri.visceral_fat} />
-                          <DetailItem label="Body Fat %" value={nutri.body_fat_percent} />
-                        </div>
-                        {nutri.notes_nutritionist && (<> <Separator className="my-4" /> <div><p className="text-sm font-medium text-muted-foreground">Nutritionist Notes</p><p className="text-foreground mt-1 whitespace-pre-wrap text-sm">{nutri.notes_nutritionist}</p></div></>)}
-                    </div>
-                    ))
-                ) : ( <p className="text-muted-foreground text-center py-4">No nutrition assessment recorded.</p> )}
-              </CardContent>
-            </Card>
-            
-            {/* Goals Section */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Target className="w-6 h-6 text-primary" />
-                  <div>
-                    <CardTitle>Goals</CardTitle>
-                    <CardDescription>Patient's health and wellness goals.</CardDescription>
-                  </div>
-                </div>
-                 <Dialog open={isGoalModalOpen} onOpenChange={setIsGoalModalOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                        <PlusCircle className="mr-2 h-4 w-4"/>
-                        {patient.goals && patient.goals.length > 0 ? 'Edit Goal' : 'Set Goal'}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{patient.goals && patient.goals.length > 0 ? 'Edit Goal' : 'Set New Goal'}</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('goals', goalForm, setIsGoalModalOpen); }}>
-                      <div className="space-y-6 py-4">
-                          <div className="space-y-2"><Label htmlFor="discussion">Discussion</Label><Textarea id="discussion" value={goalForm.discussion} onChange={(e) => setGoalForm({...goalForm, discussion: e.target.value})} /></div>
-                          <div className="space-y-2"><Label htmlFor="goal">Goal</Label><Textarea id="goal" value={goalForm.goal} onChange={(e) => setGoalForm({...goalForm, goal: e.target.value})} /></div>
+                  <div className="space-y-4">
+                      <h4 className="text-lg font-semibold text-foreground mb-2">New Review</h4>
+                      <div className="space-y-4">
+                          <Textarea placeholder="Subjective Findings..." value={reviewData.subjective_findings} onChange={(e) => setReviewData(p => ({...p, subjective_findings: e.target.value}))}/>
+                          <Textarea placeholder="Objective Findings..." value={reviewData.objective_findings} onChange={(e) => setReviewData(p => ({...p, objective_findings: e.target.value}))}/>
+                          <Textarea placeholder="Assessment & Diagnosis..." value={reviewData.assessment} onChange={(e) => setReviewData(p => ({...p, assessment: e.target.value}))}/>
+                          <Textarea placeholder="Treatment Plan..." value={reviewData.plan} onChange={(e) => setReviewData(p => ({...p, plan: e.target.value}))}/>
+                           <Button onClick={submitReview}><Save className="mr-2 h-4 w-4"/> Submit Review</Button>
                       </div>
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button type="button" variant="outline"><XCircle className="mr-2 h-4 w-4" />Cancel</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={isSubmitting}>
-                          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                          {isSubmitting ? 'Saving...' : 'Save Record'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {patient.goals && patient.goals.length > 0 ? (
-                    <div className="space-y-4">
-                    {patient.goals.map((goal) => (
-                    <div key={goal.id} className="space-y-4 p-4 border rounded-xl bg-background/50">
-                        <div><h4 className="font-semibold text-primary">Discussion</h4><p className="text-foreground mt-1 text-sm">{goal.discussion || '-'}</p></div>
-                        <Separator />
-                        <div><h4 className="font-semibold text-primary">Goal</h4><p className="text-foreground mt-1 text-sm">{goal.goal || '-'}</p></div>
-                    </div>
-                    ))}
-                    </div>
-                ) : ( <p className="text-muted-foreground text-center py-4">No goals set.</p> )}
+                  </div>
+                   <Separator className="my-6" />
+                   <div className="space-y-4">
+                        <h4 className="text-lg font-semibold text-foreground mb-2">Review History</h4>
+                         {patient.reviews.length > 0 ? patient.reviews.map(review => (
+                             <div key={review.id} className="p-4 rounded-xl border bg-muted/50">
+                                <p className="font-semibold">Review on {new Date(review.review_date).toLocaleDateString()}</p>
+                                <p className="text-sm text-muted-foreground">by {review.reviewed_by}</p>
+                                <p className="text-sm mt-2">{review.plan}</p>
+                            </div>
+                         )) : <p className="text-center text-muted-foreground py-4">No reviews yet.</p>}
+                   </div>
+
               </CardContent>
             </Card>
 
-            {/* Clinical Review Section */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Stethoscope className="w-6 h-6 text-primary" />
-                  <div>
-                    <CardTitle>Clinical Review</CardTitle>
-                    <CardDescription>Notes from clinical staff.</CardDescription>
-                  </div>
-                </div>
-                 <Dialog open={isClinicalModalOpen} onOpenChange={setIsClinicalModalOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                        <PlusCircle className="mr-2 h-4 w-4"/>
-                        {patient.clinicals && patient.clinicals.length > 0 ? 'Edit Review' : 'Add Review'}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{patient.clinicals && patient.clinicals.length > 0 ? 'Edit Clinical Review' : 'Add Clinical Review'}</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit('clinicals', clinicalForm, setIsClinicalModalOpen); }}>
-                      <div className="space-y-6 py-4">
-                          <div className="space-y-2"><Label htmlFor="notes_doctor">Doctor's Notes</Label><Textarea id="notes_doctor" value={clinicalForm.notes_doctor} onChange={(e) => setClinicalForm({...clinicalForm, notes_doctor: e.target.value})}/></div>
-                          <div className="space-y-2"><Label htmlFor="notes_psychologist">Psychologist's Notes</Label><Textarea id="notes_psychologist" value={clinicalForm.notes_psychologist} onChange={(e) => setClinicalForm({...clinicalForm, notes_psychologist: e.target.value})}/></div>
-                      </div>
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button type="button" variant="outline"><XCircle className="mr-2 h-4 w-4" />Cancel</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={isSubmitting}>
-                          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                          {isSubmitting ? 'Saving...' : 'Save Record'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {patient.clinicals && patient.clinicals.length > 0 ? (
-                    <div className="space-y-6">
-                    {patient.clinicals.map((clinic) => (
-                    <div key={clinic.id} className="space-y-6">
-                        {clinic.notes_doctor && (<div className="p-4 border rounded-xl bg-background/50"><h4 className="font-semibold text-primary">Doctor's Notes</h4><p className="text-foreground mt-2 text-sm">{clinic.notes_doctor}</p></div>)}
-                        {clinic.notes_psychologist && (<div className="p-4 border rounded-xl bg-background/50"><h4 className="font-semibold text-primary">Psychologist's Notes</h4><p className="text-foreground mt-2 text-sm">{clinic.notes_psychologist}</p></div>)}
-                        {!clinic.notes_doctor && !clinic.notes_psychologist && (<p className="text-muted-foreground text-sm text-center">No clinical notes recorded for this entry.</p>)}
-                    </div>
-                    ))}
-                    </div>
-                ) : ( <p className="text-muted-foreground text-center py-4">No clinical review found.</p> )}
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
