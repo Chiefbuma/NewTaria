@@ -9,6 +9,7 @@ import SettingsView from '@/components/settings/settings-view';
 import ActivityFeed from '@/components/dashboard/activity-feed';
 import UpcomingAppointments from '@/components/dashboard/upcoming-appointments';
 import CriticalPatients from '@/components/dashboard/critical-patients';
+import Notifications from '@/components/dashboard/notifications';
 
 type View = 'patients' | 'settings';
 
@@ -75,16 +76,21 @@ export default function DashboardClient({
           className="space-y-8"
         >
           {activeView === 'patients' && (
-             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                <div className="lg:col-span-2">
-                    <PatientList patients={patients} />
-                </div>
-                <div className="lg:col-span-1 space-y-8">
+             <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <ActivityFeed patients={patients} corporates={corporates} />
                     <UpcomingAppointments patients={patients} />
-                    <CriticalPatients patients={patients} />
                 </div>
-            </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    <div className="lg:col-span-2">
+                        <PatientList patients={patients} />
+                    </div>
+                    <div className="lg:col-span-1 space-y-8">
+                        <Notifications />
+                        <CriticalPatients patients={patients} />
+                    </div>
+                </div>
+            </>
           )}
           {activeView === 'settings' && <SettingsView 
               clinicalParameters={clinicalParameters} 
