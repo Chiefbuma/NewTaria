@@ -2,14 +2,78 @@
 
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Header from '@/components/header';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Settings, Loader2 } from 'lucide-react';
+import { Settings, Loader2, LayoutDashboard, Users } from 'lucide-react';
 import type { User } from '@/lib/types';
 import Logo from '@/components/logo';
 import { placeholderImages } from '@/lib/placeholder-images';
+
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarTrigger,
+  useSidebar,
+} from '@/components/ui/sidebar';
+
+
+function AppSidebar() {
+    const pathname = usePathname();
+    const { openMobile, setOpenMobile } = useSidebar();
+    
+    const closeSidebar = () => {
+        if(openMobile) setOpenMobile(false);
+    }
+    
+    // For now, all links point to dashboard as other pages don't exist yet
+    const dashboardPath = '/dashboard';
+    const patientsPath = '/dashboard'; 
+    const settingsPath = '/dashboard';
+
+    return (
+        <Sidebar>
+            <SidebarHeader>
+                <Link href="/dashboard" className="flex items-center gap-2" onClick={closeSidebar}>
+                    <Logo className="h-7 w-auto" />
+                </Link>
+            </SidebarHeader>
+            <SidebarContent>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={pathname === dashboardPath} tooltip="Dashboard" onClick={closeSidebar}>
+                            <Link href={dashboardPath}>
+                                <LayoutDashboard />
+                                <span>Dashboard</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                     <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={pathname.startsWith('/patient')} tooltip="Patients" onClick={closeSidebar}>
+                            <Link href={patientsPath}>
+                                <Users />
+                                <span>Patients</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={pathname === settingsPath} tooltip="Settings" onClick={closeSidebar}>
+                            <Link href={settingsPath}>
+                                <Settings />
+                                <span>Settings</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarContent>
+        </Sidebar>
+    )
+}
 
 export default function DashboardLayout({
   children,
@@ -44,22 +108,25 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-background">
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <Logo className="h-7 w-auto" />
-          </Link>
-          <div className="flex items-center gap-4">
-            <Header user={user} />
-          </div>
+    <SidebarProvider>
+        <AppSidebar />
+        <div className="flex flex-1 flex-col">
+            <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center gap-2">
+                    <SidebarTrigger />
+                    </div>
+                    <div className="flex items-center gap-4">
+                    <Header user={user} />
+                    </div>
+                </div>
+            </header>
+            <main className="flex-1">
+                <div className="mx-auto max-w-7xl py-8 px-4 sm:px-6 lg:px-8">
+                    {children}
+                </div>
+            </main>
         </div>
-      </header>
-      <main className="flex-1">
-        <div className="mx-auto max-w-7xl py-8 px-4 sm:px-6 lg:px-8">
-            {children}
-        </div>
-      </main>
-    </div>
+    </SidebarProvider>
   );
 }
