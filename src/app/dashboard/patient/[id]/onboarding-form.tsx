@@ -74,6 +74,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
             description: `${patient.first_name} is now marked as Active. This will not persist on page refresh.`,
         });
         
+        router.push(`/dashboard/patient/${patient.id}`);
         router.refresh(); 
         setIsSubmitting(false);
     };
@@ -93,7 +94,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                                 <Label htmlFor="brief_medical_history">Brief Medical History</Label>
                                 <Textarea id="brief_medical_history" value={formData.brief_medical_history || ''} onChange={handleInputChange} />
                             </div>
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div className="grid grid-cols-1 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="years_since_diagnosis">Years Since Primary Diagnosis</Label>
                                     <Input id="years_since_diagnosis" type="number" value={formData.years_since_diagnosis || ''} onChange={handleInputChange} />
@@ -115,7 +116,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                             <CardTitle>Lifestyle & Environment</CardTitle>
                             <CardDescription>Understand the patient's daily life and environment.</CardDescription>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <CardContent className="grid grid-cols-1 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="dietary_restrictions">Dietary Restrictions or Preferences</Label>
                                 <Textarea id="dietary_restrictions" value={formData.dietary_restrictions || ''} onChange={handleInputChange} />
@@ -132,7 +133,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                                 <Label htmlFor="physical_limitations">Physical Limitations</Label>
                                 <Textarea id="physical_limitations" value={formData.physical_limitations || ''} onChange={handleInputChange} />
                             </div>
-                             <div className="space-y-2 md:col-span-2">
+                             <div className="space-y-2">
                                 <Label htmlFor="psychosocial_factors">Psychosocial Factors</Label>
                                 <Textarea id="psychosocial_factors" value={formData.psychosocial_factors || ''} onChange={handleInputChange} />
                             </div>
@@ -143,7 +144,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                         <CardHeader>
                             <CardTitle>Emergency Contact & Administrative</CardTitle>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <CardContent className="grid grid-cols-1 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="emergency_contact_name">Emergency Contact Name</Label>
                                 <Input id="emergency_contact_name" value={formData.emergency_contact_name || ''} onChange={handleInputChange} />
@@ -198,7 +199,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                             <CardTitle>Equipment & Consent</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+                            <div className="flex flex-col space-y-4 items-start">
                                 <div className="flex items-center space-x-2">
                                     <Switch id="has_weighing_scale" checked={formData.has_weighing_scale || false} onCheckedChange={(checked) => handleSwitchChange('has_weighing_scale', checked)} />
                                     <Label htmlFor="has_weighing_scale">Weighing Scale</Label>
@@ -216,7 +217,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                                     <Label htmlFor="has_tape_measure">Tape Measure</Label>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                            <div className="grid grid-cols-1 gap-4 pt-4">
                                <div className="space-y-2">
                                     <Label htmlFor="date_of_onboarding">Date of Onboarding</Label>
                                     <Input id="date_of_onboarding" type="date" value={formData.date_of_onboarding || ''} onChange={handleInputChange} required />
