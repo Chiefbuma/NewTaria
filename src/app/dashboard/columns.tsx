@@ -1,7 +1,7 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, User, Loader2, ArrowRight } from "lucide-react"
+import { ArrowUpDown, User, Loader2, Eye, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -12,6 +12,7 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
 
@@ -20,31 +21,39 @@ const ViewPatientButton = ({ patient }: { patient: Patient }) => {
     const router = useRouter();
     const isPending = patient.status === 'Pending';
 
-    const handleClick = () => {
+    const handleClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
         setIsLoading(true);
-        // The router will take over. No need to set loading to false.
         router.push(`/patient/${patient.id}`);
     };
 
-    const buttonLabel = isPending ? 'Onboard Patient' : 'View Patient';
+    const actionLabel = isPending ? 'Onboard Patient' : 'View Patient';
+    const ActionIcon = isPending ? UserPlus : Eye;
 
     return (
-         <Button
-            variant={isPending ? 'default' : 'outline'}
-            size="sm"
-            onClick={handleClick}
-            disabled={isLoading}
-            className="w-[140px] transition-all duration-300 ease-in-out"
-        >
-            {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-                <>
-                    {buttonLabel}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-            )}
-        </Button>
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleClick}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <ActionIcon className="h-4 w-4" />
+                        )}
+                        <span className="sr-only">{actionLabel}</span>
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>{actionLabel}</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
     );
 };
 
@@ -114,20 +123,11 @@ export const columns: ColumnDef<Patient>[] = [
     },
   },
   {
-    accessorKey: "wellness_date",
-    header: "Wellness Date",
-    cell: ({ row }) => {
-        const date = row.getValue("wellness_date") as string | null;
-        if (!date) return <span className="text-muted-foreground">-</span>
-        return <div>{new Date(date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
-    },
-  },
-  {
     id: "actions",
     cell: ({ row }) => {
       const patient = row.original
       return (
-        <div className="text-right">
+        <div className="flex justify-end">
           <ViewPatientButton patient={patient} />
         </div>
       )
