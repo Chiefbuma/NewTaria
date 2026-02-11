@@ -12,7 +12,6 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
 
@@ -27,42 +26,26 @@ const ViewPatientButton = ({ patient }: { patient: Patient }) => {
         router.push(`/patient/${patient.id}`);
     };
 
-    const button = (
+    const buttonLabel = isPending ? 'Onboard Patient' : 'View Patient';
+
+    return (
          <Button
-            variant="outline"
+            variant={isPending ? 'default' : 'outline'}
             size="sm"
             onClick={handleClick}
-            disabled={isLoading || isPending}
-            className="w-[120px] transition-all duration-300 ease-in-out"
+            disabled={isLoading}
+            className="w-[140px] transition-all duration-300 ease-in-out"
         >
             {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
                 <>
-                    View Patient
+                    {buttonLabel}
                     <ArrowRight className="ml-2 h-4 w-4" />
                 </>
             )}
         </Button>
     );
-    
-    if (isPending) {
-        return (
-            <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        {/* The span is needed for Tooltip to work on a disabled button */}
-                        <span>{button}</span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>Complete onboarding to view patient details.</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        );
-    }
-
-    return button;
 };
 
 
