@@ -1,0 +1,286 @@
+/* Apply a paper-like style for screen viewing */
+@media screen {
+    .report-body-container {
+        width: 100%;
+        max-width: 800px; /* A good width for reading on screen */
+        margin: 0 auto;
+        padding: 2.5rem;
+        background: white;
+        box-shadow: 0 0 15px rgba(0,0,0,0.15);
+        color: #333; /* Darker text for screen readability */
+    }
+}
+
+/* ================= PAGE SETUP ================= */
+@page {
+    size: A4;
+    margin: 0.5in 0.75in 0.5in 0.75in; /* Standard margins for printing */
+}
+
+body {
+    font-family: "Calibri", sans-serif;
+    font-size: 11pt; /* Slightly smaller font for better fit */
+    line-height: 1.3; /* Better line spacing */
+    color: #333;
+    margin: 0;
+    padding: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+/* On print, remove the styles applied for screen */
+@media print {
+    .report-body-container {
+        width: auto;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+        color: #000; /* Pure black for printing */
+    }
+}
+
+
+/* ================= HEADER ================= */
+.header {
+    text-align: center;
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+    break-after: avoid;
+}
+
+.logo {
+    width: 450px;
+    max-height: 60px;
+    margin: 0 auto;
+    display: block;
+}
+
+/* ================= CONTENT ================= */
+.content-wrapper {
+    padding: 0;
+}
+
+.content-area {
+    padding: 0;
+    break-inside: auto;
+}
+
+/* ================= TITLE AND DATE - SAME LEVEL ================= */
+.title-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 15px;
+    width: 100%;
+    break-after: avoid;
+}
+
+.report-title {
+    font-size: 13pt;
+    font-weight: 600;
+    text-decoration: underline;
+    color: #000;
+    white-space: nowrap;
+}
+
+.report-date {
+    font-size: 11pt;
+    color: #1E5DFF;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.patient-info {
+    margin-bottom: 20px;
+    break-after: avoid;
+}
+
+.section-heading {
+    font-size: 12pt;
+    font-weight: 600;
+    color: #1E5DFF;
+    text-decoration: underline;
+    margin: 25px 0 10px 0;
+    padding-top: 10px;
+    break-before: auto;
+    break-after: avoid;
+    break-inside: avoid;
+}
+
+.body-text {
+    font-size: 11pt;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.guidance-text {
+    color: #33CCCC;
+    margin: 6px 0;
+    break-inside: avoid;
+}
+
+.content-item {
+    margin-bottom: 12px;
+    line-height: 1.5;
+    text-align: justify;
+    orphans: 3;
+    widows: 3;
+    break-inside: avoid;
+}
+
+.target-text {
+    margin-top: 15px;
+    line-height: 1.5;
+    text-align: justify;
+    break-before: avoid;
+}
+
+.doctor-signature {
+    font-size: 12pt;
+    color: #1E5DFF;
+    margin-top: 25px;
+    padding-top: 10px;
+    break-before: avoid;
+    break-inside: avoid;
+}
+
+/* ================= PAGE BREAK CONTROL ================= */
+.page-break {
+    page-break-before: always;
+    break-before: page;
+}
+
+/* Avoid breaking inside important elements */
+.keep-together {
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+/* Allow breaking between sections but not within */
+.allow-break-before {
+    break-before: auto;
+    page-break-before: auto;
+}
+
+/* ================= PRINT OPTIMIZATION ================= */
+@media print {
+    body {
+        font-size: 11pt;
+    }
+    
+    /* Ensure sections don't break awkwardly */
+    .section-heading {
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+    
+    /* Keep screening results together */
+    .screening-grid {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    
+    /* Keep doctor signature with some preceding content */
+    .doctor-signature {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    
+    /* Add minimum space before breaking */
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
+    }
+    
+    /* Ensure tables and images don't break */
+    table, img {
+        page-break-inside: avoid;
+    }
+    
+    /* Control widow and orphan lines */
+    p, li {
+        orphans: 3;
+        widows: 3;
+    }
+}
+
+/* ================= SCREENING GRID ================= */
+.screening-grid {
+    display: grid;
+    grid-template-columns: 60% 40%;
+    gap: 5px;
+    margin: 15px 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+.screening-left, .screening-right {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.screening-item {
+    margin-bottom: 6px;
+    break-inside: avoid;
+}
+
+.section-assessor {
+    font-size: 10pt;
+    color: #888888;
+    font-style: italic;
+    margin: 15px 0 8px 0;
+    padding: 0;
+    line-height: 1.5;
+    text-align: left;
+    break-inside: avoid;
+}
+
+.doctor-prefix {
+    color: #1E5DFF;
+    font-weight: normal;
+}
+
+.end-spacer {
+    height: 20px;
+}
+
+.debug-info {
+    border: 1px solid red;
+    padding: 10px;
+    margin: 10px 0;
+    background-color: #ffe6e6;
+    font-size: 10pt;
+    display: none;
+    text-align: left;
+}
+
+/* Ensure screening text doesn't get justified */
+.screening-grid .body-text {
+    text-align: left !important;
+}
+
+/* Content sections with controlled breaks */
+.content-section {
+    break-inside: auto;
+    page-break-inside: auto;
+}
+
+/* ================= FORCE SECTION TOGETHER ================= */
+.force-together {
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+        
+/* ================= MINIMUM SPACE CONTROL ================= */
+.min-space-before {
+    break-before: avoid;
+    page-break-before: avoid;
+}
+        
+.min-space-after {
+    break-after: avoid;
+    page-break-after: avoid;
+}

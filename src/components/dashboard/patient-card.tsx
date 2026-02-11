@@ -80,7 +80,7 @@ export default function PatientCard({ patient, index }: { patient: Patient, inde
         transition={{ duration: 0.5, delay: index * 0.05 }}
         className="w-full"
     >
-      <Link href={`/patient/${patient.id}`} className="block">
+      <Link href={`/dashboard/patient/${patient.id}`} className="block">
         <motion.div
             className="w-full bg-white dark:bg-card border border-gray-200 dark:border-card-foreground/20 rounded-xl shadow-sm hover:shadow-lg hover:border-primary/50 cursor-pointer transition-all duration-300 relative overflow-hidden"
             whileHover={{ y: -4, borderColor: 'hsl(var(--primary))' }}

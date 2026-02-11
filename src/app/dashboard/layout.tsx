@@ -66,10 +66,10 @@ function AppSidebarNav({ isCollapsed }: { isCollapsed: boolean }) {
                 "grid items-start gap-2 text-sm font-medium", 
                 isCollapsed ? "justify-center px-2" : "bg-background border rounded-lg p-2 mx-4"
             )}>
-            <NavLink href={dashboardPath} isActive={pathname === dashboardPath && !pathname.startsWith('/patient')} isCollapsed={isCollapsed} title="Dashboard">
+            <NavLink href={dashboardPath} isActive={pathname === dashboardPath} isCollapsed={isCollapsed} title="Dashboard">
                 <LayoutDashboard className="h-5 w-5" />
             </NavLink>
-            <NavLink href={patientsPath} isActive={pathname.startsWith('/patient')} isCollapsed={isCollapsed} title="Patients">
+            <NavLink href={patientsPath} isActive={pathname.startsWith('/dashboard/patient')} isCollapsed={isCollapsed} title="Patients">
                 <Users className="h-5 w-5" />
             </NavLink>
             <NavLink href={settingsPath} isActive={pathname === settingsPath && false /* logic to be defined */} isCollapsed={isCollapsed} title="Settings">

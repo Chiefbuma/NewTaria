@@ -38,7 +38,7 @@ export default function CriticalPatients({ patients }: { patients: Patient[] }) 
                                     </div>
                                 </div>
                                 <Button asChild variant="ghost" size="sm">
-                                    <Link href={`/patient/${patient.id}`} className="text-red-800 dark:text-red-300">
+                                    <Link href={`/dashboard/patient/${patient.id}`} className="text-red-800 dark:text-red-300">
                                         View <ArrowRight className="h-4 w-4 ml-2" />
                                     </Link>
                                 </Button>

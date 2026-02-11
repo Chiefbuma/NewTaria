@@ -25,7 +25,7 @@ const ViewPatientButton = ({ patient }: { patient: Patient }) => {
         e.preventDefault();
         e.stopPropagation();
         setIsLoading(true);
-        router.push(`/patient/${patient.id}`);
+        router.push(`/dashboard/patient/${patient.id}`);
     };
 
     const actionLabel = isPending ? 'Onboard Patient' : 'View Patient';
@@ -106,7 +106,7 @@ export const columns: ColumnDef<Patient>[] = [
                 <AvatarFallback>{fallback}</AvatarFallback>
             </Avatar>
             <div className="grid gap-1">
-                <Link href={`/patient/${patient.id}`} className="font-medium leading-none hover:underline">{name}</Link>
+                <Link href={`/dashboard/patient/${patient.id}`} className="font-medium leading-none hover:underline">{name}</Link>
                 <p className="text-sm text-muted-foreground">{patient.email || patient.phone}</p>
             </div>
         </div>
