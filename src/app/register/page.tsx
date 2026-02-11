@@ -57,12 +57,12 @@ export default function RegisterPage() {
 
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/40">
-        <div className="w-full max-w-2xl">
+        <div className="w-full max-w-md">
             <div className="flex justify-center items-center mb-6">
                 <Logo className="h-8 w-auto" />
             </div>
              <Card>
-                <CardHeader>
+                <CardHeader className="text-center">
                     <CardTitle>Create Your Account</CardTitle>
                     <CardDescription>
                         Sign up to begin your journey with Taria Health.
@@ -70,30 +70,23 @@ export default function RegisterPage() {
                 </CardHeader>
                 <CardContent>
                 <form onSubmit={handleSubmit}>
-                    <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
                         <div className="grid gap-2">
-                        <Label htmlFor="first_name">First Name</Label>
-                        <Input id="first_name" required onChange={handleInputChange} />
+                            <Label htmlFor="first_name">First Name</Label>
+                            <Input id="first_name" required onChange={handleInputChange} />
                         </div>
                         <div className="grid gap-2">
-                        <Label htmlFor="surname">Surname</Label>
-                        <Input id="surname" required onChange={handleInputChange} />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="grid gap-2">
-                        <Label htmlFor="email">Email Address</Label>
-                        <Input id="email" type="email" required onChange={handleInputChange} placeholder="Your login email" />
+                            <Label htmlFor="surname">Surname</Label>
+                            <Input id="surname" required onChange={handleInputChange} />
                         </div>
                         <div className="grid gap-2">
-                        <Label htmlFor="password">Password</Label>
-                        <Input id="password" type="password" required onChange={handleInputChange} placeholder="Create a password" />
+                            <Label htmlFor="email">Email Address</Label>
+                            <Input id="email" type="email" required onChange={handleInputChange} placeholder="Your login email" />
                         </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid gap-2">
+                            <Label htmlFor="password">Password</Label>
+                            <Input id="password" type="password" required onChange={handleInputChange} placeholder="Create a password" />
+                        </div>
                         <div className="grid gap-2">
                             <Label htmlFor="age">Age</Label>
                             <Input id="age" type="number" required onChange={handleInputChange} />
@@ -110,8 +103,7 @@ export default function RegisterPage() {
                             </Select>
                         </div>
                     </div>
-                    </div>
-                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <Link href="/" className="inline-flex items-center text-muted-foreground hover:text-primary text-sm">
                             <ArrowLeft className="mr-1 h-4 w-4" />
                             Back to Login
