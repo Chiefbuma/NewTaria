@@ -11,6 +11,14 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -24,6 +32,7 @@ import {
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
+  Activity,
   ArrowLeft,
   Stethoscope,
   HeartPulse,
@@ -49,6 +58,7 @@ import {
   Clock,
   Circle,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
