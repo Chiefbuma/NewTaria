@@ -42,7 +42,7 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
                         </Button>
                     </div>
                      <Button asChild>
-                        <Link href="/register">
+                        <Link href="/dashboard/register-patient">
                             <PlusCircle className="mr-2 h-4 w-4" /> Add New Patient
                         </Link>
                     </Button>
