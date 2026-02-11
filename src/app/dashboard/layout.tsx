@@ -3,7 +3,6 @@
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import Header from '@/components/header';
 import Link from 'next/link';
 import { Settings, Loader2, LayoutDashboard, Users, PanelLeft, Menu } from 'lucide-react';
 import type { User } from '@/lib/types';
@@ -13,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import Header from '@/components/header';
 
 
 const NavLink = ({ href, children, isActive, isCollapsed, title }: { href: string, children: React.ReactNode, isActive: boolean, isCollapsed: boolean, title: string }) => {
@@ -107,7 +107,7 @@ export default function DashboardLayout({
 }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setSidebarCollapsed] = useState(true);
   const router = useRouter();
   
   useEffect(() => {
