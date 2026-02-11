@@ -9,69 +9,55 @@ import { Settings, Loader2, LayoutDashboard, Users } from 'lucide-react';
 import type { User } from '@/lib/types';
 import Logo from '@/components/logo';
 import { placeholderImages } from '@/lib/placeholder-images';
+import { cn } from '@/lib/utils';
 
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarTrigger,
-  useSidebar,
-} from '@/components/ui/sidebar';
+const NavLink = ({ href, children, isActive }: { href: string, children: React.ReactNode, isActive: boolean }) => (
+    <Link
+        href={href}
+        className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+            isActive && "bg-muted text-primary"
+        )}
+    >
+        {children}
+    </Link>
+);
 
 
 function AppSidebar() {
     const pathname = usePathname();
-    const { openMobile, setOpenMobile } = useSidebar();
     
-    const closeSidebar = () => {
-        if(openMobile) setOpenMobile(false);
-    }
-    
-    // For now, all links point to dashboard as other pages don't exist yet
     const dashboardPath = '/dashboard';
     const patientsPath = '/dashboard'; 
     const settingsPath = '/dashboard';
 
     return (
-        <Sidebar>
-            <SidebarHeader>
-                <Link href="/dashboard" className="flex items-center gap-2" onClick={closeSidebar}>
-                    <Logo className="h-7 w-auto" />
-                </Link>
-            </SidebarHeader>
-            <SidebarContent>
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton asChild isActive={pathname === dashboardPath} tooltip="Dashboard" onClick={closeSidebar}>
-                            <Link href={dashboardPath}>
-                                <LayoutDashboard />
-                                <span>Dashboard</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                     <SidebarMenuItem>
-                        <SidebarMenuButton asChild isActive={pathname.startsWith('/patient')} tooltip="Patients" onClick={closeSidebar}>
-                            <Link href={patientsPath}>
-                                <Users />
-                                <span>Patients</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton asChild isActive={pathname === settingsPath} tooltip="Settings" onClick={closeSidebar}>
-                            <Link href={settingsPath}>
-                                <Settings />
-                                <span>Settings</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-            </SidebarContent>
-        </Sidebar>
+        <div className="hidden border-r bg-muted/40 md:block">
+            <div className="flex h-full max-h-screen flex-col gap-2">
+                <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+                    <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+                        <Logo className="h-6 w-auto" />
+                        <span className="">Taria Health</span>
+                    </Link>
+                </div>
+                <div className="flex-1">
+                    <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                        <NavLink href={dashboardPath} isActive={pathname === dashboardPath}>
+                            <LayoutDashboard className="h-4 w-4" />
+                            Dashboard
+                        </NavLink>
+                        <NavLink href={patientsPath} isActive={pathname.startsWith('/patient')}>
+                            <Users className="h-4 w-4" />
+                            Patients
+                        </NavLink>
+                         <NavLink href={settingsPath} isActive={pathname === settingsPath}>
+                            <Settings className="h-4 w-4" />
+                            Settings
+                        </NavLink>
+                    </nav>
+                </div>
+            </div>
+        </div>
     )
 }
 
@@ -108,25 +94,17 @@ export default function DashboardLayout({
   }
 
   return (
-    <SidebarProvider>
-        <AppSidebar />
-        <div className="flex flex-1 flex-col">
-            <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center gap-2">
-                    <SidebarTrigger />
-                    </div>
-                    <div className="flex items-center gap-4">
-                    <Header user={user} />
-                    </div>
-                </div>
-            </header>
-            <main className="flex-1">
-                <div className="mx-auto max-w-7xl py-8 px-4 sm:px-6 lg:px-8">
-                    {children}
-                </div>
-            </main>
-        </div>
-    </SidebarProvider>
+     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+      <AppSidebar />
+      <div className="flex flex-col">
+        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+          <div className="w-full flex-1" />
+          <Header user={user} />
+        </header>
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
+           {children}
+        </main>
+      </div>
+    </div>
   );
 }
