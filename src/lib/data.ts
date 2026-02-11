@@ -1,4 +1,4 @@
-import type { Patient, User, Corporate, ClinicalParameter, Assessment, Goal, Diagnosis, Medication, Prescription, Appointment, Review, Payer } from '@/lib/types';
+import type { Patient, User, Corporate, ClinicalParameter, Assessment, Goal, Diagnosis, Medication, Prescription, Appointment, Review, Payer } from './types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { 
     patients as mockPatients, 

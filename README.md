@@ -189,3 +189,24 @@ CREATE TABLE `prescriptions` (
   FOREIGN KEY (`medication_id`) REFERENCES `medications`(`id`)
 );
 ```
+
+### `appointments`
+
+Stores upcoming and past appointments for patients.
+
+```sql
+CREATE TABLE `appointments` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `patient_id` int NOT NULL,
+  `clinician_id` int NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `appointment_date` datetime NOT NULL,
+  `end_date` datetime DEFAULT NULL,
+  `description` text,
+  `status` enum('scheduled','confirmed','cancelled','completed','no_show','rescheduled') NOT NULL,
+  `cancellation_reason` text,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`patient_id`) REFERENCES `patients`(`id`),
+  FOREIGN KEY (`clinician_id`) REFERENCES `users`(`id`)
+);
+```

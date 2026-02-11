@@ -79,6 +79,8 @@ import { motion } from 'framer-motion';
 import AddAssessmentModal from '@/components/patient/add-assessment-modal';
 import PrescriptionManagement from '@/components/patient/prescription-management';
 import { fetchMedications } from '@/lib/data';
+import ReviewHistoryCard from '@/components/patient/review-history-card';
+import AppointmentsCard from '@/components/patient/appointments-card';
 
 const DetailItem = ({
   label,
@@ -387,6 +389,8 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
                 </CardContent>
               </Card>
             )}
+            <ReviewHistoryCard patient={patient} />
+            <AppointmentsCard patient={patient} />
             <Card>
               <CardHeader>
                 <CardTitle>Actions</CardTitle>
@@ -563,18 +567,6 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
                            <Button onClick={submitReview}><Save className="mr-2 h-4 w-4"/> Submit Review</Button>
                       </div>
                   </div>
-                   <Separator className="my-6" />
-                   <div className="space-y-4">
-                        <h4 className="text-lg font-semibold text-foreground mb-2">Review History</h4>
-                         {patient.reviews.length > 0 ? patient.reviews.map(review => (
-                             <div key={review.id} className="p-4 rounded-xl border bg-muted/50">
-                                <p className="font-semibold">Review on {new Date(review.review_date).toLocaleDateString()}</p>
-                                <p className="text-sm text-muted-foreground">by {review.reviewed_by}</p>
-                                <p className="text-sm mt-2">{review.plan}</p>
-                            </div>
-                         )) : <p className="text-center text-muted-foreground py-4">No reviews yet.</p>}
-                   </div>
-
               </CardContent>
             </Card>
 
