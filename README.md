@@ -41,7 +41,7 @@ CREATE TABLE `users` (
   `name` varchar(255) NOT NULL,
   `email` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL,
-  `role` enum('admin','staff','physician','navigator','payer') NOT NULL,
+  `role` enum('admin','staff','physician','navigator','payer','patient') NOT NULL,
   `avatarUrl` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
@@ -68,6 +68,7 @@ The central table for patient information, including demographic and onboarding 
 ```sql
 CREATE TABLE `patients` (
   `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int DEFAULT NULL,
   `first_name` varchar(100) NOT NULL,
   `middle_name` varchar(100) DEFAULT NULL,
   `surname` varchar(100) DEFAULT NULL,
@@ -92,6 +93,7 @@ CREATE TABLE `patients` (
   `consent_date` date DEFAULT NULL,
   `navigator_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`),
   FOREIGN KEY (`corporate_id`) REFERENCES `corporates`(`id`),
   FOREIGN KEY (`navigator_id`) REFERENCES `users`(`id`)
 );

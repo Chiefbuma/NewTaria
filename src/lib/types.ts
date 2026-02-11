@@ -2,7 +2,7 @@ export type User = {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'staff' | 'physician' | 'navigator' | 'payer';
+  role: 'admin' | 'staff' | 'physician' | 'navigator' | 'payer' | 'patient';
   avatarUrl?: string;
 };
 
@@ -102,6 +102,7 @@ export type Review = {
 
 export type Patient = {
   id: number;
+  user_id: number | null;
   // Core Info from Registration
   first_name: string;
   surname: string | null;
@@ -141,6 +142,7 @@ export type Patient = {
   // Other Misc Fields
   phone: string | null;
   dob: string | null;
+  middle_name?: string | null;
   wellness_date: string; // Linked to corporate
   corporate_id: number | null;
   date_of_diagnosis: string | null; // Can be different from registration diagnosis date
@@ -153,4 +155,7 @@ export type Patient = {
   prescriptions: Prescription[];
   appointments: Appointment[];
   reviews: Review[];
+  vitals?: any[];
+  nutrition?: any[];
+  clinicals?: any[];
 };
