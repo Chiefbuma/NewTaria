@@ -1,13 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import type { Patient, ClinicalParameter, User, Corporate } from '@/lib/types';
+import type { Patient, ClinicalParameter, User } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, SlidersHorizontal } from 'lucide-react';
 import PatientList from '@/components/dashboard/patient-list';
 import SettingsView from '@/components/settings/settings-view';
-import ActivityFeed from '@/components/dashboard/activity-feed';
-import UpcomingAppointments from '@/components/dashboard/upcoming-appointments';
 import CriticalPatients from '@/components/dashboard/critical-patients';
 import Notifications from '@/components/dashboard/notifications';
 
@@ -17,17 +15,14 @@ export default function DashboardClient({
   initialPatients, 
   initialClinicalParameters,
   initialUsers,
-  initialCorporates,
 }: { 
   initialPatients: Patient[],
   initialClinicalParameters: ClinicalParameter[],
   initialUsers: User[],
-  initialCorporates: Corporate[],
 }) {
   const [patients, setPatients] = useState(initialPatients);
   const [clinicalParameters, setClinicalParameters] = useState(initialClinicalParameters);
   const [users, setUsers] = useState(initialUsers);
-  const [corporates, setCorporates] = useState(initialCorporates);
   const [activeView, setActiveView] = useState<View>('patients');
 
   const handleUpdateParameters = (updatedParameters: ClinicalParameter[]) => {
@@ -77,10 +72,6 @@ export default function DashboardClient({
           {activeView === 'patients' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                 <div className="lg:col-span-2 space-y-8">
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <ActivityFeed patients={patients} corporates={corporates} />
-                        <UpcomingAppointments patients={patients} />
-                    </div>
                     <PatientList patients={patients} />
                 </div>
                 <div className="lg:col-span-1 space-y-8">
