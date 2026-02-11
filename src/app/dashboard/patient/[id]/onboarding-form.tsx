@@ -89,9 +89,11 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
             <form onSubmit={handleSubmit}>
                 <div className="space-y-6">
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Medical History</CardTitle>
-                            <CardDescription>Capture important medical history and diagnoses.</CardDescription>
+                        <CardHeader className="items-center">
+                            <div className="bg-muted px-4 py-2 rounded-lg">
+                                <CardTitle className="text-center text-primary">Medical History</CardTitle>
+                            </div>
+                            <CardDescription className="pt-2">Capture important medical history and diagnoses.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
@@ -116,9 +118,11 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                     </Card>
 
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Lifestyle & Environment</CardTitle>
-                            <CardDescription>Understand the patient's daily life and environment.</CardDescription>
+                        <CardHeader className="items-center">
+                             <div className="bg-muted px-4 py-2 rounded-lg">
+                                <CardTitle className="text-center text-primary">Lifestyle & Environment</CardTitle>
+                            </div>
+                            <CardDescription className="pt-2">Understand the patient's daily life and environment.</CardDescription>
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 gap-4">
                             <div className="space-y-2">
@@ -145,8 +149,10 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                     </Card>
 
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Emergency Contact & Administrative</CardTitle>
+                        <CardHeader className="items-center">
+                             <div className="bg-muted px-4 py-2 rounded-lg">
+                                <CardTitle className="text-center text-primary">Emergency Contact & Administrative</CardTitle>
+                            </div>
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 gap-4">
                             <div className="space-y-2">
@@ -190,8 +196,10 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                     </Card>
                     
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Equipment & Consent</CardTitle>
+                        <CardHeader className="items-center">
+                            <div className="bg-muted px-4 py-2 rounded-lg">
+                                <CardTitle className="text-center text-primary">Equipment & Consent</CardTitle>
+                            </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex flex-col space-y-4 items-start">
