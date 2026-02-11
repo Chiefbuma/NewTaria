@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 interface AddAssessmentModalProps {
   isOpen: boolean;
@@ -29,7 +30,8 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
   const [selectedParamId, setSelectedParamId] = useState<string | undefined>(parameter?.id.toString());
   const [value, setValue] = useState('');
   const [notes, setNotes] = useState('');
-  const [measuredAt, setMeasuredAt] = useState(new Date().toISOString().slice(0, 16));
+  const [measuredAt, setMeasuredAt] = useState(new Date().toISOString().slice(0, 10)); // Default to date only
+  const { toast } = useToast();
 
   const selectedParameter = allParameters?.find(p => p.id.toString() === selectedParamId) || parameter;
 
@@ -38,19 +40,19 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
         setSelectedParamId(existingAssessment.clinical_parameter_id.toString());
         setValue(existingAssessment.value);
         setNotes(existingAssessment.notes || '');
-        setMeasuredAt(new Date(existingAssessment.measured_at).toISOString().slice(0, 16));
+        setMeasuredAt(new Date(existingAssessment.measured_at).toISOString().slice(0, 10));
     } else if (parameter) {
         setSelectedParamId(parameter.id.toString());
         setValue('');
         setNotes('');
-        setMeasuredAt(new Date().toISOString().slice(0, 16));
+        setMeasuredAt(new Date().toISOString().slice(0, 10));
     }
-  }, [existingAssessment, parameter]);
+  }, [existingAssessment, parameter, isOpen]); // Rerun on open
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedParamId) {
-        alert('Please select a parameter.');
+    if (!selectedParamId || !value) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Parameter and Value are required.'})
         return;
     }
     
@@ -73,7 +75,7 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
         return <Input type="text" value={value} onChange={(e) => setValue(e.target.value)} required />;
       case 'choice':
         return (
-          <Select onValueChange={setValue} value={value}>
+          <Select onValueChange={setValue} value={value} required>
             <SelectTrigger>
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
@@ -123,8 +125,8 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
                         <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="measuredAt">Measured At</Label>
-                        <Input id="measuredAt" type="datetime-local" value={measuredAt} onChange={(e) => setMeasuredAt(e.target.value)} required />
+                        <Label htmlFor="measuredAt">Date of Assessment</Label>
+                        <Input id="measuredAt" type="date" value={measuredAt} onChange={(e) => setMeasuredAt(e.target.value)} required />
                     </div>
                 </>
             )}

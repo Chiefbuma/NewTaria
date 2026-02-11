@@ -76,6 +76,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ReportViewer from '@/components/report-viewer';
 import { corporates as mockCorporates } from '@/lib/mock-data';
 import { motion } from 'framer-motion';
+import AddAssessmentModal from '@/components/patient/add-assessment-modal';
 
 const DetailItem = ({
   label,
@@ -120,6 +121,10 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
   const [editFormData, setEditFormData] = useState<Partial<Patient>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Assessment Modal State
+  const [isAddAssessmentModalOpen, setAddAssessmentModalOpen] = useState(false);
+  const [selectedGoalParameter, setSelectedGoalParameter] = useState<ClinicalParameter | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('loggedInUser');
@@ -171,7 +176,6 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
     setEditFormData({ ...editFormData, [name]: value });
   };
 
-  // New state and logic from user's provided code
   const [newGoal, setNewGoal] = useState({
     clinical_parameter_id: '',
     target_value: '',
@@ -181,7 +185,6 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
   });
 
   const onUpdate = () => {
-    // This is a placeholder for a real data refresh function
     toast({title: "Data Updated", description: "In a real app, data would be re-fetched."})
   }
 
@@ -242,6 +245,12 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
     }
     setPatient(prev => ({...prev, assessments: [...prev.assessments, fullAssessment]}));
     toast({title: 'Success', description: 'Assessment saved.'});
+    setAddAssessmentModalOpen(false);
+  };
+
+  const handleOpenAddAssessmentModal = (parameter: ClinicalParameter) => {
+    setSelectedGoalParameter(parameter);
+    setAddAssessmentModalOpen(true);
   };
 
   const [reviewData, setReviewData] = useState({
@@ -469,9 +478,14 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
                                           <p className="text-sm text-muted-foreground">Target: {getDisplayText(goal)}</p>
                                           <p className="text-sm text-muted-foreground">Deadline: {new Date(goal.deadline).toLocaleDateString()}</p>
                                       </div>
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-1">
                                           {getStatusBadge(goal)}
-                                          <Button variant="ghost" size="icon" onClick={() => handleDeleteGoal(goal.id)}><Trash2 className="h-4 w-4 text-red-500"/></Button>
+                                          <Button variant="ghost" size="icon" onClick={() => handleOpenAddAssessmentModal(parameter!)}>
+                                              <PlusCircle className="h-4 w-4 text-green-500" />
+                                          </Button>
+                                          <Button variant="ghost" size="icon" onClick={() => handleDeleteGoal(goal.id)}>
+                                              <Trash2 className="h-4 w-4 text-red-500"/>
+                                          </Button>
                                       </div>
                                   </div>
 
@@ -633,6 +647,15 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
             </form>
         </DialogContent>
       </Dialog>
+      
+      {isAddAssessmentModalOpen && (
+        <AddAssessmentModal
+            isOpen={isAddAssessmentModalOpen}
+            onClose={() => setAddAssessmentModalOpen(false)}
+            onSave={handleSaveAssessment}
+            parameter={selectedGoalParameter}
+        />
+      )}
     </div>
   );
 }
