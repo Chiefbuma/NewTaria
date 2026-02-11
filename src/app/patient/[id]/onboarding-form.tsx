@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Patient, User, Corporate } from '@/lib/types';
+import type { Patient, User, Corporate, Payer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { fetchUsers, fetchCorporates } from '@/lib/data';
+import { fetchUsers, fetchCorporates, fetchPayers } from '@/lib/data';
 import PatientHeader from './patient-header';
 
 interface OnboardingFormProps {
@@ -30,16 +30,19 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [navigators, setNavigators] = useState<User[]>([]);
     const [corporates, setCorporates] = useState<Corporate[]>([]);
+    const [payers, setPayers] = useState<Payer[]>([]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [navData, corpData] = await Promise.all([
+                const [navData, corpData, payerData] = await Promise.all([
                     fetchUsers(),
-                    fetchCorporates()
+                    fetchCorporates(),
+                    fetchPayers()
                 ]);
                 setNavigators(navData.filter((u: User) => u.role === 'navigator'));
                 setCorporates(corpData);
+                setPayers(payerData);
             } catch (error) {
                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to load necessary data.' });
             }
@@ -174,6 +177,16 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                                     <SelectContent>
                                         <SelectItem value="null">None</SelectItem>
                                         {corporates.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="payer_id">Assign Payer</Label>
+                                <Select value={String(formData.payer_id || 'null')} onValueChange={(value) => handleSelectChange('payer_id', value)}>
+                                    <SelectTrigger><SelectValue placeholder="Select a payer" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="null">None</SelectItem>
+                                        {payers.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>

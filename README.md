@@ -61,6 +61,18 @@ CREATE TABLE `corporates` (
 );
 ```
 
+### `payers`
+
+Stores payer information (e.g., insurance companies).
+
+```sql
+CREATE TABLE `payers` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+);
+```
+
 ### `patients`
 
 The central table for patient information, including demographic and onboarding data.
@@ -79,6 +91,7 @@ CREATE TABLE `patients` (
   `email` varchar(255) DEFAULT NULL,
   `wellness_date` date NOT NULL,
   `corporate_id` int DEFAULT NULL,
+  `payer_id` int DEFAULT NULL,
   `status` enum('Active','Pending','Critical','Discharged','In Review') NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `date_of_onboarding` date DEFAULT NULL,
@@ -95,7 +108,8 @@ CREATE TABLE `patients` (
   PRIMARY KEY (`id`),
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`),
   FOREIGN KEY (`corporate_id`) REFERENCES `corporates`(`id`),
-  FOREIGN KEY (`navigator_id`) REFERENCES `users`(`id`)
+  FOREIGN KEY (`navigator_id`) REFERENCES `users`(`id`),
+  FOREIGN KEY (`payer_id`) REFERENCES `payers`(`id`)
 );
 ```
 

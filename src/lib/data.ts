@@ -1,9 +1,10 @@
-import type { Patient, User, Corporate, ClinicalParameter, Assessment, Goal, Diagnosis, Medication, Prescription, Appointment, Review } from '@/lib/types';
+import type { Patient, User, Corporate, ClinicalParameter, Assessment, Goal, Diagnosis, Medication, Prescription, Appointment, Review, Payer } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { 
     patients as mockPatients, 
     users as mockUsers,
     corporates as mockCorporates,
+    payers as mockPayers,
     clinicalParameters as mockClinicalParameters,
     assessments as mockAssessments,
     goals as mockGoals,
@@ -20,10 +21,12 @@ export async function fetchPatients(): Promise<Patient[]> {
     const enrichedPatients = mockPatients.map(patient => {
         const navigator = mockUsers.find(u => u.id === patient.navigator_id);
         const corporate = mockCorporates.find(c => c.id === patient.corporate_id);
+        const payer = mockPayers.find(p => p.id === patient.payer_id);
         return {
             ...patient,
             navigator_name: navigator?.name,
             corporate_name: corporate?.name,
+            payer_name: payer?.name,
             assessments: mockAssessments.filter(a => a.patient_id === patient.id),
             goals: mockGoals.filter(g => g.patient_id === patient.id),
             prescriptions: mockPrescriptions.filter(p => p.patient_id === patient.id).map(p => ({...p, medication: mockMedications.find(m => m.id === p.medication_id)})),
@@ -46,11 +49,13 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
 
     const navigator = mockUsers.find(u => u.id === patient.navigator_id);
     const corporate = mockCorporates.find(c => c.id === patient.corporate_id);
+    const payer = mockPayers.find(p => p.id === patient.payer_id);
 
     return {
         ...patient,
         navigator_name: navigator?.name,
         corporate_name: corporate?.name,
+        payer_name: payer?.name,
         assessments: mockAssessments.filter(a => a.patient_id === patient.id),
         goals: mockGoals.filter(g => g.patient_id === patient.id),
         prescriptions: mockPrescriptions.filter(p => p.patient_id === patient.id).map(p => ({...p, medication: mockMedications.find(m => m.id === p.medication_id)})),
@@ -72,6 +77,11 @@ export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
 export async function fetchCorporates(): Promise<Corporate[]> {
     noStore();
     return mockCorporates.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function fetchPayers(): Promise<Payer[]> {
+    noStore();
+    return mockPayers;
 }
 
 export async function fetchDiagnoses(): Promise<Diagnosis[]> {

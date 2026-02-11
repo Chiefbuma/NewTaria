@@ -12,6 +12,11 @@ export type Corporate = {
   wellness_date: string;
 };
 
+export type Payer = {
+  id: number;
+  name: string;
+};
+
 export type ClinicalParameter = {
     id: number;
     name: string;
@@ -145,11 +150,13 @@ export type Patient = {
   middle_name?: string | null;
   wellness_date: string; // Linked to corporate
   corporate_id: number | null;
+  payer_id: number | null;
   date_of_diagnosis: string | null; // Can be different from registration diagnosis date
   
   // Joined/related data (from data.ts)
   corporate_name?: string;
   navigator_name?: string;
+  payer_name?: string;
   assessments: Assessment[];
   goals: Goal[];
   prescriptions: Prescription[];

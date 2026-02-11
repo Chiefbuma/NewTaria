@@ -1,4 +1,4 @@
-import type { User, Corporate, Patient, ClinicalParameter, Assessment, Goal, Diagnosis, Medication, Prescription, Appointment, Review } from './types';
+import type { User, Corporate, Patient, ClinicalParameter, Assessment, Goal, Diagnosis, Medication, Prescription, Appointment, Review, Payer } from './types';
 
 export const users: User[] = [
     { id: 1, name: 'Dr. Emily Carter', email: 'admin@taria.com', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=emily' },
@@ -9,6 +9,13 @@ export const users: User[] = [
 export const corporates: Corporate[] = [
     { id: 1, name: 'Innovate Inc.', wellness_date: '2023-05-15' },
     { id: 2, name: 'HealthForward', wellness_date: '2023-06-01' }
+];
+
+export const payers: Payer[] = [
+    { id: 1, name: 'Aetna' },
+    { id: 2, name: 'Cigna' },
+    { id: 3, name: 'UnitedHealthcare' },
+    { id: 4, name: 'Self-Pay' },
 ];
 
 export const clinicalParameters: ClinicalParameter[] = [
@@ -65,6 +72,7 @@ export const reviews: Review[] = [
 export let patients: Omit<Patient, 'assessments' | 'goals' | 'prescriptions' | 'appointments' | 'reviews'>[] = [
     {
         id: 1,
+        user_id: null,
         first_name: 'John',
         surname: 'Doe',
         dob: '1985-04-12',
@@ -75,6 +83,7 @@ export let patients: Omit<Patient, 'assessments' | 'goals' | 'prescriptions' | '
         diagnosis: 'Type 2 Diabetes',
         wellness_date: '2023-05-15',
         corporate_id: 1,
+        payer_id: 1,
         status: 'Active',
         created_at: '2023-05-15T10:00:00Z',
         emr_number: 'EMR-001',
@@ -101,6 +110,7 @@ export let patients: Omit<Patient, 'assessments' | 'goals' | 'prescriptions' | '
     },
     {
         id: 2,
+        user_id: null,
         first_name: 'Jane',
         surname: 'Smith',
         dob: '1990-08-22',
@@ -111,6 +121,7 @@ export let patients: Omit<Patient, 'assessments' | 'goals' | 'prescriptions' | '
         diagnosis: null,
         wellness_date: '2023-06-01',
         corporate_id: 2,
+        payer_id: null,
         status: 'Pending',
         created_at: '2023-06-01T11:30:00Z',
         emr_number: null,
@@ -137,6 +148,7 @@ export let patients: Omit<Patient, 'assessments' | 'goals' | 'prescriptions' | '
     },
     {
         id: 3,
+        user_id: null,
         first_name: 'Peter',
         surname: 'Jones',
         dob: '1978-11-02',
@@ -147,6 +159,7 @@ export let patients: Omit<Patient, 'assessments' | 'goals' | 'prescriptions' | '
         diagnosis: 'Hypertension',
         wellness_date: '2023-05-15',
         corporate_id: 1,
+        payer_id: 2,
         status: 'Critical',
         created_at: '2023-05-15T10:15:00Z',
         emr_number: 'EMR-003',
