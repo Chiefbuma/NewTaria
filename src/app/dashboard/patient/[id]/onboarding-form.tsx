@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Patient, User, Corporate, Payer } from '@/lib/types';
+import type { Patient, User, Payer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { fetchUsers, fetchCorporates, fetchPayers } from '@/lib/data';
+import { fetchPayers } from '@/lib/data';
 import PatientHeader from './patient-header';
 
 interface OnboardingFormProps {
@@ -24,30 +24,33 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
     const { toast } = useToast();
     const [formData, setFormData] = useState<Partial<Patient>>({ 
         ...patient,
-        consent_date: patient.consent_date ? new Date(patient.consent_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         date_of_onboarding: patient.date_of_onboarding ? new Date(patient.date_of_onboarding).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
      });
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [navigators, setNavigators] = useState<User[]>([]);
-    const [corporates, setCorporates] = useState<Corporate[]>([]);
     const [payers, setPayers] = useState<Payer[]>([]);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [navData, corpData, payerData] = await Promise.all([
-                    fetchUsers(),
-                    fetchCorporates(),
-                    fetchPayers()
-                ]);
-                setNavigators(navData.filter((u: User) => u.role === 'navigator'));
-                setCorporates(corpData);
+                const payerData = await fetchPayers();
                 setPayers(payerData);
             } catch (error) {
                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to load necessary data.' });
             }
         };
         fetchData();
+
+        const storedUser = localStorage.getItem('loggedInUser');
+        if (storedUser) {
+            const user: User = JSON.parse(storedUser);
+            setCurrentUser(user);
+            setFormData(prev => ({
+                ...prev,
+                navigator_id: user.id,
+                emr_number: `EMR/TAR/${user.id}`
+            }));
+        }
     }, [toast]);
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -155,31 +158,22 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="emergency_contact_relation">Relation</Label>
-                                <Input id="emergency_contact_relation" value={formData.emergency_contact_relation || ''} onChange={handleInputChange} />
+                                <Select value={formData.emergency_contact_relation || ''} onValueChange={(value) => handleSelectChange('emergency_contact_relation', value)}>
+                                    <SelectTrigger><SelectValue placeholder="Select a relation" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="spouse">Spouse</SelectItem>
+                                        <SelectItem value="sibling">Sibling</SelectItem>
+                                        <SelectItem value="friend">Friend</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="emr_number">EMR Number</Label>
-                                <Input id="emr_number" value={formData.emr_number || ''} onChange={handleInputChange} />
+                                <Input id="emr_number" value={formData.emr_number || ''} readOnly />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="navigator_id">Assign Navigator</Label>
-                                <Select value={String(formData.navigator_id || '')} onValueChange={(value) => handleSelectChange('navigator_id', value)}>
-                                    <SelectTrigger><SelectValue placeholder="Select a navigator" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="null">Unassigned</SelectItem>
-                                        {navigators.map(n => <SelectItem key={n.id} value={String(n.id)}>{n.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="corporate_id">Assign Corporate</Label>
-                                <Select value={String(formData.corporate_id || 'null')} onValueChange={(value) => handleSelectChange('corporate_id', value)}>
-                                    <SelectTrigger><SelectValue placeholder="Select a corporate" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="null">None</SelectItem>
-                                        {corporates.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                                <Label htmlFor="navigator_name">Navigator</Label>
+                                <Input id="navigator_name" value={currentUser?.name || ''} readOnly />
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="payer_id">Assign Payer</Label>
@@ -221,10 +215,6 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                                <div className="space-y-2">
                                     <Label htmlFor="date_of_onboarding">Date of Onboarding</Label>
                                     <Input id="date_of_onboarding" type="date" value={formData.date_of_onboarding || ''} onChange={handleInputChange} required />
-                                </div>
-                               <div className="space-y-2">
-                                    <Label htmlFor="consent_date">Consent Date</Label>
-                                    <Input id="consent_date" type="date" value={formData.consent_date || ''} onChange={handleInputChange} required />
                                 </div>
                            </div>
                         </CardContent>
