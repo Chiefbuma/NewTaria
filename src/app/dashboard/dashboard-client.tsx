@@ -45,7 +45,7 @@ export default function DashboardClient({
                 {activeView === 'patients' ? 'Patient Dashboard' : 'Settings'}
                 </h1>
                 <p className="text-muted-foreground">
-                {activeView === 'patients' ? 'An overview of your patient management activities.' : 'Configure application settings'}
+                {activeView === 'patients' ? 'View and manage patient records' : 'Configure application settings'}
                 </p>
             </div>
             <div className="flex items-center gap-2 p-1 bg-muted rounded-xl border w-fit">
@@ -75,18 +75,16 @@ export default function DashboardClient({
           className="space-y-8"
         >
           {activeView === 'patients' && (
-             <>
-                <ActivityFeed patients={patients} corporates={corporates} />
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                    <div className="lg:col-span-2">
-                        <PatientList patients={patients} />
-                    </div>
-                    <div className="lg:col-span-1 space-y-8">
-                        <UpcomingAppointments patients={patients} />
-                        <CriticalPatients patients={patients} />
-                    </div>
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <div className="lg:col-span-2">
+                    <PatientList patients={patients} />
                 </div>
-             </>
+                <div className="lg:col-span-1 space-y-8">
+                    <ActivityFeed patients={patients} corporates={corporates} />
+                    <UpcomingAppointments patients={patients} />
+                    <CriticalPatients patients={patients} />
+                </div>
+            </div>
           )}
           {activeView === 'settings' && <SettingsView 
               clinicalParameters={clinicalParameters} 

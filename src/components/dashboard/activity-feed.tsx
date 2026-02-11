@@ -1,9 +1,10 @@
 'use client';
 
 import type { Patient, Corporate } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Users, Building, UserRoundCog, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
 
 export default function ActivityFeed({ patients, corporates }: { patients: Patient[], corporates: Corporate[] }) {
   const totalPatients = patients.length;
@@ -15,51 +16,50 @@ export default function ActivityFeed({ patients, corporates }: { patients: Patie
     {
       title: 'Total Patients',
       value: totalPatients,
-      icon: <Users className="h-6 w-6 text-primary" />,
-      color: 'text-primary bg-primary/10',
+      icon: <Users className="h-5 w-5 text-muted-foreground" />,
     },
     {
       title: 'Pending Onboarding',
       value: pendingOnboarding,
-      icon: <UserRoundCog className="h-6 w-6 text-amber-500" />,
-      color: 'text-amber-500 bg-amber-500/10',
+      icon: <UserRoundCog className="h-5 w-5 text-muted-foreground" />,
     },
     {
       title: 'Critical Patients',
       value: criticalPatients,
-      icon: <AlertTriangle className="h-6 w-6 text-destructive" />,
-      color: 'text-destructive bg-destructive/10',
+      icon: <AlertTriangle className="h-5 w-5 text-muted-foreground" />,
     },
     {
-      title: 'Total Corporates',
+      title: 'Corporate Partners',
       value: totalCorporates,
-      icon: <Building className="h-6 w-6 text-emerald-500" />,
-      color: 'text-emerald-500 bg-emerald-500/10',
+      icon: <Building className="h-5 w-5 text-muted-foreground" />,
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-            <motion.div
-                key={stat.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-            >
-                <Card className="hover:border-primary/50 transition-colors shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                        <div className={`p-2 rounded-full ${stat.color}`}>
-                           {stat.icon}
+     <Card>
+        <CardHeader>
+            <CardTitle>At a Glance</CardTitle>
+            <CardDescription>A quick summary of your operations.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <ul className="space-y-3">
+                {stats.map((stat, index) => (
+                    <motion.li 
+                        key={stat.title}
+                        className="flex items-center justify-between text-sm"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                    >
+                        <div className="flex items-center gap-3">
+                            {stat.icon}
+                            <span className="font-medium">{stat.title}</span>
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-bold">{stat.value}</div>
-                    </CardContent>
-                </Card>
-            </motion.div>
-        ))}
-    </div>
+                        <Badge variant="secondary" className="font-semibold">{stat.value}</Badge>
+                    </motion.li>
+                ))}
+            </ul>
+        </CardContent>
+     </Card>
   );
 }

@@ -12,12 +12,14 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
 
 const ViewPatientButton = ({ patient }: { patient: Patient }) => {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
+    const isPending = patient.status === 'Pending';
 
     const handleClick = () => {
         setIsLoading(true);
@@ -25,12 +27,12 @@ const ViewPatientButton = ({ patient }: { patient: Patient }) => {
         router.push(`/patient/${patient.id}`);
     };
 
-    return (
-        <Button
+    const button = (
+         <Button
             variant="outline"
             size="sm"
             onClick={handleClick}
-            disabled={isLoading}
+            disabled={isLoading || isPending}
             className="w-[120px] transition-all duration-300 ease-in-out"
         >
             {isLoading ? (
@@ -43,6 +45,24 @@ const ViewPatientButton = ({ patient }: { patient: Patient }) => {
             )}
         </Button>
     );
+    
+    if (isPending) {
+        return (
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        {/* The span is needed for Tooltip to work on a disabled button */}
+                        <span>{button}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Complete onboarding to view patient details.</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        );
+    }
+
+    return button;
 };
 
 
@@ -117,13 +137,6 @@ export const columns: ColumnDef<Patient>[] = [
         const date = row.getValue("wellness_date") as string | null;
         if (!date) return <span className="text-muted-foreground">-</span>
         return <div>{new Date(date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
-    },
-  },
-    {
-    accessorKey: "navigator_name",
-    header: "Navigator",
-    cell: ({ row }) => {
-      return row.getValue("navigator_name") || <span className="text-muted-foreground">Unassigned</span>
     },
   },
   {
