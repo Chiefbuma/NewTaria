@@ -24,8 +24,8 @@ const NavLink = ({ href, children, isActive, isCollapsed, title }: { href: strin
                         <Link
                             href={href}
                             className={cn(
-                                "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-primary md:h-8 md:w-8",
-                                isActive && "bg-background text-primary shadow-sm"
+                                "flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-primary",
+                                isActive && "bg-muted text-primary"
                             )}
                         >
                             {children}
@@ -44,12 +44,12 @@ const NavLink = ({ href, children, isActive, isCollapsed, title }: { href: strin
         <Link
             href={href}
             className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                isActive && "bg-background text-primary font-semibold shadow-sm"
+                "flex items-center gap-4 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                isActive && "bg-muted text-primary font-semibold"
             )}
         >
             {children}
-            <span>{title}</span>
+            <span className={cn("transition-opacity", isCollapsed && "opacity-0")}>{title}</span>
         </Link>
     );
 };
@@ -57,22 +57,23 @@ const NavLink = ({ href, children, isActive, isCollapsed, title }: { href: strin
 function AppSidebarNav({ isCollapsed }: { isCollapsed: boolean }) {
     const pathname = usePathname();
     const dashboardPath = '/dashboard';
+    // Both patients and settings link to dashboard for now, as per original code
     const patientsPath = '/dashboard'; 
     const settingsPath = '/dashboard';
 
     return (
         <nav className={cn(
-                "grid items-start gap-1 text-sm font-medium", 
-                isCollapsed ? "justify-center px-2" : "bg-muted rounded-xl p-2 mx-4"
+                "grid items-start gap-2 text-sm font-medium", 
+                isCollapsed ? "justify-center px-2" : "bg-background border rounded-lg p-2 mx-4"
             )}>
-            <NavLink href={dashboardPath} isActive={pathname === dashboardPath} isCollapsed={isCollapsed} title="Dashboard">
-                <LayoutDashboard className="h-4 w-4" />
+            <NavLink href={dashboardPath} isActive={pathname === dashboardPath && !pathname.startsWith('/patient')} isCollapsed={isCollapsed} title="Dashboard">
+                <LayoutDashboard className="h-5 w-5" />
             </NavLink>
             <NavLink href={patientsPath} isActive={pathname.startsWith('/patient')} isCollapsed={isCollapsed} title="Patients">
-                <Users className="h-4 w-4" />
+                <Users className="h-5 w-5" />
             </NavLink>
-            <NavLink href={settingsPath} isActive={pathname === settingsPath} isCollapsed={isCollapsed} title="Settings">
-                <Settings className="h-4 w-4" />
+            <NavLink href={settingsPath} isActive={pathname === settingsPath && false /* logic to be defined */} isCollapsed={isCollapsed} title="Settings">
+                <Settings className="h-5 w-5" />
             </NavLink>
         </nav>
     );
@@ -80,11 +81,16 @@ function AppSidebarNav({ isCollapsed }: { isCollapsed: boolean }) {
 
 function AppSidebar({ isCollapsed }: { isCollapsed: boolean }) {
     return (
-        <div className={cn("flex h-full max-h-screen flex-col gap-2", isCollapsed && "items-center")}>
+        <div className={cn("flex h-full max-h-screen flex-col gap-4")}>
             <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-                <Link href="/dashboard" className="flex items-center gap-2 font-semibold overflow-hidden">
+                <Link href="/dashboard" className="flex items-center font-semibold">
                     <Logo className="h-6 w-auto flex-shrink-0" />
-                    {!isCollapsed && <span className="whitespace-nowrap transition-opacity duration-300 ease-in-out">Taria Health</span>}
+                    <span className={cn(
+                        "whitespace-nowrap transition-all duration-300",
+                        isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100 ml-2"
+                    )}>
+                        Taria Health
+                    </span>
                 </Link>
             </div>
             <div className="flex-1 py-2 overflow-y-auto overflow-x-hidden">
