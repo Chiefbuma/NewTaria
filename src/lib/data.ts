@@ -19,10 +19,9 @@ export async function fetchPatients(): Promise<Patient[]> {
         
         const patients = rows as any[];
         
-        // Enrich with stats and related basic arrays for the dashboard list
         return patients.map(p => ({
             ...p,
-            assessments: [], // Dashboard list doesn't need full arrays
+            assessments: [], 
             goals: [],
             prescriptions: [],
             appointments: [],
@@ -52,7 +51,6 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
         const patient = (patientRows as any[])[0];
         if (!patient) return null;
 
-        // Fetch related data
         const [assessments] = await db.query('SELECT * FROM assessments WHERE patient_id = ? ORDER BY measured_at DESC', [id]);
         const [goals] = await db.query('SELECT * FROM goals WHERE patient_id = ? ORDER BY created_at DESC', [id]);
         const [prescriptions] = await db.query(`
@@ -104,6 +102,18 @@ export async function fetchUsers(): Promise<User[]> {
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch users.');
+    }
+}
+
+export async function getUserByEmail(email: string) {
+    noStore();
+    try {
+        const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        const users = rows as any[];
+        return users[0] || null;
+    } catch (error) {
+        console.error('Database Error:', error);
+        return null;
     }
 }
 

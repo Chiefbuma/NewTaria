@@ -2,211 +2,65 @@
 
 A modern, patient-centric health monitoring dashboard designed to track personalized health metrics over time. It provides a clean, intuitive interface for healthcare providers to monitor patient progress against their health goals.
 
-The application is built with a modern tech stack and follows best practices for creating a fast, user-friendly, and maintainable application.
+## Production Configuration (Shared Hosting)
 
-## Features
+The application is configured for production deployment on shared hosting environments (like cPanel with Passenger).
 
--   **Patient-Centric Dashboard**: A central dashboard displaying a list of all patients, with key information at a glance.
--   **Two-Step Patient Intake**: A streamlined workflow that separates initial registration from detailed clinical onboarding.
--   **Comprehensive Onboarding**: A dedicated form to capture detailed patient history, lifestyle factors, and medical information.
--   **Detailed Patient View**: A comprehensive view for each patient, including:
-    -   Personalized health metrics tracked over time with support for numeric, text, and choice-based goals.
-    -   Interactive charts to visualize metric history.
-    -   A section for patient-specific health goals.
--   **Dynamic Parameter Management**: A full-featured settings page to create, edit, and delete the clinical parameters used for tracking.
--   **Modern UI/UX**: A clean, responsive interface with smooth animations, built with ShadCN UI, Tailwind CSS, and Framer Motion.
--   **API Driven**: The application features a dedicated API layer for data management, preparing it for database integration.
+### Key Features
+- **Standalone Build**: Optimized production build containing only necessary dependencies.
+- **MySQL Integration**: Direct connection to your database using environment variables.
+- **Secure Authentication**: Database-linked login with bcrypt password hashing.
 
-## Tech Stack
+### Database Schema
 
--   **Framework**: **Next.js** (v14+ with App Router)
--   **Language**: **TypeScript**
--   **UI Library**: **ShadCN UI** & **Tailwind CSS**
--   **Animations**: **Framer Motion**
--   **Charting**: **Recharts**
--   **Database**: **MySQL** (current implementation uses a mock API)
--   **Containerization**: **Docker** and **Docker Compose**
+Import the `localhost.sql` file into your MySQL database to set up the following tables:
 
-## Database Schema
+#### `users`
+Stores user accounts for staff, navigators, physicians, and admins.
+- `id`: Primary Key
+- `name`: Full name
+- `email`: Login email (Unique)
+- `password`: BCrypt hashed password
+- `role`: Access level (admin, staff, physician, navigator, payer, patient)
+- `avatarUrl`: Link to profile picture
 
-The following tables are used in the application.
+#### `patients`
+Central patient records including demographic and onboarding data.
+- `id`: Primary Key
+- `status`: Active, Pending, Critical, etc.
+- `emr_number`: Internal EMR reference
+- ... (includes detailed medical and lifestyle history fields)
 
-### `users`
+#### `assessments`
+Records of clinical measurements (Vitals, Blood Glucose, Weight, etc.).
 
-Stores user accounts for staff, navigators, and physicians.
+#### `goals`
+Patient-specific health targets with operators (e.g., Blood Pressure <= 130).
 
-```sql
-CREATE TABLE `users` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) NOT NULL,
-  `email` varchar(255) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `role` enum('admin','staff','physician','navigator','payer','patient') NOT NULL,
-  `avatarUrl` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
-);
-```
+#### `appointments`
+Scheduled consultations between patients and clinicians.
 
-### `corporates`
+#### `prescriptions`
+Medication management including dosages, frequencies, and expiry dates.
 
-Stores corporate partner information.
+#### `reviews`
+Clinical review notes from physicians.
 
-```sql
-CREATE TABLE `corporates` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) NOT NULL,
-  `wellness_date` date NOT NULL,
-  PRIMARY KEY (`id`)
-);
-```
+## Deployment Steps
 
-### `payers`
+1. **Environment Variables**: Set the following in your hosting control panel:
+   - `DB_HOST`: Your database host (e.g., `localhost`)
+   - `DB_USER`: Your database username
+   - `DB_PASSWORD`: Your database password
+   - `DB_DATABASE`: Your database name
+   - `DB_PORT`: `3306`
 
-Stores payer information (e.g., insurance companies).
+2. **Build**: Run `npm run build` to generate the `.next/standalone` directory.
 
-```sql
-CREATE TABLE `payers` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) NOT NULL,
-  PRIMARY KEY (`id`)
-);
-```
+3. **Files to Upload**:
+   - `server.js` (at root)
+   - `.next/standalone` contents (mapped to your application root)
+   - `public/` directory contents
+   - `.next/static` directory (moved inside the standalone `public/_next/static` folder if necessary by your host)
 
-### `patients`
-
-The central table for patient information, including demographic and onboarding data.
-
-```sql
-CREATE TABLE `patients` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `user_id` int DEFAULT NULL,
-  `first_name` varchar(100) NOT NULL,
-  `middle_name` varchar(100) DEFAULT NULL,
-  `surname` varchar(100) DEFAULT NULL,
-  `dob` date DEFAULT NULL,
-  `age` int DEFAULT NULL,
-  `gender` enum('Male','Female') DEFAULT NULL,
-  `phone` varchar(20) DEFAULT NULL,
-  `email` varchar(255) DEFAULT NULL,
-  `wellness_date` date NOT NULL,
-  `corporate_id` int DEFAULT NULL,
-  `payer_id` int DEFAULT NULL,
-  `status` enum('Active','Pending','Critical','Discharged','In Review') NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `date_of_onboarding` date DEFAULT NULL,
-  `has_glucometer` tinyint(1) DEFAULT '0',
-  `has_bp_machine` tinyint(1) DEFAULT '0',
-  `has_tape_measure` tinyint(1) DEFAULT '0',
-  `brief_medical_history` text,
-  `years_since_diagnosis` int DEFAULT NULL,
-  `emergency_contact_name` varchar(100) DEFAULT NULL,
-  `emergency_contact_phone` varchar(20) DEFAULT NULL,
-  `emergency_contact_relation` varchar(50) DEFAULT NULL,
-  `consent_date` date DEFAULT NULL,
-  `navigator_id` int DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`),
-  FOREIGN KEY (`corporate_id`) REFERENCES `corporates`(`id`),
-  FOREIGN KEY (`navigator_id`) REFERENCES `users`(`id`),
-  FOREIGN KEY (`payer_id`) REFERENCES `payers`(`id`)
-);
-```
-
-### `clinical_parameters`
-
-Stores the definitions for all trackable health metrics.
-
-```sql
-CREATE TABLE `clinical_parameters` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) NOT NULL,
-  `type` enum('numeric','text','choice') NOT NULL,
-  `unit` varchar(50) DEFAULT NULL,
-  `options` json DEFAULT NULL,
-  PRIMARY KEY (`id`)
-);
-```
-
-### `assessments`
-
-Stores each individual measurement or assessment recorded for a patient.
-
-```sql
-CREATE TABLE `assessments` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `patient_id` int NOT NULL,
-  `clinical_parameter_id` int NOT NULL,
-  `value` varchar(255) NOT NULL,
-  `notes` text,
-  `is_normal` tinyint(1) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `measured_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  FOREIGN KEY (`patient_id`) REFERENCES `patients`(`id`),
-  FOREIGN KEY (`clinical_parameter_id`) REFERENCES `clinical_parameters`(`id`)
-);
-```
-
-### `goals`
-
-Stores the health goals set for each patient.
-
-```sql
-CREATE TABLE `goals` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `patient_id` int NOT NULL,
-  `clinical_parameter_id` int NOT NULL,
-  `target_value` varchar(255) NOT NULL,
-  `target_operator` varchar(10) NOT NULL,
-  `status` enum('active','completed','cancelled') NOT NULL,
-  `notes` text,
-  `deadline` date NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  FOREIGN KEY (`patient_id`) REFERENCES `patients`(`id`),
-  FOREIGN KEY (`clinical_parameter_id`) REFERENCES `clinical_parameters`(`id`)
-);
-```
-
-### `prescriptions`
-
-Stores medication prescriptions for patients.
-
-```sql
-CREATE TABLE `prescriptions` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `patient_id` int NOT NULL,
-  `medication_id` int NOT NULL,
-  `dosage` varchar(255) NOT NULL,
-  `frequency` varchar(50) NOT NULL,
-  `start_date` date NOT NULL,
-  `expiry_date` date DEFAULT NULL,
-  `notes` text,
-  `status` enum('active','completed','discontinued') NOT NULL,
-  PRIMARY KEY (`id`),
-  FOREIGN KEY (`patient_id`) REFERENCES `patients`(`id`),
-  FOREIGN KEY (`medication_id`) REFERENCES `medications`(`id`)
-);
-```
-
-### `appointments`
-
-Stores upcoming and past appointments for patients.
-
-```sql
-CREATE TABLE `appointments` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `patient_id` int NOT NULL,
-  `clinician_id` int NOT NULL,
-  `title` varchar(255) NOT NULL,
-  `appointment_date` datetime NOT NULL,
-  `end_date` datetime DEFAULT NULL,
-  `description` text,
-  `status` enum('scheduled','confirmed','cancelled','completed','no_show','rescheduled') NOT NULL,
-  `cancellation_reason` text,
-  PRIMARY KEY (`id`),
-  FOREIGN KEY (`patient_id`) REFERENCES `patients`(`id`),
-  FOREIGN KEY (`clinician_id`) REFERENCES `users`(`id`)
-);
-```
+4. **Restart**: Restart your Node.js application from your hosting panel.

@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Logo from '@/components/logo';
-import { users } from '@/lib/mock-data';
+import { authenticateUser } from '@/lib/actions';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('admin@taria.com');
@@ -23,24 +23,19 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate a network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const result = await authenticateUser(email, password);
 
-    const user = users.find(u => u.email === email);
-
-    // In a real app, you'd compare a hashed password.
-    // For this mock setup, we'll use a simple plain text password.
-    if (!user || password !== 'password') {
+    if (!result.success || !result.user) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Invalid credentials',
+        description: result.error || 'Invalid credentials',
       });
       setLoading(false);
       return;
     }
 
-    localStorage.setItem('loggedInUser', JSON.stringify(user));
+    localStorage.setItem('loggedInUser', JSON.stringify(result.user));
     
     toast({
       title: 'Success!',
@@ -48,7 +43,6 @@ export default function LoginPage() {
     });
 
     router.push('/dashboard');
-    // No finally block needed, as redirection will unmount the component
   };
   
   return (
