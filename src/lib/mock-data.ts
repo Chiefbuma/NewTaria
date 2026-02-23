@@ -30,12 +30,34 @@ export const clinicalParameters: ClinicalParameter[] = [
 ];
 
 export const assessments: Assessment[] = [
-    { id: 1, patient_id: 1, clinical_parameter_id: 1, value: '120', notes: null, is_normal: true, created_at: '2023-06-20T10:00:00Z', measured_at: '2023-06-20T10:00:00Z' },
-    { id: 2, patient_id: 1, clinical_parameter_id: 2, value: '80', notes: null, is_normal: true, created_at: '2023-06-20T10:00:00Z', measured_at: '2023-06-20T10:00:00Z' },
-    { id: 3, patient_id: 1, clinical_parameter_id: 5, value: '85', notes: 'Slightly above ideal weight.', is_normal: false, created_at: '2023-06-20T10:00:00Z', measured_at: '2023-06-20T10:00:00Z' },
+    // Patient 1: John Doe (Onboarded 2023-05-16)
+    // --- BP Systolic (param 1)
+    { id: 1, patient_id: 1, clinical_parameter_id: 1, value: '135', notes: 'Initial reading high.', is_normal: false, created_at: '2023-05-17T10:00:00Z', measured_at: '2023-05-17T10:00:00Z' }, // Week 1
+    { id: 6, patient_id: 1, clinical_parameter_id: 1, value: '132', notes: null, is_normal: false, created_at: '2023-05-24T10:00:00Z', measured_at: '2023-05-24T10:00:00Z' }, // Week 2
+    { id: 7, patient_id: 1, clinical_parameter_id: 1, value: '128', notes: 'Showing improvement.', is_normal: true, created_at: '2023-05-31T10:00:00Z', measured_at: '2023-05-31T10:00:00Z' }, // Week 3
+    { id: 8, patient_id: 1, clinical_parameter_id: 1, value: '125', notes: null, is_normal: true, created_at: '2023-06-07T10:00:00Z', measured_at: '2023-06-07T10:00:00Z' }, // Week 4
+    { id: 9, patient_id: 1, clinical_parameter_id: 1, value: '122', notes: 'Good progress.', is_normal: true, created_at: '2023-06-14T10:00:00Z', measured_at: '2023-06-14T10:00:00Z' }, // Week 5
+    { id: 10, patient_id: 1, clinical_parameter_id: 1, value: '120', notes: 'Goal range achieved.', is_normal: true, created_at: '2023-06-20T10:00:00Z', measured_at: '2023-06-20T10:00:00Z' }, // Week 6
+
+    // --- BP Diastolic (param 2)
+    { id: 2, patient_id: 1, clinical_parameter_id: 2, value: '88', notes: null, is_normal: false, created_at: '2023-05-17T10:00:00Z', measured_at: '2023-05-17T10:00:00Z' },
+    { id: 11, patient_id: 1, clinical_parameter_id: 2, value: '85', notes: null, is_normal: true, created_at: '2023-05-24T10:00:00Z', measured_at: '2023-05-24T10:00:00Z' },
+    { id: 12, patient_id: 1, clinical_parameter_id: 2, value: '82', notes: null, is_normal: true, created_at: '2023-05-31T10:00:00Z', measured_at: '2023-05-31T10:00:00Z' },
+    { id: 13, patient_id: 1, clinical_parameter_id: 2, value: '80', notes: null, is_normal: true, created_at: '2023-06-20T10:00:00Z', measured_at: '2023-06-20T10:00:00Z' },
+
+    // --- Weight (param 5)
+    { id: 3, patient_id: 1, clinical_parameter_id: 5, value: '88', notes: 'Starting weight.', is_normal: false, created_at: '2023-05-17T10:00:00Z', measured_at: '2023-05-17T10:00:00Z' }, // Week 1
+    { id: 14, patient_id: 1, clinical_parameter_id: 5, value: '87.5', notes: 'Small decrease.', is_normal: false, created_at: '2023-05-24T10:00:00Z', measured_at: '2023-05-24T10:00:00Z' }, // Week 2
+    { id: 15, patient_id: 1, clinical_parameter_id: 5, value: '87', notes: 'Consistent loss.', is_normal: false, created_at: '2023-05-31T10:00:00Z', measured_at: '2023-05-31T10:00:00Z' }, // Week 3
+    { id: 16, patient_id: 1, clinical_parameter_id: 5, value: '86', notes: null, is_normal: false, created_at: '2023-06-07T10:00:00Z', measured_at: '2023-06-07T10:00:00Z' }, // Week 4
+    { id: 17, patient_id: 1, clinical_parameter_id: 5, value: '85.5', notes: null, is_normal: false, created_at: '2023-06-14T10:00:00Z', measured_at: '2023-06-14T10:00:00Z' }, // Week 5
+    { id: 18, patient_id: 1, clinical_parameter_id: 5, value: '85', notes: 'Slightly above ideal weight.', is_normal: false, created_at: '2023-06-20T10:00:00Z', measured_at: '2023-06-20T10:00:00Z' }, // Week 6
+
+    // Patient 3: Peter Jones
     { id: 4, patient_id: 3, clinical_parameter_id: 1, value: '145', notes: 'Patient reports feeling stressed.', is_normal: false, created_at: '2023-06-19T09:00:00Z', measured_at: '2023-06-19T09:00:00Z' },
     { id: 5, patient_id: 3, clinical_parameter_id: 2, value: '92', notes: null, is_normal: false, created_at: '2023-06-19T09:00:00Z', measured_at: '2023-06-19T09:00:00Z' },
 ];
+
 
 export const goals: Goal[] = [
     { id: 1, patient_id: 1, clinical_parameter_id: 5, target_value: '80', target_operator: '<=', status: 'active', notes: 'Focus on diet and exercise.', deadline: '2023-09-20', created_at: '2023-06-20T10:00:00Z', current_value: '85', is_overdue: false },
