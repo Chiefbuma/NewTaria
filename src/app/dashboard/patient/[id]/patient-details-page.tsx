@@ -72,8 +72,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
-import { placeholderImages } from '@/lib/placeholder-images';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ReportViewer from '@/components/report-viewer';
 import { corporates as mockCorporates } from '@/lib/mock-data';
 import { motion } from 'framer-motion';
@@ -82,6 +80,7 @@ import PrescriptionManagement from '@/components/patient/prescription-management
 import { fetchMedications } from '@/lib/data';
 import ReviewHistoryCard from '@/components/patient/review-history-card';
 import AppointmentsCard from '@/components/patient/appointments-card';
+import PatientInfoCard from '@/components/patient/patient-info-card';
 
 const DetailItem = ({
   label,
@@ -121,7 +120,6 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
-  const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
 
   // Form states
   const [editFormData, setEditFormData] = useState<Partial<Patient>>({});
@@ -346,37 +344,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-6">
-            <Card>
-              <CardHeader className="flex flex-col items-center text-center gap-4">
-                <Avatar className="w-24 h-24 border-4 border-background shadow-md">
-                   {patientAvatar && <AvatarImage src={patientAvatar.imageUrl} alt={`${patient.first_name} ${patient.surname || ''}`} />}
-                  <AvatarFallback className="text-3xl">{`${patient.first_name[0]}${patient.surname ? patient.surname[0] : ''}`}</AvatarFallback>
-                </Avatar>
-                <div className="grid gap-1">
-                  <CardTitle className="text-2xl">{`${patient.first_name} ${
-                    patient.surname || ''
-                  }`}</CardTitle>
-                  <CardDescription>Patient ID: {patient.id}</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-4">
-                 <Separator />
-                <div className="grid grid-cols-1 gap-4 pt-4">
-                  <DetailItem
-                    icon={UserIcon}
-                    label="Full Name"
-                    value={`${patient.first_name} ${patient.middle_name || ''} ${
-                      patient.surname || ''
-                    }`}
-                  />
-                  <DetailItem icon={Cake} label="Date of Birth" value={patient.dob ? new Date(patient.dob).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'} />
-                   <DetailItem icon={CalendarDays} label="Wellness Date" value={patient.wellness_date ? new Date(patient.wellness_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'} />
-                  <DetailItem icon={Binary} label="Age / Sex" value={`${patient.age} / ${patient.sex}`} />
-                  <DetailItem icon={Phone} label="Phone" value={patient.phone} />
-                  <DetailItem icon={Mail} label="Email" value={patient.email} />
-                </div>
-              </CardContent>
-            </Card>
+            <PatientInfoCard patient={patient} />
             {patient.corporate_name && (
               <Card>
                 <CardHeader>
