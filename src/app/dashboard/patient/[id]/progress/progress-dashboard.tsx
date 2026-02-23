@@ -23,7 +23,7 @@ import {
   Legend,
 } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Donut, Target } from 'lucide-react';
+import { BarChart, Target } from 'lucide-react';
 
 
 const calculateAssessmentWeek = (assessment: Assessment, patient: Patient) => {
@@ -106,26 +106,70 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5"/>{title}</CardTitle>
             </CardHeader>
-            <CardContent className="flex-1">
-                <ChartContainer config={{}} className="h-full min-h-[200px]">
+            <CardContent className="flex flex-1 items-center justify-center pb-0">
+                <ChartContainer
+                    config={{}}
+                    className="mx-auto aspect-square w-full max-w-[250px]"
+                >
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
+                             <Tooltip
+                                content={<ChartTooltipContent hideLabel />}
+                                />
                             <Pie
                                 data={data}
+                                dataKey="value"
+                                nameKey="name"
                                 cx="50%"
                                 cy="50%"
-                                labelLine={false}
-                                outerRadius={80}
-                                innerRadius={50}
-                                dataKey="value"
-                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                innerRadius="60%"
+                                strokeWidth={5}
+                                label={({
+                                  payload,
+                                  ...props
+                                }) => {
+                                  return (
+                                    <text
+                                      cx={props.cx}
+                                      cy={props.cy}
+                                      x={props.x}
+                                      y={props.y}
+                                      textAnchor={props.textAnchor}
+                                      dominantBaseline={props.dominantBaseline}
+                                      fill="hsla(var(--foreground))"
+                                      className="text-sm font-semibold"
+                                    >
+                                      {`${(payload.percent * 100).toFixed(0)}%`}
+                                    </text>
+                                  )
+                                }}
                             >
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.fill} />
                                 ))}
                             </Pie>
-                            <Tooltip content={<ChartTooltipContent />} />
-                            <Legend />
+                            <Legend
+                                content={({ payload }) => {
+                                if (!payload) {
+                                    return null
+                                }
+                                return (
+                                    <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-4">
+                                    {payload.map((entry) => (
+                                        <li key={entry.value} className="flex items-center gap-2">
+                                        <span
+                                            className="h-2.5 w-2.5 rounded-full"
+                                            style={{
+                                            backgroundColor: entry.color,
+                                            }}
+                                        />
+                                        <span>{entry.value}</span>
+                                        </li>
+                                    ))}
+                                    </ul>
+                                )
+                                }}
+                            />
                         </PieChart>
                     </ResponsiveContainer>
                 </ChartContainer>
