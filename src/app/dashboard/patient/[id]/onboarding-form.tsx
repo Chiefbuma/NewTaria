@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,14 +12,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { fetchPayers } from '@/lib/data';
 import PatientHeader from './patient-header';
 
 interface OnboardingFormProps {
     patient: Patient;
+    initialPayers: Payer[];
 }
 
-export default function OnboardingForm({ patient }: OnboardingFormProps) {
+export default function OnboardingForm({ patient, initialPayers }: OnboardingFormProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [formData, setFormData] = useState<Partial<Patient>>({ 
@@ -28,20 +27,9 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
         date_of_onboarding: patient.date_of_onboarding ? new Date(patient.date_of_onboarding).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
      });
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [payers, setPayers] = useState<Payer[]>([]);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const payerData = await fetchPayers();
-                setPayers(payerData);
-            } catch (error) {
-                toast({ variant: 'destructive', title: 'Error', description: 'Failed to load necessary data.' });
-            }
-        };
-        fetchData();
-
         const storedUser = localStorage.getItem('loggedInUser');
         if (storedUser) {
             const user: User = JSON.parse(storedUser);
@@ -52,7 +40,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                 emr_number: `EMR/TAR/${user.id}`
             }));
         }
-    }, [toast]);
+    }, []);
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -188,7 +176,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                                     <SelectTrigger><SelectValue placeholder="Select a payer" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="null">None</SelectItem>
-                                        {payers.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                                        {initialPayers.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>

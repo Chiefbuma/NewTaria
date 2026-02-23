@@ -3,8 +3,9 @@ import Report from '@/components/report';
 import { fetchPatientById } from '@/lib/data';
 import type { Corporate } from '@/lib/types';
 
-export default async function ReportPage({ params }: { params: { id: string } }) {
-  const patient = await fetchPatientById(params.id);
+export default async function ReportPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const patient = await fetchPatientById(id);
 
   if (!patient) {
     notFound();

@@ -2,6 +2,30 @@ import { db } from './db';
 import type { Patient, User, Corporate, ClinicalParameter, Assessment, Goal, Diagnosis, Medication, Prescription, Appointment, Review, Payer } from './types';
 import { unstable_noStore as noStore } from 'next/cache';
 
+/**
+ * Helper to calculate patient stats from their related data.
+ */
+function calculatePatientStats(patient: Partial<Patient>) {
+    const goals = patient.goals || [];
+    const assessments = patient.assessments || [];
+    
+    const totalGoals = goals.length;
+    const activeGoals = goals.filter(g => g.status === 'active').length;
+    const totalAssessments = assessments.length;
+    
+    // Simple logic for needs attention: if status is critical or has active overdue goals
+    const isOverdue = (goal: Goal) => new Date(goal.deadline) < new Date() && goal.status === 'active';
+    const needsAttention = patient.status === 'Critical' || goals.some(isOverdue);
+
+    return {
+        totalGoals,
+        activeGoals,
+        totalAssessments,
+        assessmentCoverage: totalGoals > 0 ? Math.round((totalAssessments / totalGoals) * 100) : 0,
+        needsAttention
+    };
+}
+
 export async function fetchPatients(): Promise<Patient[]> {
     noStore();
     try {
@@ -19,14 +43,22 @@ export async function fetchPatients(): Promise<Patient[]> {
         
         const patients = rows as any[];
         
-        return patients.map(p => ({
-            ...p,
-            assessments: [], 
-            goals: [],
-            prescriptions: [],
-            appointments: [],
-            reviews: []
-        }));
+        // In a real production app, you might want to fetch counts in the main query or via separate count queries.
+        // For this MVP, we initialize them so the UI works.
+        return patients.map(p => {
+            const basePatient = {
+                ...p,
+                assessments: [], 
+                goals: [],
+                prescriptions: [],
+                appointments: [],
+                reviews: []
+            };
+            return {
+                ...basePatient,
+                stats: calculatePatientStats(basePatient)
+            };
+        });
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch patients.');
@@ -74,7 +106,7 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
             ORDER BY r.review_date DESC
         `, [id]);
 
-        return {
+        const basePatient = {
             ...patient,
             assessments: assessments as Assessment[],
             goals: goals as Goal[],
@@ -87,6 +119,11 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
                 clinician: { id: a.clinician_id, name: a.clinician_name }
             })),
             reviews: reviews as Review[],
+        };
+
+        return {
+            ...basePatient,
+            stats: calculatePatientStats(basePatient)
         };
     } catch (error) {
         console.error('Database Error:', error);

@@ -165,4 +165,13 @@ export type Patient = {
   vitals?: any[];
   nutrition?: any[];
   clinicals?: any[];
+
+  // Computed stats for dashboard
+  stats?: {
+    totalGoals: number;
+    activeGoals: number;
+    totalAssessments: number;
+    assessmentCoverage: number;
+    needsAttention: boolean;
+  };
 };

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Patient, Corporate, User, Vital, Nutrition, Goal, Clinical, ClinicalParameter, Assessment, Review, Prescription, Medication, Appointment } from '@/lib/types';
+import type { Patient, Corporate, User, Goal, ClinicalParameter, Assessment, Review, Prescription, Medication, Appointment } from '@/lib/types';
 import {
   Card,
   CardContent,
@@ -34,33 +34,19 @@ import Link from 'next/link';
 import {
   Activity,
   ArrowLeft,
-  Stethoscope,
-  HeartPulse,
-  Scale,
-  Target,
-  User as UserIcon,
-  Cake,
-  Phone,
-  Mail,
-  Building2,
-  Binary,
   PlusCircle,
   Save,
-  XCircle,
   FileText,
   Loader2,
-  CalendarDays,
   Trash2,
   Edit,
   History,
   CheckCircle,
-  AlertTriangle,
   Clock,
-  Circle,
   TrendingUp,
+  Building2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -74,10 +60,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import ReportViewer from '@/components/report-viewer';
 import { corporates as mockCorporates } from '@/lib/mock-data';
-import { motion } from 'framer-motion';
 import AddAssessmentModal from '@/components/patient/add-assessment-modal';
 import PrescriptionManagement from '@/components/patient/prescription-management';
-import { fetchMedications } from '@/lib/data';
 import ReviewHistoryCard from '@/components/patient/review-history-card';
 import AppointmentsCard from '@/components/patient/appointments-card';
 import PatientInfoCard from '@/components/patient/patient-info-card';
@@ -108,7 +92,7 @@ const DetailItem = ({
   </div>
 );
 
-export default function PatientDetailsPage({ initialPatient, clinicalParameters, clinicians }: { initialPatient: Patient, clinicalParameters: ClinicalParameter[], clinicians: User[] }) {
+export default function PatientDetailsPage({ initialPatient, clinicalParameters, clinicians, initialMedications }: { initialPatient: Patient, clinicalParameters: ClinicalParameter[], clinicians: User[], initialMedications: Medication[] }) {
   const router = useRouter();
   const { toast } = useToast();
 
@@ -117,7 +101,6 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
   
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [corporates, setCorporates] = useState<Corporate[]>(mockCorporates);
-  const [medications, setMedications] = useState<Medication[]>([]);
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -139,11 +122,6 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     if (storedUser) {
       setCurrentUser(JSON.parse(storedUser));
     }
-    const getMeds = async () => {
-        const meds = await fetchMedications();
-        setMedications(meds);
-    }
-    getMeds();
   }, []);
 
 
@@ -196,10 +174,6 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     deadline: '',
     notes: ''
   });
-
-  const onUpdate = () => {
-    toast({title: "Data Updated", description: "In a real app, data would be re-fetched."})
-  }
 
   const handleAddGoal = () => {
     if (!newGoal.clinical_parameter_id || !newGoal.target_value || !newGoal.deadline) {
@@ -429,7 +403,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
             <PrescriptionManagement
                 patient={patient}
                 prescriptions={patient.prescriptions}
-                medications={medications}
+                medications={initialMedications}
                 onPrescriptionsUpdate={handlePrescriptionsUpdate}
             />
             <Card>

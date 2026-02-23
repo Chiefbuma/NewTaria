@@ -2,8 +2,9 @@ import { fetchPatientById, fetchClinicalParameters, fetchUsers } from '@/lib/dat
 import { notFound } from 'next/navigation';
 import ProgressPageClient from './progress-page-client';
 
-export default async function PatientProgressPage({ params }: { params: { id: string } }) {
-    const patient = await fetchPatientById(params.id);
+export default async function PatientProgressPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const patient = await fetchPatientById(id);
     const clinicalParameters = await fetchClinicalParameters();
     const users = await fetchUsers();
     const clinicians = users.filter(u => u.role === 'physician' || u.role === 'navigator' || u.role === 'admin');

@@ -96,8 +96,8 @@ export const columns: ColumnDef<Patient>[] = [
     },
     cell: ({ row }) => {
       const patient = row.original
-      const name = `${patient.first_name} ${patient.surname || ''}`
-      const fallback = `${patient.first_name[0]}${patient.surname ? patient.surname[0] : ''}`
+      const name = `${patient.first_name || ''} ${patient.surname || ''}`.trim() || 'Unnamed Patient'
+      const fallback = `${patient.first_name?.[0] || 'P'}${patient.surname ? patient.surname[0] : ''}`
 
       return (
         <div className="flex items-center gap-4">

@@ -1,31 +1,35 @@
-import { fetchPatientById, fetchClinicalParameters, fetchUsers } from '@/lib/data';
+import { fetchPatientById, fetchClinicalParameters, fetchUsers, fetchPayers, fetchMedications } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import PatientDetailsPage from './patient-details-page';
 import OnboardingForm from './onboarding-form';
 
-async function getPatientData(id: string) {
-    try {
-        const patient = await fetchPatientById(id);
-        return patient;
-    } catch (error) {
-        console.error("Failed to fetch patient data:", error);
-        return null;
-    }
-}
-
-export default async function PatientPage({ params }: { params: { id: string } }) {
-  const patient = await getPatientData(params.id);
-  const clinicalParameters = await fetchClinicalParameters();
-  const users = await fetchUsers();
-  const clinicians = users.filter(u => u.role === 'physician' || u.role === 'navigator' || u.role === 'admin');
+export default async function PatientPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const patient = await fetchPatientById(id);
   
   if (!patient) {
     notFound();
   }
   
   if (patient.status === 'Pending') {
-      return <OnboardingForm patient={patient} />;
+      const payers = await fetchPayers();
+      return <OnboardingForm patient={patient} initialPayers={payers} />;
   }
 
-  return <PatientDetailsPage initialPatient={patient} clinicalParameters={clinicalParameters} clinicians={clinicians} />;
+  const [clinicalParameters, users, medications] = await Promise.all([
+      fetchClinicalParameters(),
+      fetchUsers(),
+      fetchMedications()
+  ]);
+  
+  const clinicians = users.filter(u => u.role === 'physician' || u.role === 'navigator' || u.role === 'admin');
+
+  return (
+    <PatientDetailsPage 
+        initialPatient={patient} 
+        clinicalParameters={clinicalParameters} 
+        clinicians={clinicians} 
+        initialMedications={medications}
+    />
+  );
 }

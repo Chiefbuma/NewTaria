@@ -71,7 +71,7 @@ export default function PatientCard({ patient, index }: { patient: Patient, inde
     
     const completionRate = stats.totalGoals > 0 ? Math.round((stats.activeGoals / stats.totalGoals) * 100) : 0;
     const name = `${patient.first_name} ${patient.surname || ''}`
-    const fallback = `${patient.first_name[0]}${patient.surname ? patient.surname[0] : ''}`
+    const fallback = `${patient.first_name?.[0] || 'P'}${patient.surname ? patient.surname[0] : ''}`
   
     return (
     <motion.div
@@ -116,7 +116,7 @@ export default function PatientCard({ patient, index }: { patient: Patient, inde
                         )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            {patient.age} years old &middot; {patient.sex}
+                            {patient.age} years old &middot; {patient.gender}
                         </p>
                     </div>
                     <Badge variant="outline">{patient.status}</Badge>

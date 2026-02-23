@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Patient, User, Corporate, Payer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -12,14 +12,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { fetchUsers, fetchCorporates, fetchPayers } from '@/lib/data';
 import PatientHeader from './patient-header';
 
 interface OnboardingFormProps {
     patient: Patient;
+    initialNavigators: User[];
+    initialCorporates: Corporate[];
+    initialPayers: Payer[];
 }
 
-export default function OnboardingForm({ patient }: OnboardingFormProps) {
+export default function OnboardingForm({ patient, initialNavigators, initialCorporates, initialPayers }: OnboardingFormProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [formData, setFormData] = useState<Partial<Patient>>({ 
@@ -28,27 +30,6 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
         date_of_onboarding: patient.date_of_onboarding ? new Date(patient.date_of_onboarding).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
      });
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [navigators, setNavigators] = useState<User[]>([]);
-    const [corporates, setCorporates] = useState<Corporate[]>([]);
-    const [payers, setPayers] = useState<Payer[]>([]);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [navData, corpData, payerData] = await Promise.all([
-                    fetchUsers(),
-                    fetchCorporates(),
-                    fetchPayers()
-                ]);
-                setNavigators(navData.filter((u: User) => u.role === 'navigator'));
-                setCorporates(corpData);
-                setPayers(payerData);
-            } catch (error) {
-                toast({ variant: 'destructive', title: 'Error', description: 'Failed to load necessary data.' });
-            }
-        };
-        fetchData();
-    }, [toast]);
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -166,7 +147,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                                     <SelectTrigger><SelectValue placeholder="Select a navigator" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="null">Unassigned</SelectItem>
-                                        {navigators.map(n => <SelectItem key={n.id} value={String(n.id)}>{n.name}</SelectItem>)}
+                                        {initialNavigators.map(n => <SelectItem key={n.id} value={String(n.id)}>{n.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -176,7 +157,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                                     <SelectTrigger><SelectValue placeholder="Select a corporate" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="null">None</SelectItem>
-                                        {corporates.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                                        {initialCorporates.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -186,7 +167,7 @@ export default function OnboardingForm({ patient }: OnboardingFormProps) {
                                     <SelectTrigger><SelectValue placeholder="Select a payer" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="null">None</SelectItem>
-                                        {payers.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                                        {initialPayers.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
