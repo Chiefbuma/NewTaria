@@ -240,7 +240,7 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
                   />
                   <DetailItem icon={Cake} label="Date of Birth" value={patient.dob ? new Date(patient.dob).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'} />
                    <DetailItem icon={CalendarDays} label="Wellness Date" value={patient.wellness_date ? new Date(patient.wellness_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'} />
-                  <DetailItem icon={Binary} label="Age / Sex" value={`${patient.age} / ${patient.sex}`} />
+                  <DetailItem icon={Binary} label="Age / Gender" value={`${patient.age} / ${patient.gender}`} />
                   <DetailItem icon={Phone} label="Phone" value={patient.phone} />
                   <DetailItem icon={Mail} label="Email" value={patient.email} />
                 </div>
@@ -569,13 +569,12 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
                         <Input id="age" type="number" value={editFormData.age || ''} onChange={handleEditFormChange} />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="sex">Sex</Label>
-                        <Select value={editFormData.sex || ''} onValueChange={(value) => handleEditSelectChange('sex', value)} required>
-                            <SelectTrigger id="sex"><SelectValue placeholder="Select sex" /></SelectTrigger>
+                        <Label htmlFor="gender">Gender</Label>
+                        <Select value={editFormData.gender || ''} onValueChange={(value) => handleEditSelectChange('gender', value)} required>
+                            <SelectTrigger id="gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Male">Male</SelectItem>
                                 <SelectItem value="Female">Female</SelectItem>
-                                <SelectItem value="Other">Other</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

@@ -86,7 +86,7 @@ CREATE TABLE `patients` (
   `surname` varchar(100) DEFAULT NULL,
   `dob` date DEFAULT NULL,
   `age` int DEFAULT NULL,
-  `sex` enum('Male','Female','Other') DEFAULT NULL,
+  `gender` enum('Male','Female') DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `email` varchar(255) DEFAULT NULL,
   `wellness_date` date NOT NULL,

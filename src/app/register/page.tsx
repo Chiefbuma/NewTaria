@@ -25,7 +25,7 @@ export default function RegisterPage() {
     email: '',
     password: '',
     age: '',
-    sex: '',
+    gender: '',
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -92,13 +92,12 @@ export default function RegisterPage() {
                             <Input id="age" type="number" required onChange={handleInputChange} />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="sex">Sex</Label>
-                            <Select name="sex" onValueChange={(value) => handleSelectChange('sex', value)} required>
-                                <SelectTrigger id="sex"><SelectValue placeholder="Select sex" /></SelectTrigger>
+                            <Label htmlFor="gender">Gender</Label>
+                            <Select name="gender" onValueChange={(value) => handleSelectChange('gender', value)} required>
+                                <SelectTrigger id="gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Male">Male</SelectItem>
                                     <SelectItem value="Female">Female</SelectItem>
-                                    <SelectItem value="Other">Other</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

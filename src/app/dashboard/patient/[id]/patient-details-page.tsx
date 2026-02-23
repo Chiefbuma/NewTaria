@@ -603,13 +603,12 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                         <Input id="age" type="number" value={editFormData.age || ''} onChange={handleEditFormChange} />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="sex">Sex</Label>
-                        <Select value={editFormData.sex || ''} onValueChange={(value) => handleEditSelectChange('sex', value)} required>
-                            <SelectTrigger id="sex"><SelectValue placeholder="Select sex" /></SelectTrigger>
+                        <Label htmlFor="gender">Gender</Label>
+                        <Select value={editFormData.gender || ''} onValueChange={(value) => handleEditSelectChange('gender', value)} required>
+                            <SelectTrigger id="gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Male">Male</SelectItem>
                                 <SelectItem value="Female">Female</SelectItem>
-                                <SelectItem value="Other">Other</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

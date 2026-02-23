@@ -112,7 +112,7 @@ export type Patient = {
   first_name: string;
   surname: string | null;
   age: number | null;
-  sex: 'Male' | 'Female' | 'Other' | null;
+  gender: 'Male' | 'Female' | null;
   email: string | null; // For login & contact
   diagnosis: string | null;
   created_at: string;
