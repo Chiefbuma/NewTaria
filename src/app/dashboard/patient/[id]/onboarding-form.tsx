@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import PatientHeader from './patient-header';
+import { activatePatient } from '@/lib/api-service';
 
 interface OnboardingFormProps {
     patient: Patient;
@@ -37,10 +38,10 @@ export default function OnboardingForm({ patient, initialPayers }: OnboardingFor
             setFormData(prev => ({
                 ...prev,
                 navigator_id: user.id,
-                emr_number: `EMR/TAR/${user.id}`
+                emr_number: `EMR/TAR/${patient.id}`
             }));
         }
-    }, []);
+    }, [patient.id]);
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -59,16 +60,22 @@ export default function OnboardingForm({ patient, initialPayers }: OnboardingFor
         e.preventDefault();
         setIsSubmitting(true);
         
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        toast({
-            title: 'Onboarding Complete (Mock)',
-            description: `${patient.first_name} is now marked as Active. This will not persist on page refresh.`,
-        });
-        
-        router.push(`/dashboard/patient/${patient.id}`);
-        router.refresh(); 
-        setIsSubmitting(false);
+        try {
+            await activatePatient(patient.id, formData);
+            toast({
+                title: 'Onboarding Complete',
+                description: `${patient.first_name} is now marked as Active.`,
+            });
+            router.refresh();
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: error.message || 'Failed to complete onboarding.',
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (

@@ -2,7 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Patient, Corporate, User, Goal, ClinicalParameter, Assessment, Review, Prescription, Medication, Appointment } from '@/lib/types';
+import type { 
+    Patient, 
+    Corporate, 
+    User, 
+    Goal, 
+    ClinicalParameter, 
+    Assessment, 
+    Review, 
+    Prescription, 
+    Medication, 
+    Appointment 
+} from '@/lib/types';
 import {
   Card,
   CardContent,
@@ -59,14 +70,23 @@ import {
 } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import ReportViewer from '@/components/report-viewer';
-import { corporates as mockCorporates } from '@/lib/mock-data';
 import AddAssessmentModal from '@/components/patient/add-assessment-modal';
 import PrescriptionManagement from '@/components/patient/prescription-management';
 import ReviewHistoryCard from '@/components/patient/review-history-card';
 import AppointmentsCard from '@/components/patient/appointments-card';
 import PatientInfoCard from '@/components/patient/patient-info-card';
 import AddAppointmentModal from '@/components/patient/add-appointment-modal';
-
+import { 
+    createAssessment, 
+    deleteAssessment, 
+    createGoal, 
+    deleteGoal, 
+    createReview, 
+    upsertAppointment,
+    updatePatient,
+    upsertPrescription,
+    deletePrescription
+} from '@/lib/api-service';
 
 const DetailItem = ({
   label,
@@ -97,21 +117,16 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
   const { toast } = useToast();
 
   const [patient, setPatient] = useState<Patient>(initialPatient);
-  const [loading, setLoading] = useState(false);
-  
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [corporates, setCorporates] = useState<Corporate[]>(mockCorporates);
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   
-
   // Form states
   const [editFormData, setEditFormData] = useState<Partial<Patient>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Assessment Modal State
   const [isAddAssessmentModalOpen, setAddAssessmentModalOpen] = useState(false);
@@ -123,7 +138,6 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
       setCurrentUser(JSON.parse(storedUser));
     }
   }, []);
-
 
   const handleOpenEditModal = () => {
     setEditFormData({
@@ -137,28 +151,18 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
   const handleUpdatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
-        const updatedPatient = { ...patient, ...editFormData } as Patient;
-        setPatient(updatedPatient);
-        toast({ title: 'Success!', description: 'Patient details updated locally.' });
+    try {
+        const updated = await updatePatient(patient.id, editFormData);
+        setPatient(prev => ({ ...prev, ...updated }));
+        toast({ title: 'Success!', description: 'Patient details updated.' });
         setIsEditModalOpen(false);
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } finally {
         setIsSubmitting(false);
-    }, 500);
+    }
   }
   
-  const handleDeletePatient = async () => {
-    setIsDeleting(true);
-    setTimeout(() => {
-        toast({ title: 'Success', description: 'Patient record deleted (simulation).' });
-        setIsDeleting(false);
-        router.push('/dashboard');
-    }, 500);
-  };
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-  }
-
   const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setEditFormData({ ...editFormData, [e.target.id]: e.target.value });
   };
@@ -175,33 +179,37 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     notes: ''
   });
 
-  const handleAddGoal = () => {
+  const handleAddGoal = async () => {
     if (!newGoal.clinical_parameter_id || !newGoal.target_value || !newGoal.deadline) {
-      toast({variant: 'destructive', title: 'Error', description: 'Please fill in all required fields for the new goal.'});
+      toast({variant: 'destructive', title: 'Error', description: 'Please fill in all required fields.'});
       return;
     }
-    const newGoalData: Goal = {
-        id: Date.now(),
-        patient_id: patient.id,
-        created_at: new Date().toISOString(),
-        status: 'active',
-        clinical_parameter_id: parseInt(newGoal.clinical_parameter_id),
-        target_value: newGoal.target_value,
-        target_operator: newGoal.target_operator as any,
-        deadline: newGoal.deadline,
-        notes: newGoal.notes
-    };
-    setPatient(prev => ({...prev, goals: [...prev.goals, newGoalData]}));
-    setNewGoal({ clinical_parameter_id: '', target_value: '', target_operator: '<=', deadline: '', notes: '' });
-    toast({title: 'Success', description: 'Goal added successfully!'});
+    try {
+        const goal = await createGoal({
+            patient_id: patient.id,
+            clinical_parameter_id: parseInt(newGoal.clinical_parameter_id),
+            target_value: newGoal.target_value,
+            target_operator: newGoal.target_operator as any,
+            deadline: newGoal.deadline,
+            notes: newGoal.notes,
+            status: 'active'
+        });
+        setPatient(prev => ({...prev, goals: [goal, ...prev.goals]}));
+        setNewGoal({ clinical_parameter_id: '', target_value: '', target_operator: '<=', deadline: '', notes: '' });
+        toast({title: 'Success', description: 'Goal added successfully!'});
+    } catch (error: any) {
+        toast({variant: 'destructive', title: 'Error', description: error.message});
+    }
   };
 
-  const handleDeleteGoal = (goalId: number) => {
-    setPatient(prev => ({
-        ...prev,
-        goals: prev.goals.filter(g => g.id !== goalId)
-    }));
-    toast({title: 'Success', description: 'Goal deleted.'});
+  const handleDeleteGoalItem = async (goalId: number) => {
+    try {
+        await deleteGoal(goalId);
+        setPatient(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== goalId) }));
+        toast({title: 'Success', description: 'Goal deleted.'});
+    } catch (error: any) {
+        toast({variant: 'destructive', title: 'Error', description: error.message});
+    }
   }
   
   const handlePrescriptionsUpdate = (updatedPrescriptions: Prescription[]) => {
@@ -215,28 +223,34 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     const timeDiff = assessmentDate.getTime() - treatmentStartDate.getTime();
     const weeksDiff = Math.floor(timeDiff / (1000 * 3600 * 24 * 7)) + 1;
     if (weeksDiff < 1) return 'Week 1';
-    if (weeksDiff > 64) return 'Week 64+';
     return `Week ${weeksDiff}`;
   };
 
-  const handleDeleteAssessment = (assessmentId: number) => {
-      setPatient(prev => ({
-          ...prev,
-          assessments: prev.assessments.filter(a => a.id !== assessmentId)
-      }));
-      toast({title: 'Success', description: 'Assessment deleted.'});
+  const handleDeleteAssessmentItem = async (assessmentId: number) => {
+      try {
+          await deleteAssessment(assessmentId);
+          setPatient(prev => ({
+              ...prev,
+              assessments: prev.assessments.filter(a => a.id !== assessmentId)
+          }));
+          toast({title: 'Success', description: 'Assessment deleted.'});
+      } catch (error: any) {
+          toast({variant: 'destructive', title: 'Error', description: error.message});
+      }
   }
 
-  const handleSaveAssessment = (assessment: Omit<Assessment, 'id' | 'patient_id' | 'created_at'>) => {
-    const fullAssessment = {
-        id: Date.now(),
-        patient_id: patient.id,
-        created_at: new Date().toISOString(),
-        ...assessment
+  const handleSaveAssessment = async (assessment: Omit<Assessment, 'id' | 'patient_id' | 'created_at'>) => {
+    try {
+        const saved = await createAssessment({
+            patient_id: patient.id,
+            ...assessment
+        });
+        setPatient(prev => ({...prev, assessments: [saved, ...prev.assessments]}));
+        toast({title: 'Success', description: 'Assessment saved.'});
+        setAddAssessmentModalOpen(false);
+    } catch (error: any) {
+        toast({variant: 'destructive', title: 'Error', description: error.message});
     }
-    setPatient(prev => ({...prev, assessments: [...prev.assessments, fullAssessment]}));
-    toast({title: 'Success', description: 'Assessment saved.'});
-    setAddAssessmentModalOpen(false);
   };
   
   const handleAppointmentsUpdate = (updatedAppointments: Appointment[]) => {
@@ -263,30 +277,33 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     review_date: new Date().toISOString().split('T')[0]
   });
 
-  const submitReview = () => {
+  const submitReview = async () => {
     if (!reviewData.subjective_findings.trim() || !reviewData.objective_findings.trim()) {
-        toast({variant: 'destructive', title: 'Error', description: 'Please fill in at least subjective and objective findings'});
+        toast({variant: 'destructive', title: 'Error', description: 'Please fill in required findings'});
         return;
     }
 
-    const newReview: Review = {
-        id: Date.now(),
-        patient_id: patient.id,
-        reviewed_by_id: currentUser!.id,
-        reviewed_by: currentUser!.name,
-        ...reviewData
-    };
-    setPatient(prev => ({...prev, reviews: [...prev.reviews, newReview]}));
-    setReviewData({
-      subjective_findings: '',
-      objective_findings: '',
-      assessment: '',
-      plan: '',
-      recommendations: '',
-      follow_up_date: '',
-      review_date: new Date().toISOString().split('T')[0]
-    });
-    toast({title: 'Success', description: 'Clinical review submitted successfully!'});
+    try {
+        const saved = await createReview({
+            patient_id: patient.id,
+            reviewed_by_id: currentUser!.id,
+            ...reviewData
+        });
+        const fullReview = { ...saved, reviewed_by: currentUser!.name };
+        setPatient(prev => ({...prev, reviews: [fullReview, ...prev.reviews]}));
+        setReviewData({
+          subjective_findings: '',
+          objective_findings: '',
+          assessment: '',
+          plan: '',
+          recommendations: '',
+          follow_up_date: '',
+          review_date: new Date().toISOString().split('T')[0]
+        });
+        toast({title: 'Success', description: 'Review submitted.'});
+    } catch (error: any) {
+        toast({variant: 'destructive', title: 'Error', description: error.message});
+    }
   };
   
   const getStatusBadge = (goal: Goal) => {
@@ -371,31 +388,6 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                   <FileText className="mr-2 h-4 w-4" />
                   Generate PDF Report
                 </Button>
-                {currentUser?.role === 'admin' && (
-                     <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Patient Record
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete this patient's record and all associated assessments.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeletePatient} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Continue
-                            </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -409,7 +401,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
             <Card>
               <CardHeader>
                 <CardTitle>Goals</CardTitle>
-                <CardDescription>Set and track patient health goals with assessment history</CardDescription>
+                <CardDescription>Set and track patient health goals</CardDescription>
               </CardHeader>
               <CardContent>
                   <div className="bg-muted/50 rounded-xl p-4 border mb-6">
@@ -472,7 +464,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                                           <Button variant="ghost" size="icon" onClick={() => handleOpenAddAssessmentModal(parameter!)}>
                                               <PlusCircle className="h-4 w-4 text-green-500" />
                                           </Button>
-                                          <Button variant="ghost" size="icon" onClick={() => handleDeleteGoal(goal.id)}>
+                                          <Button variant="ghost" size="icon" onClick={() => handleDeleteGoalItem(goal.id)}>
                                               <Trash2 className="h-4 w-4 text-red-500"/>
                                           </Button>
                                       </div>
@@ -501,7 +493,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                                                             <td className="py-2 px-3">
                                                                 <Badge variant={assessment.is_normal ? "secondary" : "destructive"}>{assessment.is_normal ? 'Normal' : 'Abnormal'}</Badge>
                                                             </td>
-                                                            <td className="py-2 px-3"><Button variant="ghost" size="icon" onClick={() => handleDeleteAssessment(assessment.id)}><Trash2 className="h-3 w-3 text-red-500"/></Button></td>
+                                                            <td className="py-2 px-3"><Button variant="ghost" size="icon" onClick={() => handleDeleteAssessmentItem(assessment.id)}><Trash2 className="h-3 w-3 text-red-500"/></Button></td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -598,18 +590,6 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                         <Label htmlFor="wellness_date">Wellness Date</Label>
                         <Input id="wellness_date" type="date" value={editFormData.wellness_date || ''} onChange={handleEditFormChange} required />
                     </div>
-                    <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="corporate_id">Corporate</Label>
-                        <Select value={String(editFormData.corporate_id || 'null')} onValueChange={(value) => handleEditSelectChange('corporate_id', value)}>
-                            <SelectTrigger id="corporate_id"><SelectValue placeholder="Select corporate" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="null">None</SelectItem>
-                                {corporates.map((corporate) => (
-                                    <SelectItem key={corporate.id} value={String(corporate.id)}>{corporate.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
@@ -636,15 +616,23 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
         <AddAppointmentModal
             isOpen={isAppointmentModalOpen}
             onClose={() => setIsAppointmentModalOpen(false)}
-            onSave={(appointmentData) => {
-                const updatedAppointments = editingAppointment
-                ? patient.appointments.map(a => a.id === editingAppointment.id ? { ...a, ...appointmentData, id: a.id, patient_id: patient.id } : a)
-                : [...patient.appointments, { ...appointmentData, id: Date.now(), patient_id: patient.id } as Appointment];
+            onSave={async (appointmentData) => {
+                try {
+                    const saved = await upsertAppointment({ ...appointmentData, patient_id: patient.id });
+                    const clinician = clinicians.find(c => c.id === Number(appointmentData.clinician_id));
+                    const fullAppt = { ...appointmentData, id: saved, patient_id: patient.id, clinician } as Appointment;
+                    
+                    const updatedAppointments = editingAppointment
+                        ? patient.appointments.map(a => a.id === editingAppointment.id ? fullAppt : a)
+                        : [fullAppt, ...patient.appointments];
 
-                handleAppointmentsUpdate(updatedAppointments as Appointment[]);
-                setIsAppointmentModalOpen(false);
-                setEditingAppointment(null);
-                toast({ title: 'Success', description: 'Appointment saved.' });
+                    handleAppointmentsUpdate(updatedAppointments);
+                    setIsAppointmentModalOpen(false);
+                    setEditingAppointment(null);
+                    toast({ title: 'Success', description: 'Appointment saved.' });
+                } catch (error: any) {
+                    toast({ variant: 'destructive', title: 'Error', description: error.message });
+                }
             }}
             patient={patient}
             clinicians={clinicians}

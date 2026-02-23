@@ -1,14 +1,35 @@
 import { db } from './db';
-import type { Patient, User, Corporate, ClinicalParameter, Assessment, Goal, Diagnosis, Medication, Prescription, Appointment, Review, Payer } from './types';
+import type { 
+    Patient, 
+    User, 
+    Corporate, 
+    ClinicalParameter, 
+    Assessment, 
+    Goal, 
+    Diagnosis, 
+    Medication, 
+    Prescription, 
+    Appointment, 
+    Review, 
+    Payer 
+} from './types';
 import { unstable_noStore as noStore } from 'next/cache';
 
 /**
  * Helper to ensure database values are safe for Next.js serialization.
- * Converts Dates to strings and handles potential nulls by deep cloning via JSON.
+ * Converts Dates to strings and handles BigInt by converting them to numbers/strings.
+ * This prevents "Internal Server Error" when passing data to Client Components.
  */
 function serialize<T>(data: T): T {
-    if (!data) return data;
-    return JSON.parse(JSON.stringify(data));
+    if (data === null || data === undefined) return data;
+    
+    return JSON.parse(JSON.stringify(data, (key, value) => {
+        // Handle BigInt serialization
+        if (typeof value === 'bigint') {
+            return value.toString();
+        }
+        return value;
+    }));
 }
 
 /**
@@ -26,7 +47,7 @@ function calculatePatientStats(patient: Partial<Patient>) {
         if (!goal.deadline || goal.status !== 'active') return false;
         return new Date(goal.deadline) < new Date();
     };
-    const needsAttention = patient.status === 'Critical' || goals.some(isOverdue);
+    const needsAttention = (patient.status as string) === 'Critical' || goals.some(isOverdue);
 
     return {
         totalGoals,
@@ -36,6 +57,8 @@ function calculatePatientStats(patient: Partial<Patient>) {
         needsAttention
     };
 }
+
+// --- READ OPERATIONS ---
 
 export async function fetchPatients(): Promise<Patient[]> {
     noStore();
@@ -53,20 +76,15 @@ export async function fetchPatients(): Promise<Patient[]> {
         `);
         
         const patients = rows as any[];
-        return patients.map(p => {
-            const basePatient = {
-                ...p,
-                assessments: [], 
-                goals: [],
-                prescriptions: [],
-                appointments: [],
-                reviews: []
-            };
-            return serialize({
-                ...basePatient,
-                stats: calculatePatientStats(basePatient)
-            });
-        });
+        return serialize(patients.map(p => ({
+            ...p,
+            assessments: [], 
+            goals: [],
+            prescriptions: [],
+            appointments: [],
+            reviews: [],
+            stats: calculatePatientStats(p)
+        })));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch patients.');
@@ -75,6 +93,8 @@ export async function fetchPatients(): Promise<Patient[]> {
 
 export async function fetchPatientById(id: string): Promise<Patient | null> {
     noStore();
+    if (!id) return null;
+    
     try {
         const [patientRows] = await db.query(`
             SELECT p.*, 
@@ -150,44 +170,6 @@ export async function fetchUsers(): Promise<User[]> {
     }
 }
 
-export async function getUserByEmail(email: string) {
-    noStore();
-    try {
-        const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-        const users = rows as any[];
-        return serialize(users[0] || null);
-    } catch (error) {
-        console.error('Database Error:', error);
-        return null;
-    }
-}
-
-export async function createUser(userData: any): Promise<number> {
-    try {
-        const [result] = await db.query(
-            'INSERT INTO users (name, email, password, role, avatarUrl) VALUES (?, ?, ?, ?, ?)',
-            [userData.name, userData.email, userData.password, userData.role || 'patient', userData.avatarUrl || null]
-        );
-        return (result as any).insertId;
-    } catch (error) {
-        console.error('Database Error:', error);
-        throw new Error('Failed to create user.');
-    }
-}
-
-export async function createPatient(patientData: any): Promise<number> {
-    try {
-        const [result] = await db.query(
-            'INSERT INTO patients (user_id, first_name, surname, email, age, gender, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [patientData.user_id || null, patientData.first_name, patientData.surname, patientData.email, patientData.age, patientData.gender, patientData.status || 'Pending']
-        );
-        return (result as any).insertId;
-    } catch (error) {
-        console.error('Database Error:', error);
-        throw new Error('Failed to create patient.');
-    }
-}
-
 export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
     noStore();
     try {
@@ -221,17 +203,6 @@ export async function fetchPayers(): Promise<Payer[]> {
     }
 }
 
-export async function fetchDiagnoses(): Promise<Diagnosis[]> {
-    noStore();
-    try {
-        const [rows] = await db.query('SELECT * FROM diagnoses ORDER BY name ASC');
-        return serialize(rows as Diagnosis[]);
-    } catch (error) {
-        console.error('Database Error:', error);
-        throw new Error('Failed to fetch diagnoses.');
-    }
-}
-
 export async function fetchMedications(): Promise<Medication[]> {
     noStore();
     try {
@@ -241,4 +212,133 @@ export async function fetchMedications(): Promise<Medication[]> {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch medications.');
     }
+}
+
+export async function getUserByEmail(email: string) {
+    noStore();
+    try {
+        const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        const users = rows as any[];
+        return serialize(users[0] || null);
+    } catch (error) {
+        console.error('Database Error:', error);
+        return null;
+    }
+}
+
+// --- WRITE OPERATIONS ---
+
+export async function createUser(userData: any): Promise<number> {
+    const [result] = await db.query(
+        'INSERT INTO users (name, email, password, role, avatarUrl) VALUES (?, ?, ?, ?, ?)',
+        [userData.name, userData.email, userData.password, userData.role || 'patient', userData.avatarUrl || null]
+    );
+    return Number((result as any).insertId);
+}
+
+export async function createPatient(patientData: any): Promise<number> {
+    const [result] = await db.query(
+        'INSERT INTO patients (user_id, first_name, surname, email, age, gender, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [patientData.user_id || null, patientData.first_name, patientData.surname, patientData.email, patientData.age, patientData.gender, patientData.status || 'Pending']
+    );
+    return Number((result as any).insertId);
+}
+
+export async function createAssessment(data: any) {
+    const [result] = await db.query(
+        'INSERT INTO assessments (patient_id, clinical_parameter_id, value, notes, is_normal, measured_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [data.patient_id, data.clinical_parameter_id, data.value, data.notes, data.is_normal, data.measured_at]
+    );
+    const id = Number((result as any).insertId);
+    return serialize({ id, ...data });
+}
+
+export async function deleteAssessment(id: number) {
+    await db.query('DELETE FROM assessments WHERE id = ?', [id]);
+}
+
+export async function createGoal(data: any) {
+    const [result] = await db.query(
+        'INSERT INTO goals (patient_id, clinical_parameter_id, target_value, target_operator, status, notes, deadline) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [data.patient_id, data.clinical_parameter_id, data.target_value, data.target_operator, data.status, data.notes, data.deadline]
+    );
+    const id = Number((result as any).insertId);
+    return serialize({ id, ...data });
+}
+
+export async function updateGoal(id: number, data: any) {
+    await db.query(
+        'UPDATE goals SET target_value = ?, target_operator = ?, status = ?, notes = ?, deadline = ? WHERE id = ?',
+        [data.target_value, data.target_operator, data.status, data.notes, data.deadline, id]
+    );
+}
+
+export async function deleteGoal(id: number) {
+    await db.query('DELETE FROM goals WHERE id = ?', [id]);
+}
+
+export async function createReview(data: any) {
+    const [result] = await db.query(
+        'INSERT INTO reviews (patient_id, reviewed_by_id, review_date, subjective_findings, objective_findings, assessment, plan, recommendations, follow_up_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [data.patient_id, data.reviewed_by_id, data.review_date, data.subjective_findings, data.objective_findings, data.assessment, data.plan, data.recommendations, data.follow_up_date]
+    );
+    const id = Number((result as any).insertId);
+    return serialize({ id, ...data });
+}
+
+export async function upsertAppointment(data: any) {
+    if (data.id) {
+        await db.query(
+            'UPDATE appointments SET clinician_id = ?, title = ?, appointment_date = ?, end_date = ?, description = ?, status = ? WHERE id = ?',
+            [data.clinician_id, data.title, data.appointment_date, data.end_date, data.description, data.status, data.id]
+        );
+        return Number(data.id);
+    } else {
+        const [result] = await db.query(
+            'INSERT INTO appointments (patient_id, clinician_id, title, appointment_date, end_date, description, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [data.patient_id, data.clinician_id, data.title, data.appointment_date, data.end_date, data.description, data.status]
+        );
+        return Number((result as any).insertId);
+    }
+}
+
+export async function updateAppointmentStatus(id: number, status: string) {
+    await db.query('UPDATE appointments SET status = ? WHERE id = ?', [status, id]);
+}
+
+export async function upsertPrescription(data: any) {
+    if (data.id) {
+        await db.query(
+            'UPDATE prescriptions SET medication_id = ?, dosage = ?, frequency = ?, start_date = ?, expiry_date = ?, notes = ?, status = ? WHERE id = ?',
+            [data.medication_id, data.dosage, data.frequency, data.start_date, data.expiry_date, data.notes, data.status, data.id]
+        );
+        return Number(data.id);
+    } else {
+        const [result] = await db.query(
+            'INSERT INTO prescriptions (patient_id, medication_id, dosage, frequency, start_date, expiry_date, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [data.patient_id, data.medication_id, data.dosage, data.frequency, data.start_date, data.expiry_date, data.notes, data.status]
+        );
+        return Number((result as any).insertId);
+    }
+}
+
+export async function deletePrescription(id: number) {
+    await db.query('DELETE FROM prescriptions WHERE id = ?', [id]);
+}
+
+export async function updatePatientDetails(id: number, data: any) {
+    await db.query(
+        'UPDATE patients SET first_name = ?, middle_name = ?, surname = ?, dob = ?, age = ?, gender = ?, email = ?, phone = ?, wellness_date = ?, corporate_id = ? WHERE id = ?',
+        [data.first_name, data.middle_name, data.surname, data.dob, data.age, data.gender, data.email, data.phone, data.wellness_date, data.corporate_id, id]
+    );
+}
+
+export async function activatePatient(id: number, data: any) {
+    await db.query(
+        'UPDATE patients SET status = "Active", date_of_onboarding = ?, emr_number = ?, navigator_id = ?, payer_id = ?, brief_medical_history = ?, years_since_diagnosis = ?, past_medical_interventions = ?, relevant_family_history = ?, dietary_restrictions = ?, allergies_intolerances = ?, lifestyle_factors = ?, physical_limitations = ?, psychosocial_factors = ?, emergency_contact_name = ?, emergency_contact_phone = ?, emergency_contact_relation = ?, has_weighing_scale = ?, has_glucometer = ?, has_bp_machine = ?, has_tape_measure = ? WHERE id = ?',
+        [
+            data.date_of_onboarding, data.emr_number, data.navigator_id, data.payer_id, data.brief_medical_history, data.years_since_diagnosis, data.past_medical_interventions, data.relevant_family_history, data.dietary_restrictions, data.allergies_intolerances, data.lifestyle_factors, data.physical_limitations, data.psychosocial_factors, data.emergency_contact_name, data.emergency_contact_phone, data.emergency_contact_relation, 
+            data.has_weighing_scale, data.has_glucometer, data.has_bp_machine, data.has_tape_measure, id
+        ]
+    );
 }
