@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import PatientInfoCard from '@/components/patient/patient-info-card';
+import AllNotesCard from './all-notes-card';
 
 export default async function PatientProgressPage({ params }: { params: { id: string } }) {
     const patient = await fetchPatientById(params.id);
@@ -15,11 +16,12 @@ export default async function PatientProgressPage({ params }: { params: { id: st
     }
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
             <div className="lg:col-span-1 space-y-6">
                 <PatientInfoCard patient={patient} />
+                <AllNotesCard assessments={patient.assessments} clinicalParameters={clinicalParameters} />
             </div>
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-3 space-y-6">
                 <div className="flex items-center gap-4">
                     <Button asChild variant="outline" size="icon">
                         <Link href={`/dashboard/patient/${params.id}`}>

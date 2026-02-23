@@ -23,7 +23,7 @@ import {
   Legend,
 } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { Stethoscope, FileText, BarChart, Donut } from 'lucide-react';
+import { BarChart, Donut } from 'lucide-react';
 
 
 const calculateAssessmentWeek = (assessment: Assessment, patient: Patient) => {
@@ -64,12 +64,12 @@ const ParameterDonutChart = ({ assessments, parameter }: { assessments: Assessme
     }
     
     return (
-        <Card>
+        <Card className="h-full flex flex-col">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Donut className="h-5 w-5"/>Results Summary</CardTitle>
             </CardHeader>
-            <CardContent>
-                <ChartContainer config={{}} className="h-64">
+            <CardContent className="flex-1">
+                <ChartContainer config={{}} className="h-full min-h-[200px]">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
@@ -123,14 +123,14 @@ const ParameterLineChart = ({ assessments, patient, parameter }: { assessments: 
     }, [assessments, patient]);
 
     return (
-        <Card>
+        <Card className="h-full flex flex-col">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><BarChart className="h-5 w-5"/>Weekly Trend</CardTitle>
                 <CardDescription>Average weekly measurements for this parameter.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1">
                 {weeklyData.length > 1 ? (
-                    <ChartContainer config={{}} className="h-80">
+                    <ChartContainer config={{}} className="h-full min-h-[250px]">
                         <ResponsiveContainer>
                             <LineChart data={weeklyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -143,37 +143,9 @@ const ParameterLineChart = ({ assessments, patient, parameter }: { assessments: 
                         </ResponsiveContainer>
                     </ChartContainer>
                 ) : (
-                    <div className="h-80 flex items-center justify-center">
+                    <div className="h-full flex items-center justify-center min-h-[250px]">
                         <p className="text-muted-foreground">Not enough data to display a chart.</p>
                     </div>
-                )}
-            </CardContent>
-        </Card>
-    );
-};
-
-const LatestAssessmentNoteCard = ({ assessments, parameter }: { assessments: Assessment[], parameter: ClinicalParameter }) => {
-    const latestAssessment = useMemo(() => {
-        return [...assessments].sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())[0];
-    }, [assessments]);
-    
-    return (
-        <Card className="h-full">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5"/>Latest Note</CardTitle>
-                {latestAssessment ? (
-                     <CardDescription>
-                        From {new Date(latestAssessment.measured_at).toLocaleDateString()}
-                    </CardDescription>
-                ) : (
-                    <CardDescription>No assessment note found.</CardDescription>
-                )}
-            </CardHeader>
-            <CardContent>
-                {latestAssessment?.notes ? (
-                    <p className="text-sm">{latestAssessment.notes}</p>
-                ) : (
-                    <p className="text-center text-muted-foreground py-4">No note recorded for the latest assessment.</p>
                 )}
             </CardContent>
         </Card>
@@ -204,15 +176,12 @@ export default function ProgressDashboard({ patient, clinicalParameters }: { pat
                     return (
                         <div key={parameter.id} className="space-y-4 p-6 border rounded-2xl bg-muted/30">
                             <h2 className="text-2xl font-bold tracking-tight text-foreground">{parameter.name}</h2>
-                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-                                <div className="xl:col-span-1">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+                                <div className="lg:col-span-1">
                                     <ParameterDonutChart assessments={parameterAssessments} parameter={parameter} />
                                 </div>
-                                <div className="xl:col-span-1">
+                                <div className="lg:col-span-2">
                                      <ParameterLineChart assessments={parameterAssessments} patient={patient} parameter={parameter} />
-                                </div>
-                                <div className="xl:col-span-1">
-                                    <LatestAssessmentNoteCard assessments={parameterAssessments} parameter={parameter} />
                                 </div>
                             </div>
                         </div>
