@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Patient, Corporate, User, Vital, Nutrition, Goal, Clinical, ClinicalParameter, Assessment, Review, Prescription, Medication } from '@/lib/types';
+import type { Patient, Corporate, User, Vital, Nutrition, Goal, Clinical, ClinicalParameter, Assessment, Review, Prescription, Medication, Appointment } from '@/lib/types';
 import {
   Card,
   CardContent,
@@ -81,6 +81,8 @@ import { fetchMedications } from '@/lib/data';
 import ReviewHistoryCard from '@/components/patient/review-history-card';
 import AppointmentsCard from '@/components/patient/appointments-card';
 import PatientInfoCard from '@/components/patient/patient-info-card';
+import AddAppointmentModal from '@/components/patient/add-appointment-modal';
+
 
 const DetailItem = ({
   label,
@@ -106,7 +108,7 @@ const DetailItem = ({
   </div>
 );
 
-export default function PatientDetailsPage({ initialPatient, clinicalParameters }: { initialPatient: Patient, clinicalParameters: ClinicalParameter[] }) {
+export default function PatientDetailsPage({ initialPatient, clinicalParameters, clinicians }: { initialPatient: Patient, clinicalParameters: ClinicalParameter[], clinicians: User[] }) {
   const router = useRouter();
   const { toast } = useToast();
 
@@ -119,6 +121,8 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   
 
   // Form states
@@ -260,6 +264,15 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
     toast({title: 'Success', description: 'Assessment saved.'});
     setAddAssessmentModalOpen(false);
   };
+  
+  const handleAppointmentsUpdate = (updatedAppointments: Appointment[]) => {
+     setPatient(prev => ({ ...prev, appointments: updatedAppointments }));
+  }
+
+  const handleOpenAppointmentModal = (appointment?: Appointment) => {
+    setEditingAppointment(appointment || null);
+    setIsAppointmentModalOpen(true);
+  };
 
   const handleOpenAddAssessmentModal = (parameter: ClinicalParameter) => {
     setSelectedGoalParameter(parameter);
@@ -359,7 +372,12 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
               </Card>
             )}
             <ReviewHistoryCard patient={patient} />
-            <AppointmentsCard patient={patient} />
+            <AppointmentsCard 
+              patient={patient}
+              onSchedule={() => handleOpenAppointmentModal()}
+              onEdit={handleOpenAppointmentModal}
+              onUpdate={handleAppointmentsUpdate}
+            />
             <Card>
               <CardHeader>
                 <CardTitle>Actions</CardTitle>
@@ -639,6 +657,25 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
             onClose={() => setAddAssessmentModalOpen(false)}
             onSave={handleSaveAssessment}
             parameter={selectedGoalParameter}
+        />
+      )}
+      {isAppointmentModalOpen && (
+        <AddAppointmentModal
+            isOpen={isAppointmentModalOpen}
+            onClose={() => setIsAppointmentModalOpen(false)}
+            onSave={(appointmentData) => {
+                const updatedAppointments = editingAppointment
+                ? patient.appointments.map(a => a.id === editingAppointment.id ? { ...a, ...appointmentData, id: a.id, patient_id: patient.id } : a)
+                : [...patient.appointments, { ...appointmentData, id: Date.now(), patient_id: patient.id } as Appointment];
+
+                handleAppointmentsUpdate(updatedAppointments as Appointment[]);
+                setIsAppointmentModalOpen(false);
+                setEditingAppointment(null);
+                toast({ title: 'Success', description: 'Appointment saved.' });
+            }}
+            patient={patient}
+            clinicians={clinicians}
+            existingAppointment={editingAppointment}
         />
       )}
     </div>

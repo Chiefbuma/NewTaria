@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { Patient, ClinicalParameter, Assessment } from '@/lib/types';
+import type { Patient, ClinicalParameter, Assessment, Goal } from '@/lib/types';
 import {
   Card,
   CardContent,
@@ -23,7 +23,7 @@ import {
   Legend,
 } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Donut } from 'lucide-react';
+import { BarChart, Donut, Target } from 'lucide-react';
 
 
 const calculateAssessmentWeek = (assessment: Assessment, patient: Patient) => {
@@ -36,28 +36,66 @@ const calculateAssessmentWeek = (assessment: Assessment, patient: Patient) => {
     return weeksDiff;
 };
 
-const ParameterDonutChart = ({ assessments, parameter }: { assessments: Assessment[], parameter: ClinicalParameter }) => {
+const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: Assessment[], parameter: ClinicalParameter, goal?: Goal | null }) => {
+    
     const data = useMemo(() => {
-        const total = assessments.length;
-        if (total === 0) return [];
-        const normal = assessments.filter(a => a.is_normal === true).length;
-        const abnormal = assessments.filter(a => a.is_normal === false).length;
+        if (!goal) {
+            const total = assessments.length;
+            if (total === 0) return [];
+            const normal = assessments.filter(a => a.is_normal === true).length;
+            const abnormal = assessments.filter(a => a.is_normal === false).length;
+            
+            const result = [];
+            if (normal > 0) result.push({ name: 'Normal', value: normal, fill: 'hsl(var(--chart-2))' });
+            if (abnormal > 0) result.push({ name: 'Abnormal', value: abnormal, fill: 'hsl(var(--chart-5))' });
+            return result;
+        }
+
+        if (goal.status === 'completed') {
+            return [{ name: 'Completed', value: 100, fill: 'hsl(var(--chart-2))' }];
+        }
+
+        if (assessments.length === 0) {
+            return [];
+        }
+
+        const checkTargetMet = (assessmentValue: string, goal: Goal) => {
+            const current = parseFloat(assessmentValue);
+            const target = parseFloat(goal.target_value);
+            if (isNaN(current) || isNaN(target)) return false;
+
+            switch (goal.target_operator) {
+                case '<': return current < target;
+                case '<=': return current <= target;
+                case '=': return current === target;
+                case '>=': return current >= target;
+                case '>': return current > target;
+                default: return false;
+            }
+        };
+
+        const onTrackCount = assessments.filter(a => checkTargetMet(a.value, goal)).length;
+        const needsImprovementCount = assessments.length - onTrackCount;
         
         const result = [];
-        if (normal > 0) result.push({ name: 'Normal', value: normal, fill: 'hsl(var(--chart-2))' });
-        if (abnormal > 0) result.push({ name: 'Abnormal', value: abnormal, fill: 'hsl(var(--chart-5))' });
+        if (onTrackCount > 0) result.push({ name: 'On Track', value: onTrackCount, fill: 'hsl(var(--chart-2))' });
+        if (needsImprovementCount > 0) result.push({ name: 'Needs Improvement', value: needsImprovementCount, fill: 'hsl(var(--chart-5))' });
         
         return result;
-    }, [assessments]);
 
-    if (assessments.length === 0) {
+    }, [assessments, goal]);
+
+    const title = goal ? 'Goal Status' : 'Results Summary';
+    const noDataMessage = goal ? 'No assessments for this goal yet.' : 'No data to summarize.';
+
+    if (data.length === 0) {
         return (
             <Card className="h-full">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Donut className="h-5 w-5"/>Results Summary</CardTitle>
+                    <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5"/>{title}</CardTitle>
                 </CardHeader>
                 <CardContent className="h-64 flex items-center justify-center">
-                    <p className="text-muted-foreground">No data to summarize.</p>
+                    <p className="text-muted-foreground">{noDataMessage}</p>
                 </CardContent>
             </Card>
         );
@@ -66,7 +104,7 @@ const ParameterDonutChart = ({ assessments, parameter }: { assessments: Assessme
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Donut className="h-5 w-5"/>Results Summary</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5"/>{title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1">
                 <ChartContainer config={{}} className="h-full min-h-[200px]">
@@ -156,7 +194,7 @@ const ParameterLineChart = ({ assessments, patient, parameter }: { assessments: 
 export default function ProgressDashboard({ patient, clinicalParameters }: { patient: Patient, clinicalParameters: ClinicalParameter[] }) {
     
     const assessedParameterIds = useMemo(() => {
-        const numericParamIds = new Set(clinicalParameters.map(p => p.id));
+        const numericParamIds = new Set(clinicalParameters.filter(p => p.type === 'numeric').map(p => p.id));
         const ids = new Set(patient.assessments.filter(a => numericParamIds.has(a.clinical_parameter_id)).map(a => a.clinical_parameter_id));
         return Array.from(ids);
     }, [patient.assessments, clinicalParameters]);
@@ -173,13 +211,15 @@ export default function ProgressDashboard({ patient, clinicalParameters }: { pat
                     const parameterAssessments = patient.assessments.filter(
                         a => a.clinical_parameter_id === parameter.id
                     );
+                    
+                    const goal = patient.goals.find(g => g.clinical_parameter_id === parameter.id);
 
                     return (
                         <div key={parameter.id} className="space-y-4 p-6 border rounded-2xl bg-muted/30">
                             <h2 className="text-2xl font-bold tracking-tight text-foreground">{parameter.name}</h2>
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                                 <div className="lg:col-span-1">
-                                    <ParameterDonutChart assessments={parameterAssessments} parameter={parameter} />
+                                    <ParameterDonutChart assessments={parameterAssessments} parameter={parameter} goal={goal} />
                                 </div>
                                 <div className="lg:col-span-2">
                                      <ParameterLineChart assessments={parameterAssessments} patient={patient} parameter={parameter} />
