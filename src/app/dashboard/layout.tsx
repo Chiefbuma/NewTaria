@@ -109,6 +109,8 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true);
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
+  const isProgressPage = pathname.includes('/progress');
   
   useEffect(() => {
     const storedUser = localStorage.getItem('loggedInUser');
@@ -131,6 +133,20 @@ export default function DashboardLayout({
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+  
+  if (isProgressPage) {
+    return (
+        <div className="flex flex-col min-h-screen w-full">
+            <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+                <div className="w-full flex-1" />
+                <Header user={user} />
+            </header>
+            <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
+                {children}
+            </main>
+        </div>
+    )
   }
 
   return (

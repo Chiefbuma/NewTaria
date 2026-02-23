@@ -78,6 +78,7 @@ const ParameterDonutChart = ({ assessments, parameter }: { assessments: Assessme
                                 cy="50%"
                                 labelLine={false}
                                 outerRadius={80}
+                                innerRadius={50}
                                 dataKey="value"
                                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                             >
@@ -155,7 +156,7 @@ const ParameterLineChart = ({ assessments, patient, parameter }: { assessments: 
 export default function ProgressDashboard({ patient, clinicalParameters }: { patient: Patient, clinicalParameters: ClinicalParameter[] }) {
     
     const assessedParameterIds = useMemo(() => {
-        const numericParamIds = new Set(clinicalParameters.filter(p => p.type === 'numeric').map(p => p.id));
+        const numericParamIds = new Set(clinicalParameters.map(p => p.id));
         const ids = new Set(patient.assessments.filter(a => numericParamIds.has(a.clinical_parameter_id)).map(a => a.clinical_parameter_id));
         return Array.from(ids);
     }, [patient.assessments, clinicalParameters]);
