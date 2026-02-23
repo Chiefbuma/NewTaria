@@ -57,6 +57,7 @@ import {
   AlertTriangle,
   Clock,
   Circle,
+  TrendingUp,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -396,6 +397,12 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters 
                 <CardTitle>Actions</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
+                <Button asChild variant="outline">
+                    <Link href={`/dashboard/patient/${patient.id}/progress`}>
+                        <TrendingUp className="mr-2 h-4 w-4" />
+                        View Progress Dashboard
+                    </Link>
+                </Button>
                 <Button variant="outline" onClick={handleOpenEditModal}>
                   <Edit className="mr-2 h-4 w-4" />
                   Edit Patient Details
