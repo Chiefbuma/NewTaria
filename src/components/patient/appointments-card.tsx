@@ -2,7 +2,7 @@
 import type { Patient, Appointment } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarCheck, Clock, PlusCircle, Edit, XCircle } from 'lucide-react';
+import { CalendarCheck, Clock, CalendarPlus, Edit, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -15,6 +15,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export default function AppointmentsCard({ patient, onSchedule, onEdit, onUpdate }: { patient: Patient, onSchedule: () => void, onEdit: (appointment: Appointment) => void, onUpdate: (appointments: Appointment[]) => void }) {
     const { toast } = useToast();
@@ -52,7 +58,19 @@ export default function AppointmentsCard({ patient, onSchedule, onEdit, onUpdate
                         </CardTitle>
                         <CardDescription>Manage upcoming appointments.</CardDescription>
                     </div>
-                     <Button size="sm" onClick={onSchedule}><PlusCircle className="mr-2 h-4 w-4" /> Schedule</Button>
+                     <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button size="icon" variant="ghost" onClick={onSchedule}>
+                                    <CalendarPlus className="h-5 w-5" />
+                                    <span className="sr-only">Schedule Appointment</span>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Schedule Appointment</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
             </CardHeader>
             <CardContent>
