@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import Logo from '@/components/logo';
+import { registerUser } from '@/lib/actions';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -43,15 +44,22 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const result = await registerUser(formData);
 
-    toast({
-        title: 'Account Created!',
-        description: 'Your account has been created successfully. You will be redirected to the login page.',
-    });
+    if (result.success) {
+        toast({
+            title: 'Account Created!',
+            description: 'Your account has been created successfully. You can now login.',
+        });
+        router.push('/');
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: result.error || 'Failed to create account.',
+        });
+    }
     
-    router.push('/');
     setLoading(false);
   }
 
@@ -73,23 +81,23 @@ export default function RegisterPage() {
                     <div className="space-y-4">
                         <div className="grid gap-2">
                             <Label htmlFor="first_name">First Name</Label>
-                            <Input id="first_name" required onChange={handleInputChange} />
+                            <Input id="first_name" required value={formData.first_name} onChange={handleInputChange} />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="surname">Surname</Label>
-                            <Input id="surname" required onChange={handleInputChange} />
+                            <Input id="surname" required value={formData.surname} onChange={handleInputChange} />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="email">Email Address</Label>
-                            <Input id="email" type="email" required onChange={handleInputChange} placeholder="Your login email" />
+                            <Input id="email" type="email" required value={formData.email} onChange={handleInputChange} placeholder="Your login email" />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="password">Password</Label>
-                            <Input id="password" type="password" required onChange={handleInputChange} placeholder="Create a password" />
+                            <Input id="password" type="password" required value={formData.password} onChange={handleInputChange} placeholder="Create a password" />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="age">Age</Label>
-                            <Input id="age" type="number" required onChange={handleInputChange} />
+                            <Input id="age" type="number" required value={formData.age} onChange={handleInputChange} />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="gender">Gender</Label>

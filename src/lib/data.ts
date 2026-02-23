@@ -3,6 +3,15 @@ import type { Patient, User, Corporate, ClinicalParameter, Assessment, Goal, Dia
 import { unstable_noStore as noStore } from 'next/cache';
 
 /**
+ * Helper to ensure database values are safe for Next.js serialization.
+ * Converts Dates to strings and handles potential nulls by deep cloning via JSON.
+ */
+function serialize<T>(data: T): T {
+    if (!data) return data;
+    return JSON.parse(JSON.stringify(data));
+}
+
+/**
  * Helper to calculate patient stats from their related data.
  */
 function calculatePatientStats(patient: Partial<Patient>) {
@@ -13,8 +22,10 @@ function calculatePatientStats(patient: Partial<Patient>) {
     const activeGoals = goals.filter(g => g.status === 'active').length;
     const totalAssessments = assessments.length;
     
-    // Simple logic for needs attention: if status is critical or has active overdue goals
-    const isOverdue = (goal: Goal) => new Date(goal.deadline) < new Date() && goal.status === 'active';
+    const isOverdue = (goal: Goal) => {
+        if (!goal.deadline || goal.status !== 'active') return false;
+        return new Date(goal.deadline) < new Date();
+    };
     const needsAttention = patient.status === 'Critical' || goals.some(isOverdue);
 
     return {
@@ -42,9 +53,6 @@ export async function fetchPatients(): Promise<Patient[]> {
         `);
         
         const patients = rows as any[];
-        
-        // In a real production app, you might want to fetch counts in the main query or via separate count queries.
-        // For this MVP, we initialize them so the UI works.
         return patients.map(p => {
             const basePatient = {
                 ...p,
@@ -54,10 +62,10 @@ export async function fetchPatients(): Promise<Patient[]> {
                 appointments: [],
                 reviews: []
             };
-            return {
+            return serialize({
                 ...basePatient,
                 stats: calculatePatientStats(basePatient)
-            };
+            });
         });
     } catch (error) {
         console.error('Database Error:', error);
@@ -121,10 +129,10 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
             reviews: reviews as Review[],
         };
 
-        return {
+        return serialize({
             ...basePatient,
             stats: calculatePatientStats(basePatient)
-        };
+        });
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch patient details.');
@@ -135,7 +143,7 @@ export async function fetchUsers(): Promise<User[]> {
     noStore();
     try {
         const [rows] = await db.query('SELECT id, name, email, role, avatarUrl FROM users ORDER BY name ASC');
-        return rows as User[];
+        return serialize(rows as User[]);
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch users.');
@@ -147,10 +155,36 @@ export async function getUserByEmail(email: string) {
     try {
         const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
         const users = rows as any[];
-        return users[0] || null;
+        return serialize(users[0] || null);
     } catch (error) {
         console.error('Database Error:', error);
         return null;
+    }
+}
+
+export async function createUser(userData: any): Promise<number> {
+    try {
+        const [result] = await db.query(
+            'INSERT INTO users (name, email, password, role, avatarUrl) VALUES (?, ?, ?, ?, ?)',
+            [userData.name, userData.email, userData.password, userData.role || 'patient', userData.avatarUrl || null]
+        );
+        return (result as any).insertId;
+    } catch (error) {
+        console.error('Database Error:', error);
+        throw new Error('Failed to create user.');
+    }
+}
+
+export async function createPatient(patientData: any): Promise<number> {
+    try {
+        const [result] = await db.query(
+            'INSERT INTO patients (user_id, first_name, surname, email, age, gender, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [patientData.user_id || null, patientData.first_name, patientData.surname, patientData.email, patientData.age, patientData.gender, patientData.status || 'Pending']
+        );
+        return (result as any).insertId;
+    } catch (error) {
+        console.error('Database Error:', error);
+        throw new Error('Failed to create patient.');
     }
 }
 
@@ -158,7 +192,7 @@ export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
     noStore();
     try {
         const [rows] = await db.query('SELECT * FROM clinical_parameters ORDER BY name ASC');
-        return rows as ClinicalParameter[];
+        return serialize(rows as ClinicalParameter[]);
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch clinical parameters.');
@@ -169,7 +203,7 @@ export async function fetchCorporates(): Promise<Corporate[]> {
     noStore();
     try {
         const [rows] = await db.query('SELECT * FROM corporates ORDER BY name ASC');
-        return rows as Corporate[];
+        return serialize(rows as Corporate[]);
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch corporates.');
@@ -180,7 +214,7 @@ export async function fetchPayers(): Promise<Payer[]> {
     noStore();
     try {
         const [rows] = await db.query('SELECT * FROM payers ORDER BY name ASC');
-        return rows as Payer[];
+        return serialize(rows as Payer[]);
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch payers.');
@@ -191,7 +225,7 @@ export async function fetchDiagnoses(): Promise<Diagnosis[]> {
     noStore();
     try {
         const [rows] = await db.query('SELECT * FROM diagnoses ORDER BY name ASC');
-        return rows as Diagnosis[];
+        return serialize(rows as Diagnosis[]);
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch diagnoses.');
@@ -202,7 +236,7 @@ export async function fetchMedications(): Promise<Medication[]> {
     noStore();
     try {
         const [rows] = await db.query('SELECT * FROM medications ORDER BY name ASC');
-        return rows as Medication[];
+        return serialize(rows as Medication[]);
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch medications.');

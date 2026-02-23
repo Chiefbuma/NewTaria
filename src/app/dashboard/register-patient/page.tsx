@@ -16,6 +16,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { registerPatientByStaff } from '@/lib/actions';
 
 export default function StaffRegisterPatientPage() {
   const [formData, setFormData] = useState({
@@ -42,21 +43,22 @@ export default function StaffRegisterPatientPage() {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const result = await registerPatientByStaff(formData);
 
-    // In a real app, you would:
-    // 1. Call an API to create the patient record.
-    // 2. Call an API to create the user record for patient login.
+    if (result.success) {
+        toast({
+            title: 'Patient Registered',
+            description: 'The patient record and user account have been created.',
+        });
+        router.push('/dashboard');
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: result.error || 'Failed to register patient.',
+        });
+    }
     
-    toast({
-        title: 'Patient Registered (Simulation)',
-        description: 'The patient record has been created. You will now be redirected to the dashboard.',
-    });
-    
-    // In a real app, you might redirect to the new patient's onboarding page:
-    // router.push(`/patient/${newPatientId}`);
-    router.push('/dashboard');
     setLoading(false);
   }
 
@@ -75,29 +77,29 @@ export default function StaffRegisterPatientPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="first_name">First Name</Label>
-                  <Input id="first_name" required onChange={handleInputChange} />
+                  <Input id="first_name" required value={formData.first_name} onChange={handleInputChange} />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="surname">Surname</Label>
-                  <Input id="surname" required onChange={handleInputChange} />
+                  <Input id="surname" required value={formData.surname} onChange={handleInputChange} />
                 </div>
               </div>
 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" required onChange={handleInputChange} placeholder="For patient login" />
+                  <Input id="email" type="email" required value={formData.email} onChange={handleInputChange} placeholder="For patient login" />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" required onChange={handleInputChange} placeholder="Create a password" />
+                  <Input id="password" type="password" required value={formData.password} onChange={handleInputChange} placeholder="Create a password" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="grid gap-2">
                     <Label htmlFor="age">Age</Label>
-                    <Input id="age" type="number" required onChange={handleInputChange} />
+                    <Input id="age" type="number" required value={formData.age} onChange={handleInputChange} />
                 </div>
                  <div className="grid gap-2">
                     <Label htmlFor="gender">Gender</Label>

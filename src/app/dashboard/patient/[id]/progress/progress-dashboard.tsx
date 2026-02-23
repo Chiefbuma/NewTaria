@@ -31,7 +31,7 @@ const calculateAssessmentWeek = (assessment: Assessment, patient: Patient) => {
     const assessmentDate = new Date(assessment.measured_at);
     const treatmentStartDate = new Date(patient.date_of_onboarding);
     const timeDiff = assessmentDate.getTime() - treatmentStartDate.getTime();
-    if (timeDiff < 0) return null;
+    if (timeDiff < 0) return 1;
     const weeksDiff = Math.floor(timeDiff / (1000 * 3600 * 24 * 7)) + 1;
     return weeksDiff;
 };
@@ -40,8 +40,6 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
     
     const data = useMemo(() => {
         if (!goal) {
-            const total = assessments.length;
-            if (total === 0) return [];
             const normal = assessments.filter(a => a.is_normal === true).length;
             const abnormal = assessments.filter(a => a.is_normal === false).length;
             
@@ -52,7 +50,7 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
         }
 
         if (goal.status === 'completed') {
-            return [{ name: 'Completed', value: 100, fill: 'hsl(var(--chart-2))' }];
+            return [{ name: 'Completed', value: 1, fill: 'hsl(var(--chart-2))' }];
         }
 
         if (assessments.length === 0) {
@@ -85,17 +83,17 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
 
     }, [assessments, goal]);
 
-    const title = goal ? 'Goal Status' : 'Results Summary';
-    const noDataMessage = goal ? 'No assessments for this goal yet.' : 'No data to summarize.';
+    const title = goal ? 'Goal Status' : 'Overall Status';
+    const noDataMessage = goal ? 'No assessments yet.' : 'No data.';
 
     if (data.length === 0) {
         return (
-            <Card className="h-full">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5"/>{title}</CardTitle>
+            <Card className="h-full flex flex-col">
+                <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground"><Target className="h-4 w-4"/>{title}</CardTitle>
                 </CardHeader>
-                <CardContent className="h-64 flex items-center justify-center">
-                    <p className="text-muted-foreground">{noDataMessage}</p>
+                <CardContent className="flex-1 flex items-center justify-center">
+                    <p className="text-xs text-muted-foreground">{noDataMessage}</p>
                 </CardContent>
             </Card>
         );
@@ -103,19 +101,13 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
     
     return (
         <Card className="h-full flex flex-col">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5"/>{title}</CardTitle>
+            <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground"><Target className="h-4 w-4"/>{title}</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-1 items-center justify-center pb-0">
-                <ChartContainer
-                    config={{}}
-                    className="mx-auto aspect-square w-full max-w-[250px]"
-                >
+            <CardContent className="flex-1 flex flex-col items-center justify-center pt-0">
+                <div className="w-full aspect-square max-h-[180px]">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                             <Tooltip
-                                content={<ChartTooltipContent hideLabel />}
-                                />
                             <Pie
                                 data={data}
                                 dataKey="value"
@@ -123,56 +115,31 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
                                 cx="50%"
                                 cy="50%"
                                 innerRadius="60%"
-                                strokeWidth={5}
-                                label={({
-                                  payload,
-                                  ...props
-                                }) => {
-                                  return (
-                                    <text
-                                      cx={props.cx}
-                                      cy={props.cy}
-                                      x={props.x}
-                                      y={props.y}
-                                      textAnchor={props.textAnchor}
-                                      dominantBaseline={props.dominantBaseline}
-                                      fill="hsla(var(--foreground))"
-                                      className="text-sm font-semibold"
-                                    >
-                                      {`${(payload.percent * 100).toFixed(0)}%`}
-                                    </text>
-                                  )
-                                }}
+                                outerRadius="90%"
+                                paddingAngle={5}
+                                stroke="none"
                             >
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.fill} />
                                 ))}
                             </Pie>
-                            <Legend
-                                content={({ payload }) => {
-                                if (!payload) {
-                                    return null
-                                }
-                                return (
-                                    <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-4">
-                                    {payload.map((entry) => (
-                                        <li key={entry.value} className="flex items-center gap-2">
-                                        <span
-                                            className="h-2.5 w-2.5 rounded-full"
-                                            style={{
-                                            backgroundColor: entry.color,
-                                            }}
-                                        />
-                                        <span>{entry.value}</span>
-                                        </li>
-                                    ))}
-                                    </ul>
-                                )
-                                }}
+                            <Tooltip
+                                content={<ChartTooltipContent hideLabel />}
                             />
                         </PieChart>
                     </ResponsiveContainer>
-                </ChartContainer>
+                </div>
+                <div className="mt-4 space-y-1 w-full">
+                    {data.map((entry, index) => (
+                        <div key={index} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }} />
+                                <span className="text-muted-foreground">{entry.name}</span>
+                            </div>
+                            <span className="font-bold">{((entry.value / data.reduce((acc, curr) => acc + curr.value, 0)) * 100).toFixed(0)}%</span>
+                        </div>
+                    ))}
+                </div>
             </CardContent>
         </Card>
     )
@@ -207,27 +174,42 @@ const ParameterLineChart = ({ assessments, patient, parameter }: { assessments: 
 
     return (
         <Card className="h-full flex flex-col">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><BarChart className="h-5 w-5"/>Weekly Trend</CardTitle>
-                <CardDescription>Average weekly measurements for this parameter.</CardDescription>
+            <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground"><BarChart className="h-4 w-4"/>Weekly Trend</CardTitle>
             </CardHeader>
-            <CardContent className="flex-1">
+            <CardContent className="flex-1 pt-4">
                 {weeklyData.length > 1 ? (
-                    <ChartContainer config={{}} className="h-full min-h-[250px]">
-                        <ResponsiveContainer>
-                            <LineChart data={weeklyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="week" />
-                                <YAxis label={{ value: parameter.unit || '', angle: -90, position: 'insideLeft' }} />
+                    <div className="h-full min-h-[200px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={weeklyData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsla(var(--muted-foreground), 0.1)" />
+                                <XAxis 
+                                    dataKey="week" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                                />
+                                <YAxis 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                                />
                                 <Tooltip content={<ChartTooltipContent />} />
-                                <Legend />
-                                <Line type="monotone" dataKey="value" name={parameter.name} stroke="hsl(var(--chart-1))" strokeWidth={2} />
+                                <Line 
+                                    type="monotone" 
+                                    dataKey="value" 
+                                    name={parameter.name} 
+                                    stroke="hsl(var(--chart-1))" 
+                                    strokeWidth={3} 
+                                    dot={{ fill: 'hsl(var(--chart-1))', strokeWidth: 2, r: 4 }}
+                                    activeDot={{ r: 6 }}
+                                />
                             </LineChart>
                         </ResponsiveContainer>
-                    </ChartContainer>
+                    </div>
                 ) : (
-                    <div className="h-full flex items-center justify-center min-h-[250px]">
-                        <p className="text-muted-foreground">Not enough data to display a chart.</p>
+                    <div className="h-full flex items-center justify-center min-h-[200px]">
+                        <p className="text-xs text-muted-foreground">Insufficient data for trend analysis.</p>
                     </div>
                 )}
             </CardContent>
@@ -237,45 +219,56 @@ const ParameterLineChart = ({ assessments, patient, parameter }: { assessments: 
 
 export default function ProgressDashboard({ patient, clinicalParameters }: { patient: Patient, clinicalParameters: ClinicalParameter[] }) {
     
-    const assessedParameterIds = useMemo(() => {
-        const numericParamIds = new Set(clinicalParameters.filter(p => p.type === 'numeric').map(p => p.id));
-        const ids = new Set(patient.assessments.filter(a => numericParamIds.has(a.clinical_parameter_id)).map(a => a.clinical_parameter_id));
-        return Array.from(ids);
-    }, [patient.assessments, clinicalParameters]);
-
     const assessedParameters = useMemo(() => {
-        return clinicalParameters.filter(p => assessedParameterIds.includes(p.id));
-    }, [clinicalParameters, assessedParameterIds]);
+        const numericParamIds = new Set(clinicalParameters.filter(p => p.type === 'numeric').map(p => p.id));
+        const assessmentsByParam = new Map<number, Assessment[]>();
+        
+        patient.assessments.forEach(a => {
+            if (numericParamIds.has(a.clinical_parameter_id)) {
+                const current = assessmentsByParam.get(a.clinical_parameter_id) || [];
+                assessmentsByParam.set(a.clinical_parameter_id, [...current, a]);
+            }
+        });
+
+        return Array.from(assessmentsByParam.entries())
+            .map(([id, assessments]) => ({
+                parameter: clinicalParameters.find(p => p.id === id)!,
+                assessments
+            }))
+            .filter(item => item.parameter);
+    }, [patient.assessments, clinicalParameters]);
 
 
     return (
-        <div className="space-y-12">
+        <div className="space-y-8">
             {assessedParameters.length > 0 ? (
-                assessedParameters.map(parameter => {
-                    const parameterAssessments = patient.assessments.filter(
-                        a => a.clinical_parameter_id === parameter.id
-                    );
-                    
+                assessedParameters.map(({ parameter, assessments }) => {
                     const goal = patient.goals.find(g => g.clinical_parameter_id === parameter.id);
 
                     return (
-                        <div key={parameter.id} className="space-y-4 p-6 border rounded-2xl bg-muted/30">
-                            <h2 className="text-2xl font-bold tracking-tight text-foreground">{parameter.name}</h2>
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-                                <div className="lg:col-span-1">
-                                    <ParameterDonutChart assessments={parameterAssessments} parameter={parameter} goal={goal} />
+                        <div key={parameter.id} className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold tracking-tight text-foreground">{parameter.name}</h2>
+                                {parameter.unit && <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full">{parameter.unit}</span>}
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 h-full">
+                                <div className="md:col-span-4 h-full">
+                                    <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
                                 </div>
-                                <div className="lg:col-span-2">
-                                     <ParameterLineChart assessments={parameterAssessments} patient={patient} parameter={parameter} />
+                                <div className="md:col-span-8 h-full">
+                                     <ParameterLineChart assessments={assessments} patient={patient} parameter={parameter} />
                                 </div>
                             </div>
                         </div>
                     )
                 })
             ) : (
-                 <div className="text-center py-20 rounded-2xl bg-muted/50">
-                    <h3 className="text-xl font-semibold text-muted-foreground">No Progress to Show</h3>
-                    <p className="text-muted-foreground mt-2">There is no assessment data available for this patient yet.</p>
+                 <div className="text-center py-20 rounded-2xl bg-muted/30 border-2 border-dashed">
+                    <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                        <BarChart className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground">No Progress Data Available</h3>
+                    <p className="text-muted-foreground mt-1 max-w-xs mx-auto">Record some clinical assessments to begin visualizing trends and goal progress.</p>
                 </div>
             )}
         </div>
