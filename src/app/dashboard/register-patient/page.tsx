@@ -25,7 +25,6 @@ export default function StaffRegisterPatientPage() {
     password: '',
     age: '',
     gender: '',
-    diagnosis: '',
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -95,7 +94,7 @@ export default function StaffRegisterPatientPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="grid gap-2">
                     <Label htmlFor="age">Age</Label>
                     <Input id="age" type="number" required onChange={handleInputChange} />
@@ -110,10 +109,6 @@ export default function StaffRegisterPatientPage() {
                         </SelectContent>
                     </Select>
                  </div>
-                 <div className="grid gap-2">
-                    <Label htmlFor="diagnosis">Primary Diagnosis</Label>
-                    <Input id="diagnosis" required onChange={handleInputChange} />
-                </div>
               </div>
             </div>
             <div className="mt-8 flex justify-end gap-4">
