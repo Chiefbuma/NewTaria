@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Patient, User } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,14 @@ export default function PatientList({ patients: initialPatients }: { patients: P
       if (stored) setCurrentUser(JSON.parse(stored));
   }, []);
 
+  const handleSelectionChange = useCallback((selectedRows: Patient[]) => {
+      const ids = selectedRows.map(r => r.id);
+      setSelectedIds(prev => {
+          if (JSON.stringify(prev) === JSON.stringify(ids)) return prev;
+          return ids;
+      });
+  }, []);
+
   const handleBulkDelete = async () => {
       if (selectedIds.length === 0) return;
       if (!confirm(`Are you sure you want to delete ${selectedIds.length} patients?`)) return;
@@ -47,12 +55,12 @@ export default function PatientList({ patients: initialPatients }: { patients: P
   const canDelete = currentUser?.role === 'admin' || currentUser?.role === 'navigator';
 
   return (
-     <Card>
+     <Card className="border-primary/10">
         <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <CardTitle>All Patients</CardTitle>
-                    <CardDescription>View, search, and manage patient records.</CardDescription>
+                    <CardTitle className="text-foreground">All Patients</CardTitle>
+                    <CardDescription className="text-muted-foreground">View, search, and manage patient records.</CardDescription>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <AnimatePresence>
@@ -108,7 +116,7 @@ export default function PatientList({ patients: initialPatients }: { patients: P
                             <LayoutGrid className="h-4 w-4" />
                         </Button>
                     </div>
-                     <Button asChild size="sm" className="bg-primary hover:bg-primary/90">
+                     <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                         <Link href="/dashboard/register-patient">
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Patient
                         </Link>
@@ -121,7 +129,7 @@ export default function PatientList({ patients: initialPatients }: { patients: P
                 <DataTable 
                     columns={columns} 
                     data={patients} 
-                    onSelectionChange={(rows) => setSelectedIds(rows.map(r => (r as any).id))}
+                    onSelectionChange={handleSelectionChange}
                 />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6">

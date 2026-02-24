@@ -28,7 +28,7 @@ function serialize(obj: any): any {
     // Handle Date
     if (obj instanceof Date) return obj.toISOString();
 
-    // Handle Buffers (sometimes returned by MySQL)
+    // Handle Buffers (raw binary data from MySQL)
     if (typeof obj === 'object' && obj.type === 'Buffer' && Array.isArray(obj.data)) {
         return Buffer.from(obj.data).toString('utf-8');
     }
@@ -38,9 +38,6 @@ function serialize(obj: any): any {
     
     // Handle Objects recursively
     if (typeof obj === 'object') {
-        // If it has a custom toJSON (like some Decimal types), use it
-        if (typeof obj.toJSON === 'function') return serialize(obj.toJSON());
-
         const result: any = {};
         for (const key in obj) {
             if (Object.prototype.hasOwnProperty.call(obj, key)) {
@@ -53,27 +50,21 @@ function serialize(obj: any): any {
     return obj;
 }
 
-function calculatePatientStats(patient: Partial<Patient>) {
-    const goals = patient.goals || [];
-    const assessments = patient.assessments || [];
-    const totalGoals = goals.length;
-    const activeGoals = goals.filter(g => g.status === 'active').length;
-    const totalAssessments = assessments.length;
-    const isOverdue = (goal: Goal) => {
-        if (!goal.deadline || goal.status !== 'active') return false;
-        return new Date(goal.deadline) < new Date();
-    };
-    const needsAttention = (patient.status as string) === 'Critical' || goals.some(isOverdue);
+function calculatePatientStats(patient: any) {
+    const totalGoals = Number(patient.total_goals || 0);
+    const activeGoals = Number(patient.active_goals || 0);
+    const totalAssessments = Number(patient.total_assessments || 0);
+    
     return {
         totalGoals,
         activeGoals,
         totalAssessments,
         assessmentCoverage: totalGoals > 0 ? Math.round((totalAssessments / totalGoals) * 100) : 0,
-        needsAttention
+        needsAttention: patient.status === 'Critical' || (totalGoals > 0 && totalAssessments === 0)
     };
 }
 
-// --- READ OPERATIONS (Filtering out Soft-Deleted Records) ---
+// --- READ OPERATIONS ---
 
 export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
     noStore();
@@ -82,7 +73,10 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
             SELECT p.*, 
                    u.name as navigator_name, 
                    c.name as corporate_name, 
-                   pay.name as payer_name
+                   pay.name as payer_name,
+                   (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.deleted_at IS NULL) as total_goals,
+                   (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.status = 'active' AND g.deleted_at IS NULL) as active_goals,
+                   (SELECT COUNT(*) FROM assessments a WHERE a.patient_id = p.id AND a.deleted_at IS NULL) as total_assessments
             FROM patients p
             LEFT JOIN users u ON p.navigator_id = u.id
             LEFT JOIN corporates c ON p.corporate_id = c.id
@@ -126,7 +120,10 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
             SELECT p.*, 
                    u.name as navigator_name, 
                    c.name as corporate_name, 
-                   pay.name as payer_name
+                   pay.name as payer_name,
+                   (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.deleted_at IS NULL) as total_goals,
+                   (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.status = 'active' AND g.deleted_at IS NULL) as active_goals,
+                   (SELECT COUNT(*) FROM assessments a WHERE a.patient_id = p.id AND a.deleted_at IS NULL) as total_assessments
             FROM patients p
             LEFT JOIN users u ON p.navigator_id = u.id
             LEFT JOIN corporates c ON p.corporate_id = c.id
@@ -172,7 +169,7 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
                 ...a,
                 clinician: { id: a.clinician_id, name: a.clinician_name }
             })),
-            reviews: reviews as Review[],
+            reviews: (reviews as any[]).map(r => ({ ...r, reviewed_by: r.reviewed_by })),
         };
 
         return serialize({ ...basePatient, stats: calculatePatientStats(basePatient) });
@@ -285,7 +282,7 @@ export async function getUserByEmail(email: string) {
     }
 }
 
-// --- WRITE OPERATIONS (Soft Delete Transformations) ---
+// --- WRITE OPERATIONS ---
 
 export async function sendMessage(senderId: number, receiverId: number, content: string): Promise<number> {
     const [result] = await db.query(

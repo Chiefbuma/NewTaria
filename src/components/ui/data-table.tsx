@@ -198,11 +198,8 @@ interface DataTableProps<TData, TValue> {
 
 export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  )
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = React.useState('')
 
@@ -233,13 +230,15 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
     getSortedRowModel: getSortedRowModel(),
   })
 
-  // Hook into selection changes
+  // Prevent selection loops by only firing onSelectionChange when selection actually changes
+  const prevSelectionRef = React.useRef(rowSelection);
   React.useEffect(() => {
-      if (onSelectionChange) {
-          const selectedRows = table.getSelectedRowModel().rows.map(r => r.original);
-          onSelectionChange(selectedRows);
-      }
-  }, [rowSelection, table, onSelectionChange]);
+    if (onSelectionChange && JSON.stringify(prevSelectionRef.current) !== JSON.stringify(rowSelection)) {
+      prevSelectionRef.current = rowSelection;
+      const selectedRows = table.getSelectedRowModel().rows.map(r => r.original);
+      onSelectionChange(selectedRows);
+    }
+  }, [rowSelection, onSelectionChange, table]);
 
   return (
     <div className="space-y-4">

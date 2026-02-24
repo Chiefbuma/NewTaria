@@ -10,6 +10,7 @@ import AllNotesCard from './all-notes-card';
 import ProgressDashboard from './progress-dashboard';
 import AppointmentsCard from '@/components/patient/appointments-card';
 import AddAppointmentModal from '@/components/patient/add-appointment-modal';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ProgressPageClient({ 
@@ -63,15 +64,14 @@ export default function ProgressPageClient({
                 <div className="lg:col-span-1 space-y-6">
                     <PatientInfoCard patient={patient} />
                     
-                    {/* Patients see a chat button instead of clinical appointment management */}
                     {isPatientView ? (
                         <Card className="border-primary/20 bg-primary/5">
                             <CardHeader className="p-4">
-                                <CardTitle className="text-sm flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" />Provider Support</CardTitle>
+                                <CardTitle className="text-sm flex items-center gap-2 text-foreground"><MessageSquare className="h-4 w-4 text-primary" />Provider Support</CardTitle>
                             </CardHeader>
                             <CardContent className="p-4 pt-0">
                                 <p className="text-xs text-muted-foreground mb-4">Have questions about your progress? Chat with your health navigator.</p>
-                                <Button asChild className="w-full bg-primary hover:bg-primary/90 shadow-md">
+                                <Button asChild className="w-full bg-primary hover:bg-primary/90 shadow-md text-primary-foreground">
                                     <Link href="/dashboard/messages">Open Chat</Link>
                                 </Button>
                             </CardContent>
