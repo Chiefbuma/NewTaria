@@ -230,15 +230,23 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
     getSortedRowModel: getSortedRowModel(),
   })
 
-  // Prevent selection loops by only firing onSelectionChange when selection actually changes
-  const prevSelectionRef = React.useRef(rowSelection);
+  // BREAK THE LOOP: Use a ref to track the last emitted selection keys
+  // and only call onSelectionChange if they actually changed.
+  const lastEmittedRef = React.useRef("");
+  const onSelectionChangeRef = React.useRef(onSelectionChange);
+  
   React.useEffect(() => {
-    if (onSelectionChange && JSON.stringify(prevSelectionRef.current) !== JSON.stringify(rowSelection)) {
-      prevSelectionRef.current = rowSelection;
+    onSelectionChangeRef.current = onSelectionChange;
+  }, [onSelectionChange]);
+
+  React.useEffect(() => {
+    const selectionKeys = Object.keys(rowSelection).sort().join(",");
+    if (lastEmittedRef.current !== selectionKeys) {
+      lastEmittedRef.current = selectionKeys;
       const selectedRows = table.getSelectedRowModel().rows.map(r => r.original);
-      onSelectionChange(selectedRows);
+      onSelectionChangeRef.current?.(selectedRows);
     }
-  }, [rowSelection, onSelectionChange, table]);
+  }, [rowSelection, table]); // 'table' still needed but ref breaks the recursion
 
   return (
     <div className="space-y-4">

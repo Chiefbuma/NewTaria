@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Patient, User } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,9 @@ export default function PatientList({ patients: initialPatients }: { patients: P
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const { toast } = useToast();
+  
+  // Use ref to track internal state without triggering loops
+  const lastSelectedIdsRef = useRef("");
 
   useEffect(() => {
       const stored = localStorage.getItem('loggedInUser');
@@ -27,11 +30,14 @@ export default function PatientList({ patients: initialPatients }: { patients: P
   }, []);
 
   const handleSelectionChange = useCallback((selectedRows: Patient[]) => {
-      const ids = selectedRows.map(r => r.id);
-      setSelectedIds(prev => {
-          if (JSON.stringify(prev) === JSON.stringify(ids)) return prev;
-          return ids;
-      });
+      const ids = selectedRows.map(r => r.id).sort();
+      const idsString = ids.join(",");
+      
+      // Only update state if IDs actually changed
+      if (lastSelectedIdsRef.current !== idsString) {
+          lastSelectedIdsRef.current = idsString;
+          setSelectedIds(ids);
+      }
   }, []);
 
   const handleBulkDelete = async () => {
@@ -42,6 +48,7 @@ export default function PatientList({ patients: initialPatients }: { patients: P
           await bulkDeletePatients(selectedIds);
           setPatients(prev => prev.filter(p => !selectedIds.includes(p.id)));
           setSelectedIds([]);
+          lastSelectedIdsRef.current = "";
           toast({ title: 'Success', description: 'Selected patients deleted successfully.' });
       } catch (error: any) {
           toast({ variant: 'destructive', title: 'Error', description: error.message });

@@ -22,22 +22,18 @@ import { unstable_noStore as noStore } from 'next/cache';
 function serialize(obj: any): any {
     if (obj === null || obj === undefined) return obj;
     
-    // Handle BigInt
-    if (typeof obj === 'bigint') return obj.toString();
+    // Handle BigInt - convert to number for JSON safety
+    if (typeof obj === 'bigint') return Number(obj);
     
-    // Handle Date
+    // Handle Date - convert to ISO string
     if (obj instanceof Date) return obj.toISOString();
 
-    // Handle Buffers (raw binary data from MySQL)
-    if (typeof obj === 'object' && obj.type === 'Buffer' && Array.isArray(obj.data)) {
-        return Buffer.from(obj.data).toString('utf-8');
-    }
-    
     // Handle Arrays recursively
     if (Array.isArray(obj)) return obj.map(serialize);
     
     // Handle Objects recursively
     if (typeof obj === 'object') {
+        // Only process plain objects to avoid breaking internal types
         const result: any = {};
         for (const key in obj) {
             if (Object.prototype.hasOwnProperty.call(obj, key)) {
