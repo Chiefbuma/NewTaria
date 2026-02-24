@@ -26,11 +26,17 @@ interface AddAssessmentModalProps {
   allParameters?: ClinicalParameter[];
 }
 
+// Helper to get local ISO string for datetime-local input
+const getLocalDateTimeString = (date: Date) => {
+    const pad = (num: number) => num.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter, existingAssessment, allParameters }: AddAssessmentModalProps) {
   const [selectedParamId, setSelectedParamId] = useState<string | undefined>(parameter?.id.toString());
   const [value, setValue] = useState('');
   const [notes, setNotes] = useState('');
-  const [measuredAt, setMeasuredAt] = useState(new Date().toISOString().slice(0, 10)); // Default to date only
+  const [measuredAt, setMeasuredAt] = useState(getLocalDateTimeString(new Date()));
   const { toast } = useToast();
 
   const selectedParameter = allParameters?.find(p => p.id.toString() === selectedParamId) || parameter;
@@ -40,14 +46,14 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
         setSelectedParamId(existingAssessment.clinical_parameter_id.toString());
         setValue(existingAssessment.value);
         setNotes(existingAssessment.notes || '');
-        setMeasuredAt(new Date(existingAssessment.measured_at).toISOString().slice(0, 10));
+        setMeasuredAt(getLocalDateTimeString(new Date(existingAssessment.measured_at)));
     } else if (parameter) {
         setSelectedParamId(parameter.id.toString());
         setValue('');
         setNotes('');
-        setMeasuredAt(new Date().toISOString().slice(0, 10));
+        setMeasuredAt(getLocalDateTimeString(new Date()));
     }
-  }, [existingAssessment, parameter, isOpen]); // Rerun on open
+  }, [existingAssessment, parameter, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +67,7 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
         value,
         notes,
         measured_at: new Date(measuredAt).toISOString(),
-        is_normal: null // This can be calculated on the backend or based on ranges
+        is_normal: null 
     });
   };
 
@@ -125,8 +131,8 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
                         <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="measuredAt">Date of Assessment</Label>
-                        <Input id="measuredAt" type="date" value={measuredAt} onChange={(e) => setMeasuredAt(e.target.value)} required />
+                        <Label htmlFor="measuredAt">Date & Time of Assessment</Label>
+                        <Input id="measuredAt" type="datetime-local" value={measuredAt} onChange={(e) => setMeasuredAt(e.target.value)} required />
                     </div>
                 </>
             )}

@@ -22,16 +22,15 @@ import { unstable_noStore as noStore } from 'next/cache';
 function serialize(obj: any): any {
     if (obj === null || obj === undefined) return obj;
     
-    // Handle MySQL types that crash Next.js 15 Server-to-Client handoff
     if (typeof obj === 'bigint') return Number(obj);
     if (obj instanceof Date) return obj.toISOString();
 
     if (Array.isArray(obj)) return obj.map(serialize);
     
     if (typeof obj === 'object') {
-        // Check if it's a Buffer or other binary type
         if (Buffer.isBuffer(obj)) return obj.toString('base64');
         
+        // Handle standard objects and prevent potential prototype issues
         const result: any = {};
         for (const key in obj) {
             if (Object.prototype.hasOwnProperty.call(obj, key)) {
@@ -312,17 +311,19 @@ export async function bulkDeletePatients(ids: number[]): Promise<void> {
 }
 
 export async function createAssessment(data: any): Promise<number> {
-    // FIX: Ensure measuredAt is a real Date object for MySQL driver
-    const measuredAt = data.measured_at ? new Date(data.measured_at) : new Date();
-    
-    // Validate the date to prevent "Incorrect datetime value"
-    if (isNaN(measuredAt.getTime())) {
+    // FIX: Properly handle date object and ensure MySQL-safe string format (YYYY-MM-DD HH:mm:00)
+    const d = data.measured_at ? new Date(data.measured_at) : new Date();
+    if (isNaN(d.getTime())) {
         throw new Error('Invalid assessment date format.');
     }
+    
+    // Formatting for MySQL: YYYY-MM-DD HH:mm:00
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
 
     const [result] = await db.query(
         'INSERT INTO assessments (patient_id, clinical_parameter_id, value, notes, is_normal, measured_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [data.patient_id, data.clinical_parameter_id, data.value, data.notes, data.is_normal, measuredAt]
+        [data.patient_id, data.clinical_parameter_id, data.value, data.notes, data.is_normal, formatted]
     );
     return Number((result as any).insertId);
 }

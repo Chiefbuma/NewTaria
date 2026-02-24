@@ -73,7 +73,6 @@
     opacity: 1;
   }
   
-  /* FORCE TEAL BORDERS IN DARK MODE */
   .dark .border,
   .dark .border-t,
   .dark .border-b,
@@ -96,7 +95,6 @@
     background-color: hsla(173, 80%, 45%, 0.1) !important;
   }
 
-  /* Improve visibility of interactive elements */
   .dark [role="combobox"], 
   .dark [role="listbox"] {
     border-color: hsla(173, 80%, 45%, 1) !important;

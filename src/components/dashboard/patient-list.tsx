@@ -21,7 +21,7 @@ export default function PatientList({ patients: initialPatients }: { patients: P
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const { toast } = useToast();
   
-  // FIX: Ref-based selection guard to prevent infinite update cycles
+  // Use ref to track internal state without triggering loops
   const lastSelectedIdsRef = useRef("");
 
   useEffect(() => {
@@ -37,6 +37,7 @@ export default function PatientList({ patients: initialPatients }: { patients: P
       const ids = selectedRows.map(r => r.id).sort();
       const idsString = ids.join(",");
       
+      // Only update state if IDs actually changed to prevent loop #185
       if (lastSelectedIdsRef.current !== idsString) {
           lastSelectedIdsRef.current = idsString;
           setSelectedIds(ids);
