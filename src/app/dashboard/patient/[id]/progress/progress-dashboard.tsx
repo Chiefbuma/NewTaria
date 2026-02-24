@@ -20,7 +20,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
 } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Target } from 'lucide-react';
@@ -88,9 +87,9 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
 
     if (data.length === 0) {
         return (
-            <Card className="h-full flex flex-col">
+            <Card className="h-full flex flex-col border-primary/20">
                 <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground"><Target className="h-4 w-4"/>{title}</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground"><Target className="h-4 w-4 text-primary"/>{title}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex items-center justify-center">
                     <p className="text-xs text-muted-foreground">{noDataMessage}</p>
@@ -100,9 +99,9 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
     }
     
     return (
-        <Card className="h-full flex flex-col">
+        <Card className="h-full flex flex-col border-primary/20">
             <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground"><Target className="h-4 w-4"/>{title}</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground"><Target className="h-4 w-4 text-primary"/>{title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col items-center justify-center pt-0">
                 <div className="w-full aspect-square max-h-[180px]">
@@ -134,9 +133,9 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
                         <div key={index} className="flex items-center justify-between text-xs">
                             <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }} />
-                                <span className="text-muted-foreground">{entry.name}</span>
+                                <span className="text-muted-foreground font-medium">{entry.name}</span>
                             </div>
-                            <span className="font-bold">{((entry.value / data.reduce((acc, curr) => acc + curr.value, 0)) * 100).toFixed(0)}%</span>
+                            <span className="font-bold text-foreground">{((entry.value / data.reduce((acc, curr) => acc + curr.value, 0)) * 100).toFixed(0)}%</span>
                         </div>
                     ))}
                 </div>
@@ -173,9 +172,9 @@ const ParameterLineChart = ({ assessments, patient, parameter }: { assessments: 
     }, [assessments, patient]);
 
     return (
-        <Card className="h-full flex flex-col">
+        <Card className="h-full flex flex-col border-primary/20">
             <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground"><BarChart className="h-4 w-4"/>Weekly Trend</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground"><BarChart className="h-4 w-4 text-primary"/>Weekly Trend</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 pt-4">
                 {weeklyData.length > 1 ? (
@@ -187,21 +186,21 @@ const ParameterLineChart = ({ assessments, patient, parameter }: { assessments: 
                                     dataKey="week" 
                                     axisLine={false} 
                                     tickLine={false} 
-                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 10 }}
                                 />
                                 <YAxis 
                                     axisLine={false} 
                                     tickLine={false} 
-                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 10 }}
                                 />
                                 <Tooltip content={<ChartTooltipContent />} />
                                 <Line 
                                     type="monotone" 
                                     dataKey="value" 
                                     name={parameter.name} 
-                                    stroke="hsl(var(--chart-1))" 
+                                    stroke="hsl(var(--primary))" 
                                     strokeWidth={3} 
-                                    dot={{ fill: 'hsl(var(--chart-1))', strokeWidth: 2, r: 4 }}
+                                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
                                     activeDot={{ r: 6 }}
                                 />
                             </LineChart>
@@ -232,10 +231,10 @@ export default function ProgressDashboard({ patient, clinicalParameters }: { pat
 
         return Array.from(assessmentsByParam.entries())
             .map(([id, assessments]) => ({
-                parameter: clinicalParameters.find(p => p.id === id)!,
+                parameter: clinicalParameters.find(p => p.id === id),
                 assessments
             }))
-            .filter(item => item.parameter);
+            .filter((item): item is { parameter: ClinicalParameter, assessments: Assessment[] } => !!item.parameter);
     }, [patient.assessments, clinicalParameters]);
 
 
@@ -249,13 +248,13 @@ export default function ProgressDashboard({ patient, clinicalParameters }: { pat
                         <div key={parameter.id} className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-bold tracking-tight text-foreground">{parameter.name}</h2>
-                                {parameter.unit && <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full">{parameter.unit}</span>}
+                                {parameter.unit && <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">{parameter.unit}</span>}
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 h-full">
-                                <div className="md:col-span-4 h-full">
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                <div className="md:col-span-4">
                                     <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
                                 </div>
-                                <div className="md:col-span-8 h-full">
+                                <div className="md:col-span-8">
                                      <ParameterLineChart assessments={assessments} patient={patient} parameter={parameter} />
                                 </div>
                             </div>
@@ -263,9 +262,9 @@ export default function ProgressDashboard({ patient, clinicalParameters }: { pat
                     )
                 })
             ) : (
-                 <div className="text-center py-20 rounded-2xl bg-muted/30 border-2 border-dashed">
+                 <div className="text-center py-20 rounded-2xl bg-muted/30 border-2 border-dashed border-primary/20">
                     <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
-                        <BarChart className="h-6 w-6 text-muted-foreground" />
+                        <BarChart className="h-6 w-6 text-primary/40" />
                     </div>
                     <h3 className="text-lg font-semibold text-foreground">No Progress Data Available</h3>
                     <p className="text-muted-foreground mt-1 max-w-xs mx-auto">Record some clinical assessments to begin visualizing trends and goal progress.</p>

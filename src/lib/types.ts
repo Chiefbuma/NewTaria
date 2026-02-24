@@ -5,17 +5,20 @@ export type User = {
   role: 'admin' | 'navigator' | 'clinician' | 'user' | 'payer';
   avatarUrl?: string;
   payer_id?: number | null; // For payer role access
+  deleted_at?: string | null;
 };
 
 export type Corporate = {
   id: number;
   name: string;
   wellness_date: string;
+  deleted_at?: string | null;
 };
 
 export type Payer = {
   id: number;
   name: string;
+  deleted_at?: string | null;
 };
 
 export type Message = {
@@ -25,6 +28,7 @@ export type Message = {
     content: string;
     created_at: string;
     sender_name?: string;
+    deleted_at?: string | null;
 };
 
 export type ClinicalParameter = {
@@ -34,6 +38,7 @@ export type ClinicalParameter = {
     unit: string | null;
     options: string[] | null;
     category: 'vital_sign' | 'lab_result' | 'clinical_measurement' | 'symptom' | 'assessment';
+    deleted_at?: string | null;
 };
 
 export type Assessment = {
@@ -45,6 +50,7 @@ export type Assessment = {
     is_normal: boolean | null;
     created_at: string;
     measured_at: string;
+    deleted_at?: string | null;
 };
 
 export type Goal = {
@@ -59,6 +65,7 @@ export type Goal = {
   created_at: string;
   current_value?: string;
   is_overdue?: boolean;
+  deleted_at?: string | null;
 };
 
 export type Diagnosis = {
@@ -66,12 +73,14 @@ export type Diagnosis = {
   name: string;
   code: string | null;
   description: string | null;
+  deleted_at?: string | null;
 };
 
 export type Medication = {
   id: number;
   name: string;
   dosage: string;
+  deleted_at?: string | null;
 };
 
 export type Prescription = {
@@ -85,6 +94,7 @@ export type Prescription = {
   expiry_date: string | null;
   notes: string | null;
   status: 'active' | 'completed' | 'discontinued';
+  deleted_at?: string | null;
 };
 
 export type Appointment = {
@@ -98,6 +108,7 @@ export type Appointment = {
   description: string | null;
   status: 'scheduled' | 'confirmed' | 'cancelled' | 'completed' | 'no_show' | 'rescheduled';
   cancellation_reason: string | null;
+  deleted_at?: string | null;
 };
 
 export type Review = {
@@ -112,6 +123,7 @@ export type Review = {
     plan: string;
     recommendations: string | null;
     follow_up_date: string | null;
+    deleted_at?: string | null;
 };
 
 
@@ -153,6 +165,7 @@ export type Patient = {
   corporate_id: number | null;
   payer_id: number | null;
   date_of_diagnosis: string | null;
+  deleted_at?: string | null;
   corporate_name?: string;
   navigator_name?: string;
   payer_name?: string;

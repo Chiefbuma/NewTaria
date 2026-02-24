@@ -22,13 +22,25 @@ import { unstable_noStore as noStore } from 'next/cache';
 function serialize(obj: any): any {
     if (obj === null || obj === undefined) return obj;
     
+    // Handle BigInt
     if (typeof obj === 'bigint') return obj.toString();
     
+    // Handle Date
     if (obj instanceof Date) return obj.toISOString();
+
+    // Handle Buffers (sometimes returned by MySQL)
+    if (typeof obj === 'object' && obj.type === 'Buffer' && Array.isArray(obj.data)) {
+        return Buffer.from(obj.data).toString('utf-8');
+    }
     
+    // Handle Arrays recursively
     if (Array.isArray(obj)) return obj.map(serialize);
     
+    // Handle Objects recursively
     if (typeof obj === 'object') {
+        // If it has a custom toJSON (like some Decimal types), use it
+        if (typeof obj.toJSON === 'function') return serialize(obj.toJSON());
+
         const result: any = {};
         for (const key in obj) {
             if (Object.prototype.hasOwnProperty.call(obj, key)) {
@@ -61,7 +73,7 @@ function calculatePatientStats(patient: Partial<Patient>) {
     };
 }
 
-// --- READ OPERATIONS ---
+// --- READ OPERATIONS (Filtering out Soft-Deleted Records) ---
 
 export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
     noStore();
@@ -75,11 +87,12 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
             LEFT JOIN users u ON p.navigator_id = u.id
             LEFT JOIN corporates c ON p.corporate_id = c.id
             LEFT JOIN payers pay ON p.payer_id = pay.id
+            WHERE p.deleted_at IS NULL
         `;
         let params: any[] = [];
 
         if (requestingUser?.role === 'payer' && requestingUser.payer_id) {
-            query += ` WHERE p.payer_id = ? `;
+            query += ` AND p.payer_id = ? `;
             params.push(requestingUser.payer_id);
         }
 
@@ -88,7 +101,6 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
         const [rows] = await db.query(query, params);
         const patients = rows as any[];
         
-        // Enhance with empty arrays for joined data to match Patient type
         const enhancedPatients = patients.map(p => ({
             ...p,
             assessments: [], 
@@ -119,32 +131,32 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
             LEFT JOIN users u ON p.navigator_id = u.id
             LEFT JOIN corporates c ON p.corporate_id = c.id
             LEFT JOIN payers pay ON p.payer_id = pay.id
-            WHERE p.id = ?
+            WHERE p.id = ? AND p.deleted_at IS NULL
         `, [id]);
         
         const patient = (patientRows as any[])[0];
         if (!patient) return null;
 
-        const [assessments] = await db.query('SELECT * FROM assessments WHERE patient_id = ? ORDER BY measured_at DESC', [id]);
-        const [goals] = await db.query('SELECT * FROM goals WHERE patient_id = ? ORDER BY created_at DESC', [id]);
+        const [assessments] = await db.query('SELECT * FROM assessments WHERE patient_id = ? AND deleted_at IS NULL ORDER BY measured_at DESC', [id]);
+        const [goals] = await db.query('SELECT * FROM goals WHERE patient_id = ? AND deleted_at IS NULL ORDER BY created_at DESC', [id]);
         const [prescriptions] = await db.query(`
             SELECT pr.*, m.name as medication_name, m.dosage as med_dosage
             FROM prescriptions pr
             LEFT JOIN medications m ON pr.medication_id = m.id
-            WHERE pr.patient_id = ?
+            WHERE pr.patient_id = ? AND pr.deleted_at IS NULL
         `, [id]);
         const [appointments] = await db.query(`
             SELECT a.*, u.name as clinician_name
             FROM appointments a
             LEFT JOIN users u ON a.clinician_id = u.id
-            WHERE a.patient_id = ?
+            WHERE a.patient_id = ? AND a.deleted_at IS NULL
             ORDER BY a.appointment_date ASC
         `, [id]);
         const [reviews] = await db.query(`
             SELECT r.*, u.name as reviewed_by
             FROM reviews r
             LEFT JOIN users u ON r.reviewed_by_id = u.id
-            WHERE r.patient_id = ?
+            WHERE r.patient_id = ? AND r.deleted_at IS NULL
             ORDER BY r.review_date DESC
         `, [id]);
 
@@ -173,7 +185,7 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
 export async function fetchPatientByUserId(userId: number): Promise<Patient | null> {
     noStore();
     try {
-        const [rows] = await db.query('SELECT id FROM patients WHERE user_id = ?', [userId]);
+        const [rows] = await db.query('SELECT id FROM patients WHERE user_id = ? AND deleted_at IS NULL', [userId]);
         const patient = (rows as any[])[0];
         if (!patient) return null;
         return fetchPatientById(patient.id);
@@ -186,7 +198,7 @@ export async function fetchPatientByUserId(userId: number): Promise<Patient | nu
 export async function fetchUsers(): Promise<User[]> {
     noStore();
     try {
-        const [rows] = await db.query('SELECT id, name, email, role, avatarUrl, payer_id FROM users ORDER BY name ASC');
+        const [rows] = await db.query('SELECT id, name, email, role, avatarUrl, payer_id FROM users WHERE deleted_at IS NULL ORDER BY name ASC');
         return serialize(rows as User[]);
     } catch (error) {
         console.error('Database Error [fetchUsers]:', error);
@@ -201,7 +213,7 @@ export async function fetchMessages(userId: number, otherId?: number): Promise<M
             SELECT m.*, u.name as sender_name
             FROM messages m
             JOIN users u ON m.sender_id = u.id
-            WHERE (m.sender_id = ? OR m.receiver_id = ?)
+            WHERE (m.sender_id = ? OR m.receiver_id = ?) AND m.deleted_at IS NULL
         `;
         let params = [userId, userId];
         if (otherId) {
@@ -220,7 +232,7 @@ export async function fetchMessages(userId: number, otherId?: number): Promise<M
 export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
     noStore();
     try {
-        const [rows] = await db.query('SELECT * FROM clinical_parameters ORDER BY name ASC');
+        const [rows] = await db.query('SELECT * FROM clinical_parameters WHERE deleted_at IS NULL ORDER BY name ASC');
         return serialize(rows as ClinicalParameter[]);
     } catch (error) {
         console.error('Database Error [fetchClinicalParameters]:', error);
@@ -231,7 +243,7 @@ export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
 export async function fetchCorporates(): Promise<Corporate[]> {
     noStore();
     try {
-        const [rows] = await db.query('SELECT * FROM corporates ORDER BY name ASC');
+        const [rows] = await db.query('SELECT * FROM corporates WHERE deleted_at IS NULL ORDER BY name ASC');
         return serialize(rows as Corporate[]);
     } catch (error) {
         console.error('Database Error [fetchCorporates]:', error);
@@ -242,7 +254,7 @@ export async function fetchCorporates(): Promise<Corporate[]> {
 export async function fetchPayers(): Promise<Payer[]> {
     noStore();
     try {
-        const [rows] = await db.query('SELECT * FROM payers ORDER BY name ASC');
+        const [rows] = await db.query('SELECT * FROM payers WHERE deleted_at IS NULL ORDER BY name ASC');
         return serialize(rows as Payer[]);
     } catch (error) {
         console.error('Database Error [fetchPayers]:', error);
@@ -253,7 +265,7 @@ export async function fetchPayers(): Promise<Payer[]> {
 export async function fetchMedications(): Promise<Medication[]> {
     noStore();
     try {
-        const [rows] = await db.query('SELECT * FROM medications ORDER BY name ASC');
+        const [rows] = await db.query('SELECT * FROM medications WHERE deleted_at IS NULL ORDER BY name ASC');
         return serialize(rows as Medication[]);
     } catch (error) {
         console.error('Database Error [fetchMedications]:', error);
@@ -264,7 +276,7 @@ export async function fetchMedications(): Promise<Medication[]> {
 export async function getUserByEmail(email: string) {
     noStore();
     try {
-        const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        const [rows] = await db.query('SELECT * FROM users WHERE email = ? AND deleted_at IS NULL', [email]);
         const users = rows as any[];
         return serialize(users[0] || null);
     } catch (error) {
@@ -273,7 +285,7 @@ export async function getUserByEmail(email: string) {
     }
 }
 
-// --- WRITE OPERATIONS ---
+// --- WRITE OPERATIONS (Soft Delete Transformations) ---
 
 export async function sendMessage(senderId: number, receiverId: number, content: string): Promise<number> {
     const [result] = await db.query(
@@ -292,7 +304,7 @@ export async function createUser(userData: any): Promise<number> {
 }
 
 export async function deleteUser(id: number): Promise<void> {
-    await db.query('DELETE FROM users WHERE id = ?', [id]);
+    await db.query('UPDATE users SET deleted_at = NOW() WHERE id = ?', [id]);
 }
 
 export async function createPatient(patientData: any): Promise<number> {
@@ -305,7 +317,7 @@ export async function createPatient(patientData: any): Promise<number> {
 
 export async function bulkDeletePatients(ids: number[]): Promise<void> {
     if (ids.length === 0) return;
-    await db.query('DELETE FROM patients WHERE id IN (?)', [ids]);
+    await db.query('UPDATE patients SET deleted_at = NOW() WHERE id IN (?)', [ids]);
 }
 
 export async function createAssessment(data: any): Promise<number> {
@@ -317,7 +329,7 @@ export async function createAssessment(data: any): Promise<number> {
 }
 
 export async function deleteAssessment(id: number): Promise<void> {
-    await db.query('DELETE FROM assessments WHERE id = ?', [id]);
+    await db.query('UPDATE assessments SET deleted_at = NOW() WHERE id = ?', [id]);
 }
 
 export async function createGoal(data: any): Promise<number> {
@@ -336,7 +348,7 @@ export async function updateGoal(id: number, data: any): Promise<void> {
 }
 
 export async function deleteGoal(id: number): Promise<void> {
-    await db.query('DELETE FROM goals WHERE id = ?', [id]);
+    await db.query('UPDATE goals SET deleted_at = NOW() WHERE id = ?', [id]);
 }
 
 export async function createReview(data: any): Promise<number> {
@@ -384,7 +396,7 @@ export async function upsertPrescription(data: any): Promise<number> {
 }
 
 export async function deletePrescription(id: number): Promise<void> {
-    await db.query('DELETE FROM prescriptions WHERE id = ?', [id]);
+    await db.query('UPDATE prescriptions SET deleted_at = NOW() WHERE id = ?', [id]);
 }
 
 export async function updatePatientDetails(id: number, data: any): Promise<void> {
