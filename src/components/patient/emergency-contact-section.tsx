@@ -2,14 +2,21 @@
 import { useState } from 'react';
 import type { Patient } from '@/lib/types';
 import { motion } from 'framer-motion';
-import { Phone } from 'lucide-react';
+import { Phone, User, Heart } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 
-const DetailItem = ({ label, value }: { label: string, value: string | null | undefined }) => (
-    <div>
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
-        <p className="font-semibold text-foreground">{value || '-'}</p>
+const DetailItem = ({ label, value, icon: Icon }: { label: string, value: string | null | undefined, icon: any }) => (
+    <div className="flex items-center gap-3">
+        <div className="p-2 bg-muted/50 rounded-lg">
+            <Icon className="h-4 w-4 text-primary" />
+        </div>
+        <div>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
+            <p className="font-semibold text-foreground">{value || '-'}</p>
+        </div>
     </div>
 );
 
@@ -22,7 +29,7 @@ export default function EmergencyContactSection({ patient, onUpdate }: { patient
     });
 
     const handleSave = () => {
-        // Mock save
+        // Mock save for now as primary focus was visibility
         console.log("Saving emergency contact:", formData);
         onUpdate();
         setEditing(false);
@@ -30,43 +37,43 @@ export default function EmergencyContactSection({ patient, onUpdate }: { patient
 
     return (
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.3 }}>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+            <Card className="border-border">
+                <CardHeader className="flex flex-row items-center justify-between border-b bg-muted/30">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
-                           <Phone className="text-white" />
+                        <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center shadow-md">
+                           <Phone className="text-white h-5 w-5" />
                         </div>
                         <div>
-                            <CardTitle>Emergency Contact</CardTitle>
-                            <CardDescription>Emergency contact information</CardDescription>
+                            <CardTitle className="text-foreground">Emergency Contact</CardTitle>
+                            <CardDescription className="text-muted-foreground">Primary emergency details</CardDescription>
                         </div>
                     </div>
-                    <Button onClick={() => setEditing(!editing)} variant="outline">
+                    <Button onClick={() => setEditing(!editing)} variant="outline" size="sm" className="border-primary/30 hover:border-primary">
                         {editing ? 'Cancel' : 'Edit'}
                     </Button>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                     {editing ? (
                          <div className="space-y-4">
-                             <div>
-                                 <label className="block text-sm font-medium text-gray-700 mb-1">Contact Name</label>
-                                 <input type="text" value={formData.emergency_contact_name} onChange={e => setFormData({...formData, emergency_contact_name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                             <div className="space-y-2">
+                                 <Label className="text-foreground">Contact Name</Label>
+                                 <Input value={formData.emergency_contact_name} onChange={e => setFormData({...formData, emergency_contact_name: e.target.value})} />
                              </div>
-                             <div>
-                                 <label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone</label>
-                                 <input type="tel" value={formData.emergency_contact_phone} onChange={e => setFormData({...formData, emergency_contact_phone: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                             <div className="space-y-2">
+                                 <Label className="text-foreground">Contact Phone</Label>
+                                 <Input type="tel" value={formData.emergency_contact_phone} onChange={e => setFormData({...formData, emergency_contact_phone: e.target.value})} />
                              </div>
-                             <div>
-                                 <label className="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
-                                 <input type="text" value={formData.emergency_contact_relation} onChange={e => setFormData({...formData, emergency_contact_relation: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                             <div className="space-y-2">
+                                 <Label className="text-foreground">Relationship</Label>
+                                 <Input value={formData.emergency_contact_relation} onChange={e => setFormData({...formData, emergency_contact_relation: e.target.value})} />
                              </div>
-                             <Button onClick={handleSave}>Save Changes</Button>
+                             <Button onClick={handleSave} className="w-full">Save Changes</Button>
                          </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <DetailItem label="Contact Name" value={patient.emergency_contact_name} />
-                            <DetailItem label="Contact Phone" value={patient.emergency_contact_phone} />
-                            <DetailItem label="Relationship" value={patient.emergency_contact_relation} />
+                        <div className="grid grid-cols-1 gap-6">
+                            <DetailItem label="Contact Name" value={patient.emergency_contact_name} icon={User} />
+                            <DetailItem label="Contact Phone" value={patient.emergency_contact_phone} icon={Phone} />
+                            <DetailItem label="Relationship" value={patient.emergency_contact_relation} icon={Heart} />
                         </div>
                     )}
                 </CardContent>

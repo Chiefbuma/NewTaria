@@ -17,14 +17,12 @@ import { unstable_noStore as noStore } from 'next/cache';
 
 /**
  * Helper to ensure database values are safe for Next.js serialization.
- * Converts Dates to strings and handles BigInt by converting them to numbers/strings.
- * This prevents "Internal Server Error" when passing data to Client Components.
+ * Handles Dates by converting to ISO strings and BigInt by converting to numbers.
  */
 function serialize<T>(data: T): T {
     if (data === null || data === undefined) return data;
     
     return JSON.parse(JSON.stringify(data, (key, value) => {
-        // Handle BigInt serialization
         if (typeof value === 'bigint') {
             return value.toString();
         }
@@ -86,7 +84,7 @@ export async function fetchPatients(): Promise<Patient[]> {
             stats: calculatePatientStats(p)
         })));
     } catch (error) {
-        console.error('Database Error:', error);
+        console.error('Database Error [fetchPatients]:', error);
         throw new Error('Failed to fetch patients.');
     }
 }
@@ -154,7 +152,7 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
             stats: calculatePatientStats(basePatient)
         });
     } catch (error) {
-        console.error('Database Error:', error);
+        console.error('Database Error [fetchPatientById]:', error);
         throw new Error('Failed to fetch patient details.');
     }
 }
@@ -165,7 +163,7 @@ export async function fetchUsers(): Promise<User[]> {
         const [rows] = await db.query('SELECT id, name, email, role, avatarUrl FROM users ORDER BY name ASC');
         return serialize(rows as User[]);
     } catch (error) {
-        console.error('Database Error:', error);
+        console.error('Database Error [fetchUsers]:', error);
         throw new Error('Failed to fetch users.');
     }
 }
@@ -176,7 +174,7 @@ export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
         const [rows] = await db.query('SELECT * FROM clinical_parameters ORDER BY name ASC');
         return serialize(rows as ClinicalParameter[]);
     } catch (error) {
-        console.error('Database Error:', error);
+        console.error('Database Error [fetchClinicalParameters]:', error);
         throw new Error('Failed to fetch clinical parameters.');
     }
 }
@@ -187,7 +185,7 @@ export async function fetchCorporates(): Promise<Corporate[]> {
         const [rows] = await db.query('SELECT * FROM corporates ORDER BY name ASC');
         return serialize(rows as Corporate[]);
     } catch (error) {
-        console.error('Database Error:', error);
+        console.error('Database Error [fetchCorporates]:', error);
         throw new Error('Failed to fetch corporates.');
     }
 }
@@ -198,7 +196,7 @@ export async function fetchPayers(): Promise<Payer[]> {
         const [rows] = await db.query('SELECT * FROM payers ORDER BY name ASC');
         return serialize(rows as Payer[]);
     } catch (error) {
-        console.error('Database Error:', error);
+        console.error('Database Error [fetchPayers]:', error);
         throw new Error('Failed to fetch payers.');
     }
 }
@@ -209,7 +207,7 @@ export async function fetchMedications(): Promise<Medication[]> {
         const [rows] = await db.query('SELECT * FROM medications ORDER BY name ASC');
         return serialize(rows as Medication[]);
     } catch (error) {
-        console.error('Database Error:', error);
+        console.error('Database Error [fetchMedications]:', error);
         throw new Error('Failed to fetch medications.');
     }
 }
@@ -221,7 +219,7 @@ export async function getUserByEmail(email: string) {
         const users = rows as any[];
         return serialize(users[0] || null);
     } catch (error) {
-        console.error('Database Error:', error);
+        console.error('Database Error [getUserByEmail]:', error);
         return null;
     }
 }
@@ -244,49 +242,46 @@ export async function createPatient(patientData: any): Promise<number> {
     return Number((result as any).insertId);
 }
 
-export async function createAssessment(data: any) {
+export async function createAssessment(data: any): Promise<number> {
     const [result] = await db.query(
         'INSERT INTO assessments (patient_id, clinical_parameter_id, value, notes, is_normal, measured_at) VALUES (?, ?, ?, ?, ?, ?)',
         [data.patient_id, data.clinical_parameter_id, data.value, data.notes, data.is_normal, data.measured_at]
     );
-    const id = Number((result as any).insertId);
-    return serialize({ id, ...data });
+    return Number((result as any).insertId);
 }
 
-export async function deleteAssessment(id: number) {
+export async function deleteAssessment(id: number): Promise<void> {
     await db.query('DELETE FROM assessments WHERE id = ?', [id]);
 }
 
-export async function createGoal(data: any) {
+export async function createGoal(data: any): Promise<number> {
     const [result] = await db.query(
         'INSERT INTO goals (patient_id, clinical_parameter_id, target_value, target_operator, status, notes, deadline) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [data.patient_id, data.clinical_parameter_id, data.target_value, data.target_operator, data.status, data.notes, data.deadline]
     );
-    const id = Number((result as any).insertId);
-    return serialize({ id, ...data });
+    return Number((result as any).insertId);
 }
 
-export async function updateGoal(id: number, data: any) {
+export async function updateGoal(id: number, data: any): Promise<void> {
     await db.query(
         'UPDATE goals SET target_value = ?, target_operator = ?, status = ?, notes = ?, deadline = ? WHERE id = ?',
         [data.target_value, data.target_operator, data.status, data.notes, data.deadline, id]
     );
 }
 
-export async function deleteGoal(id: number) {
+export async function deleteGoal(id: number): Promise<void> {
     await db.query('DELETE FROM goals WHERE id = ?', [id]);
 }
 
-export async function createReview(data: any) {
+export async function createReview(data: any): Promise<number> {
     const [result] = await db.query(
         'INSERT INTO reviews (patient_id, reviewed_by_id, review_date, subjective_findings, objective_findings, assessment, plan, recommendations, follow_up_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [data.patient_id, data.reviewed_by_id, data.review_date, data.subjective_findings, data.objective_findings, data.assessment, data.plan, data.recommendations, data.follow_up_date]
     );
-    const id = Number((result as any).insertId);
-    return serialize({ id, ...data });
+    return Number((result as any).insertId);
 }
 
-export async function upsertAppointment(data: any) {
+export async function upsertAppointment(data: any): Promise<number> {
     if (data.id) {
         await db.query(
             'UPDATE appointments SET clinician_id = ?, title = ?, appointment_date = ?, end_date = ?, description = ?, status = ? WHERE id = ?',
@@ -302,11 +297,11 @@ export async function upsertAppointment(data: any) {
     }
 }
 
-export async function updateAppointmentStatus(id: number, status: string) {
+export async function updateAppointmentStatus(id: number, status: string): Promise<void> {
     await db.query('UPDATE appointments SET status = ? WHERE id = ?', [status, id]);
 }
 
-export async function upsertPrescription(data: any) {
+export async function upsertPrescription(data: any): Promise<number> {
     if (data.id) {
         await db.query(
             'UPDATE prescriptions SET medication_id = ?, dosage = ?, frequency = ?, start_date = ?, expiry_date = ?, notes = ?, status = ? WHERE id = ?',
@@ -322,18 +317,18 @@ export async function upsertPrescription(data: any) {
     }
 }
 
-export async function deletePrescription(id: number) {
+export async function deletePrescription(id: number): Promise<void> {
     await db.query('DELETE FROM prescriptions WHERE id = ?', [id]);
 }
 
-export async function updatePatientDetails(id: number, data: any) {
+export async function updatePatientDetails(id: number, data: any): Promise<void> {
     await db.query(
         'UPDATE patients SET first_name = ?, middle_name = ?, surname = ?, dob = ?, age = ?, gender = ?, email = ?, phone = ?, wellness_date = ?, corporate_id = ? WHERE id = ?',
         [data.first_name, data.middle_name, data.surname, data.dob, data.age, data.gender, data.email, data.phone, data.wellness_date, data.corporate_id, id]
     );
 }
 
-export async function activatePatient(id: number, data: any) {
+export async function activatePatient(id: number, data: any): Promise<void> {
     await db.query(
         'UPDATE patients SET status = "Active", date_of_onboarding = ?, emr_number = ?, navigator_id = ?, payer_id = ?, brief_medical_history = ?, years_since_diagnosis = ?, past_medical_interventions = ?, relevant_family_history = ?, dietary_restrictions = ?, allergies_intolerances = ?, lifestyle_factors = ?, physical_limitations = ?, psychosocial_factors = ?, emergency_contact_name = ?, emergency_contact_phone = ?, emergency_contact_relation = ?, has_weighing_scale = ?, has_glucometer = ?, has_bp_machine = ?, has_tape_measure = ? WHERE id = ?',
         [

@@ -4,11 +4,12 @@ import { useState } from 'react';
 import type { Patient, Prescription, Medication } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Pill, PlusCircle } from 'lucide-react';
+import { Pill, PlusCircle, Loader2 } from 'lucide-react';
 import { DataTable } from '../ui/data-table';
 import { getPrescriptionColumns } from './prescription-columns';
 import AddPrescriptionModal from './add-prescription-modal';
 import { useToast } from '@/hooks/use-toast';
+import { upsertPrescription as upsertPrescriptionApi, deletePrescription as deletePrescriptionApi } from '@/lib/api-service';
 
 interface PrescriptionManagementProps {
     patient: Patient;
@@ -20,6 +21,7 @@ interface PrescriptionManagementProps {
 export default function PrescriptionManagement({ patient, prescriptions, medications, onPrescriptionsUpdate }: PrescriptionManagementProps) {
     const { toast } = useToast();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingPrescription, setEditingPrescription] = useState<Prescription | null>(null);
     
     const handleAddClick = () => {
@@ -32,35 +34,44 @@ export default function PrescriptionManagement({ patient, prescriptions, medicat
         setIsModalOpen(true);
     }
 
-    const handleSave = (prescriptionData: Omit<Prescription, 'id' | 'patient_id'> & { id?: number }) => {
-        let updatedPrescriptions;
-        const medication = medications.find(m => m.id === prescriptionData.medication_id);
-
-        if (prescriptionData.id) {
-            // Update existing
-            updatedPrescriptions = prescriptions.map(p => 
-                p.id === prescriptionData.id ? { ...p, ...prescriptionData, medication } : p
-            );
-        } else {
-            // Add new
-            const newPrescription: Prescription = {
-                id: Date.now(), // mock id
-                patient_id: patient.id,
+    const handleSave = async (prescriptionData: Omit<Prescription, 'id' | 'patient_id'> & { id?: number }) => {
+        setIsSubmitting(true);
+        try {
+            const saved = await upsertPrescriptionApi({
                 ...prescriptionData,
-                medication
-            } as Prescription;
-            updatedPrescriptions = [...prescriptions, newPrescription];
+                patient_id: patient.id
+            });
+            
+            const medication = medications.find(m => m.id === prescriptionData.medication_id);
+            const fullPrescription = { ...saved, medication } as Prescription;
+
+            let updatedPrescriptions;
+            if (prescriptionData.id) {
+                updatedPrescriptions = prescriptions.map(p => p.id === prescriptionData.id ? fullPrescription : p);
+            } else {
+                updatedPrescriptions = [fullPrescription, ...prescriptions];
+            }
+
+            onPrescriptionsUpdate(updatedPrescriptions);
+            toast({ title: 'Success', description: 'Prescription saved to database.' });
+            setIsModalOpen(false);
+            setEditingPrescription(null);
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to save prescription.' });
+        } finally {
+            setIsSubmitting(false);
         }
-        onPrescriptionsUpdate(updatedPrescriptions);
-        toast({ title: 'Success', description: 'Prescription saved.' });
-        setIsModalOpen(false);
-        setEditingPrescription(null);
     }
 
-    const handleDelete = (id: number) => {
-        const updatedPrescriptions = prescriptions.filter(p => p.id !== id);
-        onPrescriptionsUpdate(updatedPrescriptions);
-        toast({ title: 'Success', description: 'Prescription deleted.' });
+    const handleDelete = async (id: number) => {
+        try {
+            await deletePrescriptionApi(id);
+            const updatedPrescriptions = prescriptions.filter(p => p.id !== id);
+            onPrescriptionsUpdate(updatedPrescriptions);
+            toast({ title: 'Success', description: 'Prescription deleted from database.' });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete prescription.' });
+        }
     }
 
     const columns = getPrescriptionColumns({
@@ -74,7 +85,7 @@ export default function PrescriptionManagement({ patient, prescriptions, medicat
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle className="flex items-center gap-2"><Pill />Medications</CardTitle>
+                            <CardTitle className="flex items-center gap-2"><Pill className="h-5 w-5 text-primary" />Medications</CardTitle>
                             <CardDescription>Manage patient's prescriptions.</CardDescription>
                         </div>
                         <Button onClick={handleAddClick}>
@@ -94,7 +105,7 @@ export default function PrescriptionManagement({ patient, prescriptions, medicat
             {isModalOpen && (
                 <AddPrescriptionModal 
                     isOpen={isModalOpen}
-                    onClose={() => { setIsModalOpen(false); setEditingPrescription(null); }}
+                    onClose={() => { if (!isSubmitting) { setIsModalOpen(false); setEditingPrescription(null); } }}
                     onSave={handleSave}
                     medications={medications}
                     existingPrescription={editingPrescription}
