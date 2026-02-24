@@ -16,13 +16,14 @@ import type {
 import { unstable_noStore as noStore } from 'next/cache';
 
 /**
- * Robust serialization helper to handle BigInt, Date, and other non-POJO types
+ * Robust serialization helper to handle BigInt, Date, and Decimal types
  * returned by the MySQL driver, preventing "Internal Server Error" in Next.js 15.
+ * It recursively reconstructs objects to ensure they are plain POJOs.
  */
 function serialize(obj: any): any {
     if (obj === null || obj === undefined) return obj;
     
-    // Handle BigInt - convert to number for JSON safety
+    // Handle BigInt - convert to number for JSON safety (usually safe for IDs)
     if (typeof obj === 'bigint') return Number(obj);
     
     // Handle Date - convert to ISO string
@@ -33,7 +34,6 @@ function serialize(obj: any): any {
     
     // Handle Objects recursively
     if (typeof obj === 'object') {
-        // Only process plain objects to avoid breaking internal types
         const result: any = {};
         for (const key in obj) {
             if (Object.prototype.hasOwnProperty.call(obj, key)) {
@@ -278,7 +278,7 @@ export async function getUserByEmail(email: string) {
     }
 }
 
-// --- WRITE OPERATIONS ---
+// --- WRITE OPERATIONS (SOFT DELETE) ---
 
 export async function sendMessage(senderId: number, receiverId: number, content: string): Promise<number> {
     const [result] = await db.query(

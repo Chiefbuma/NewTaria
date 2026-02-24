@@ -21,7 +21,7 @@ export default function PatientList({ patients: initialPatients }: { patients: P
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const { toast } = useToast();
   
-  // Use ref to track internal state without triggering loops
+  // Ref to track selection to prevent recursive loops
   const lastSelectedIdsRef = useRef("");
 
   useEffect(() => {
@@ -29,11 +29,16 @@ export default function PatientList({ patients: initialPatients }: { patients: P
       if (stored) setCurrentUser(JSON.parse(stored));
   }, []);
 
+  // Update internal patients state if props change (e.g. from server refresh)
+  useEffect(() => {
+    setPatients(initialPatients);
+  }, [initialPatients]);
+
   const handleSelectionChange = useCallback((selectedRows: Patient[]) => {
       const ids = selectedRows.map(r => r.id).sort();
       const idsString = ids.join(",");
       
-      // Only update state if IDs actually changed
+      // GUARD: Only update state if IDs actually changed to break render cycles
       if (lastSelectedIdsRef.current !== idsString) {
           lastSelectedIdsRef.current = idsString;
           setSelectedIds(ids);
@@ -42,14 +47,14 @@ export default function PatientList({ patients: initialPatients }: { patients: P
 
   const handleBulkDelete = async () => {
       if (selectedIds.length === 0) return;
-      if (!confirm(`Are you sure you want to delete ${selectedIds.length} patients?`)) return;
+      if (!confirm(`Are you sure you want to delete ${selectedIds.length} patients? This is a soft delete.`)) return;
 
       try {
           await bulkDeletePatients(selectedIds);
           setPatients(prev => prev.filter(p => !selectedIds.includes(p.id)));
           setSelectedIds([]);
           lastSelectedIdsRef.current = "";
-          toast({ title: 'Success', description: 'Selected patients deleted successfully.' });
+          toast({ title: 'Success', description: 'Selected patients marked as deleted.' });
       } catch (error: any) {
           toast({ variant: 'destructive', title: 'Error', description: error.message });
       }

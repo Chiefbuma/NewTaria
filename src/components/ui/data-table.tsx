@@ -56,7 +56,7 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
   const isFiltered = !!table.getState().globalFilter
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between p-4">
       <div className="flex flex-1 items-center space-x-2">
         <Input
           placeholder="Search..."
@@ -118,11 +118,11 @@ interface DataTablePaginationProps<TData> {
 export function DataTablePagination<TData>({ table }: DataTablePaginationProps<TData>) {
   return (
     <div className="flex items-center justify-between px-2 py-4 border-t">
-      <div className="flex-1 text-sm text-muted-foreground">
+      <div className="flex-1 text-sm text-muted-foreground pl-4">
         {table.getFilteredSelectedRowModel().rows.length} of{" "}
         {table.getFilteredRowModel().rows.length} row(s) selected.
       </div>
-      <div className="flex items-center space-x-6 lg:space-x-8">
+      <div className="flex items-center space-x-6 lg:space-x-8 pr-4">
         <div className="flex items-center space-x-2">
           <p className="text-sm font-medium">Rows per page</p>
           <Select
@@ -230,23 +230,33 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
     getSortedRowModel: getSortedRowModel(),
   })
 
-  // BREAK THE LOOP: Use a ref to track the last emitted selection keys
-  // and only call onSelectionChange if they actually changed.
-  const lastEmittedRef = React.useRef("");
-  const onSelectionChangeRef = React.useRef(onSelectionChange);
+  // Use refs to track values without causing recursive re-renders
+  const prevSelectionKeysRef = React.useRef("")
+  const onSelectionChangeRef = React.useRef(onSelectionChange)
+  const tableRef = React.useRef(table)
   
+  // Update table ref when table changes, but don't trigger selection logic directly
   React.useEffect(() => {
-    onSelectionChangeRef.current = onSelectionChange;
-  }, [onSelectionChange]);
+    tableRef.current = table
+  }, [table])
+  
+  // Keep the latest callback in a ref to avoid logic-breaking dependency loops
+  React.useEffect(() => {
+    onSelectionChangeRef.current = onSelectionChange
+  }, [onSelectionChange])
 
+  // Primary selection synchronization - Depends ONLY on rowSelection state
   React.useEffect(() => {
-    const selectionKeys = Object.keys(rowSelection).sort().join(",");
-    if (lastEmittedRef.current !== selectionKeys) {
-      lastEmittedRef.current = selectionKeys;
-      const selectedRows = table.getSelectedRowModel().rows.map(r => r.original);
-      onSelectionChangeRef.current?.(selectedRows);
+    const selectionKeys = Object.keys(rowSelection).sort().join(",")
+    
+    if (prevSelectionKeysRef.current !== selectionKeys) {
+      prevSelectionKeysRef.current = selectionKeys
+      
+      // Use tableRef.current to avoid creating a circular dependency on the table object
+      const selectedRows = tableRef.current.getSelectedRowModel().rows.map(r => r.original)
+      onSelectionChangeRef.current?.(selectedRows)
     }
-  }, [rowSelection, table]); // 'table' still needed but ref breaks the recursion
+  }, [rowSelection])
 
   return (
     <div className="space-y-4">

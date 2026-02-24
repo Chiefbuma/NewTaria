@@ -64,7 +64,7 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
-  /* Ensure labels and muted text are highly visible in dark mode */
+  /* HIGH CONTRAST RULES FOR DARK MODE */
   .dark label, 
   .dark .text-muted-foreground,
   .dark .text-gray-500,
@@ -73,7 +73,7 @@
     opacity: 1;
   }
   
-  /* Force Teal borders and outlines in dark mode */
+  /* FORCE TEAL BORDERS IN DARK MODE */
   .dark .border,
   .dark .border-t,
   .dark .border-b,
@@ -82,22 +82,23 @@
     border-color: hsla(173, 80%, 45%, 0.8) !important;
   }
 
-  .dark input, .dark textarea, .dark select, .dark button:not(.bg-primary) {
-    border-color: hsla(173, 80%, 45%, 1) !important;
-  }
-
   .dark input, .dark textarea, .dark select {
+    border-color: hsla(173, 80%, 45%, 1) !important;
     background-color: hsla(224, 71.4%, 4.1%, 0.8) !important;
     color: white !important;
+  }
+
+  .dark button:not(.bg-primary) {
+    border-color: hsla(173, 80%, 45%, 0.5) !important;
   }
 
   .dark .bg-muted {
     background-color: hsla(173, 80%, 45%, 0.1) !important;
   }
 
-  /* Improve button visibility in dark mode */
-  .dark button:not(.bg-primary):not([variant="ghost"]) {
-    color: hsl(210 20% 98%) !important;
-    background-color: hsla(173, 80%, 45%, 0.1);
+  /* Improve visibility of interactive elements */
+  .dark [role="combobox"], 
+  .dark [role="listbox"] {
+    border-color: hsla(173, 80%, 45%, 1) !important;
   }
 }
