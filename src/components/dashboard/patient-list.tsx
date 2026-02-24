@@ -21,7 +21,7 @@ export default function PatientList({ patients: initialPatients }: { patients: P
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const { toast } = useToast();
   
-  // Ref to track selection to prevent recursive loops
+  // FIX: Ref-based selection guard to prevent infinite update cycles
   const lastSelectedIdsRef = useRef("");
 
   useEffect(() => {
@@ -29,7 +29,6 @@ export default function PatientList({ patients: initialPatients }: { patients: P
       if (stored) setCurrentUser(JSON.parse(stored));
   }, []);
 
-  // Update internal patients state if props change (e.g. from server refresh)
   useEffect(() => {
     setPatients(initialPatients);
   }, [initialPatients]);
@@ -38,7 +37,6 @@ export default function PatientList({ patients: initialPatients }: { patients: P
       const ids = selectedRows.map(r => r.id).sort();
       const idsString = ids.join(",");
       
-      // GUARD: Only update state if IDs actually changed to break render cycles
       if (lastSelectedIdsRef.current !== idsString) {
           lastSelectedIdsRef.current = idsString;
           setSelectedIds(ids);

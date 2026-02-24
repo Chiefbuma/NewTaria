@@ -18,22 +18,20 @@ import { unstable_noStore as noStore } from 'next/cache';
 /**
  * Robust serialization helper to handle BigInt, Date, and Decimal types
  * returned by the MySQL driver, preventing "Internal Server Error" in Next.js 15.
- * It recursively reconstructs objects to ensure they are plain POJOs.
  */
 function serialize(obj: any): any {
     if (obj === null || obj === undefined) return obj;
     
-    // Handle BigInt - convert to number for JSON safety (usually safe for IDs)
+    // Handle MySQL types that crash Next.js 15 Server-to-Client handoff
     if (typeof obj === 'bigint') return Number(obj);
-    
-    // Handle Date - convert to ISO string
     if (obj instanceof Date) return obj.toISOString();
 
-    // Handle Arrays recursively
     if (Array.isArray(obj)) return obj.map(serialize);
     
-    // Handle Objects recursively
     if (typeof obj === 'object') {
+        // Check if it's a Buffer or other binary type
+        if (Buffer.isBuffer(obj)) return obj.toString('base64');
+        
         const result: any = {};
         for (const key in obj) {
             if (Object.prototype.hasOwnProperty.call(obj, key)) {
@@ -314,9 +312,17 @@ export async function bulkDeletePatients(ids: number[]): Promise<void> {
 }
 
 export async function createAssessment(data: any): Promise<number> {
+    // FIX: Ensure measuredAt is a real Date object for MySQL driver
+    const measuredAt = data.measured_at ? new Date(data.measured_at) : new Date();
+    
+    // Validate the date to prevent "Incorrect datetime value"
+    if (isNaN(measuredAt.getTime())) {
+        throw new Error('Invalid assessment date format.');
+    }
+
     const [result] = await db.query(
         'INSERT INTO assessments (patient_id, clinical_parameter_id, value, notes, is_normal, measured_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [data.patient_id, data.clinical_parameter_id, data.value, data.notes, data.is_normal, data.measured_at]
+        [data.patient_id, data.clinical_parameter_id, data.value, data.notes, data.is_normal, measuredAt]
     );
     return Number((result as any).insertId);
 }
@@ -353,16 +359,19 @@ export async function createReview(data: any): Promise<number> {
 }
 
 export async function upsertAppointment(data: any): Promise<number> {
+    const appointmentDate = data.appointment_date ? new Date(data.appointment_date) : new Date();
+    const endDate = data.end_date ? new Date(data.end_date) : null;
+
     if (data.id) {
         await db.query(
             'UPDATE appointments SET clinician_id = ?, title = ?, appointment_date = ?, end_date = ?, description = ?, status = ? WHERE id = ?',
-            [data.clinician_id, data.title, data.appointment_date, data.end_date, data.description, data.status, data.id]
+            [data.clinician_id, data.title, appointmentDate, endDate, data.description, data.status, data.id]
         );
         return Number(data.id);
     } else {
         const [result] = await db.query(
             'INSERT INTO appointments (patient_id, clinician_id, title, appointment_date, end_date, description, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [data.patient_id, data.clinician_id, data.title, data.appointment_date, data.end_date, data.description, data.status]
+            [data.patient_id, data.clinician_id, data.title, appointmentDate, endDate, data.description, data.status]
         );
         return Number((result as any).insertId);
     }
@@ -373,16 +382,19 @@ export async function updateAppointmentStatus(id: number, status: string): Promi
 }
 
 export async function upsertPrescription(data: any): Promise<number> {
+    const startDate = data.start_date ? new Date(data.start_date) : new Date();
+    const expiryDate = data.expiry_date ? new Date(data.expiry_date) : null;
+
     if (data.id) {
         await db.query(
             'UPDATE prescriptions SET medication_id = ?, dosage = ?, frequency = ?, start_date = ?, expiry_date = ?, notes = ?, status = ? WHERE id = ?',
-            [data.medication_id, data.dosage, data.frequency, data.start_date, data.expiry_date, data.notes, data.status, data.id]
+            [data.medication_id, data.dosage, data.frequency, startDate, expiryDate, data.notes, data.status, data.id]
         );
         return Number(data.id);
     } else {
         const [result] = await db.query(
             'INSERT INTO prescriptions (patient_id, medication_id, dosage, frequency, start_date, expiry_date, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [data.patient_id, data.medication_id, data.dosage, data.frequency, data.start_date, data.expiry_date, data.notes, data.status]
+            [data.patient_id, data.medication_id, data.dosage, data.frequency, startDate, expiryDate, data.notes, data.status]
         );
         return Number((result as any).insertId);
     }

@@ -230,33 +230,34 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
     getSortedRowModel: getSortedRowModel(),
   })
 
-  // Use refs to track values without causing recursive re-renders
+  // FIX: Ref-based synchronization to prevent infinite loops (React Error #185)
+  // Use refs to track values without causing re-renders
   const prevSelectionKeysRef = React.useRef("")
   const onSelectionChangeRef = React.useRef(onSelectionChange)
   const tableRef = React.useRef(table)
   
-  // Update table ref when table changes, but don't trigger selection logic directly
+  // Update the table ref when table changes, but don't trigger effects
   React.useEffect(() => {
     tableRef.current = table
   }, [table])
   
-  // Keep the latest callback in a ref to avoid logic-breaking dependency loops
+  // Update the callback ref
   React.useEffect(() => {
     onSelectionChangeRef.current = onSelectionChange
   }, [onSelectionChange])
 
-  // Primary selection synchronization - Depends ONLY on rowSelection state
+  // Use a separate effect that only depends on rowSelection
   React.useEffect(() => {
     const selectionKeys = Object.keys(rowSelection).sort().join(",")
     
     if (prevSelectionKeysRef.current !== selectionKeys) {
       prevSelectionKeysRef.current = selectionKeys
       
-      // Use tableRef.current to avoid creating a circular dependency on the table object
+      // Use tableRef.current instead of table to avoid infinite recursion dependency
       const selectedRows = tableRef.current.getSelectedRowModel().rows.map(r => r.original)
       onSelectionChangeRef.current?.(selectedRows)
     }
-  }, [rowSelection])
+  }, [rowSelection]) // Only depend on rowSelection, not the table object!
 
   return (
     <div className="space-y-4">
