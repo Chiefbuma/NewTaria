@@ -56,6 +56,7 @@ import {
   Clock,
   TrendingUp,
   Building2,
+  ShieldAlert
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -84,8 +85,6 @@ import {
     createReview, 
     upsertAppointment,
     updatePatient,
-    upsertPrescription,
-    deletePrescription
 } from '@/lib/api-service';
 
 const DetailItem = ({
@@ -99,8 +98,8 @@ const DetailItem = ({
 }) => (
   <div className="flex items-start gap-4">
     {Icon && (
-      <div className="bg-muted/50 rounded-full p-2">
-        <Icon className="h-4 w-4 text-muted-foreground" />
+      <div className="bg-muted/50 rounded-full p-2 border border-primary/10">
+        <Icon className="h-4 w-4 text-primary" />
       </div>
     )}
     <div className="grid gap-0.5">
@@ -124,20 +123,27 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   
-  // Form states
   const [editFormData, setEditFormData] = useState<Partial<Patient>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Assessment Modal State
   const [isAddAssessmentModalOpen, setAddAssessmentModalOpen] = useState(false);
   const [selectedGoalParameter, setSelectedGoalParameter] = useState<ClinicalParameter | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('loggedInUser');
-    if (storedUser) {
-      setCurrentUser(JSON.parse(storedUser));
-    }
+    if (storedUser) setCurrentUser(JSON.parse(storedUser));
   }, []);
+
+  // ROLE PERMISSIONS
+  const isAdmin = currentUser?.role === 'admin';
+  const isNavigator = currentUser?.role === 'navigator';
+  const isClinician = currentUser?.role === 'clinician';
+  const isPayer = currentUser?.role === 'payer';
+
+  const canEditPatient = isAdmin || isNavigator;
+  const canManageAssessments = isAdmin || isNavigator; // Clinicians view only assessments
+  const canManageReviews = isAdmin || isNavigator || isClinician;
+  const canManageAppointments = isAdmin || isNavigator;
 
   const handleOpenEditModal = () => {
     setEditFormData({
@@ -150,6 +156,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
 
   const handleUpdatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canEditPatient) return;
     setIsSubmitting(true);
     try {
         const updated = await updatePatient(patient.id, editFormData);
@@ -180,6 +187,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
   });
 
   const handleAddGoal = async () => {
+    if (!canManageAssessments) return;
     if (!newGoal.clinical_parameter_id || !newGoal.target_value || !newGoal.deadline) {
       toast({variant: 'destructive', title: 'Error', description: 'Please fill in all required fields.'});
       return;
@@ -203,6 +211,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
   };
 
   const handleDeleteGoalItem = async (goalId: number) => {
+    if (!canManageAssessments) return;
     try {
         await deleteGoal(goalId);
         setPatient(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== goalId) }));
@@ -227,6 +236,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
   };
 
   const handleDeleteAssessmentItem = async (assessmentId: number) => {
+      if (!canManageAssessments) return;
       try {
           await deleteAssessment(assessmentId);
           setPatient(prev => ({
@@ -262,11 +272,6 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     setIsAppointmentModalOpen(true);
   };
 
-  const handleOpenAddAssessmentModal = (parameter: ClinicalParameter) => {
-    setSelectedGoalParameter(parameter);
-    setAddAssessmentModalOpen(true);
-  };
-
   const [reviewData, setReviewData] = useState({
     subjective_findings: '',
     objective_findings: '',
@@ -278,6 +283,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
   });
 
   const submitReview = async () => {
+    if (!canManageReviews) return;
     if (!reviewData.subjective_findings.trim() || !reviewData.objective_findings.trim()) {
         toast({variant: 'destructive', title: 'Error', description: 'Please fill in required findings'});
         return;
@@ -329,14 +335,14 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button asChild variant="outline" size="icon">
+            <Button asChild variant="outline" size="icon" className="border-primary/20">
               <Link href="/dashboard">
                 <ArrowLeft className="h-4 w-4" />
                 <span className="sr-only">Back to Dashboard</span>
               </Link>
             </Button>
             <div>
-              <h1 className="text-3xl font-bold font-headline tracking-tight">{`${
+              <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">{`${
                 patient.first_name
               } ${patient.surname || ''}`}</h1>
               <p className="text-muted-foreground">
@@ -350,10 +356,10 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
           <div className="lg:col-span-1 space-y-6">
             <PatientInfoCard patient={patient} />
             {patient.corporate_name && (
-              <Card>
+              <Card className="border-primary/10">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-3">
-                    <Building2 className="w-6 h-6" />
+                  <CardTitle className="flex items-center gap-3 text-lg">
+                    <Building2 className="w-5 h-5 text-primary" />
                     <span>Corporate</span>
                   </CardTitle>
                 </CardHeader>
@@ -363,28 +369,32 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
               </Card>
             )}
             <ReviewHistoryCard patient={patient} />
-            <AppointmentsCard 
-              patient={patient}
-              onSchedule={() => handleOpenAppointmentModal()}
-              onEdit={handleOpenAppointmentModal}
-              onUpdate={handleAppointmentsUpdate}
-            />
-            <Card>
+            {canManageAppointments && (
+                <AppointmentsCard 
+                    patient={patient}
+                    onSchedule={() => handleOpenAppointmentModal()}
+                    onEdit={handleOpenAppointmentModal}
+                    onUpdate={handleAppointmentsUpdate}
+                />
+            )}
+            <Card className="border-primary/10 shadow-sm">
               <CardHeader>
-                <CardTitle>Actions</CardTitle>
+                <CardTitle className="text-lg">Actions</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
-                <Button asChild variant="outline">
+                <Button asChild variant="outline" className="border-primary/20 hover:bg-primary/5">
                     <Link href={`/dashboard/patient/${patient.id}/progress`}>
                         <TrendingUp className="mr-2 h-4 w-4" />
                         View Progress Dashboard
                     </Link>
                 </Button>
-                <Button variant="outline" onClick={handleOpenEditModal}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit Patient Details
-                </Button>
-                <Button onClick={() => setIsReportModalOpen(true)}>
+                {canEditPatient && (
+                    <Button variant="outline" onClick={handleOpenEditModal} className="border-primary/20 hover:bg-primary/5">
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit Patient Details
+                    </Button>
+                )}
+                <Button onClick={() => setIsReportModalOpen(true)} className="bg-primary hover:bg-primary/90">
                   <FileText className="mr-2 h-4 w-4" />
                   Generate PDF Report
                 </Button>
@@ -397,103 +407,112 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                 prescriptions={patient.prescriptions}
                 medications={initialMedications}
                 onPrescriptionsUpdate={handlePrescriptionsUpdate}
+                readOnly={isPayer || isClinician}
             />
-            <Card>
-              <CardHeader>
-                <CardTitle>Goals</CardTitle>
+            <Card className="border-primary/10 shadow-sm overflow-hidden">
+              <CardHeader className="bg-muted/30">
+                <CardTitle className="text-xl">Goals</CardTitle>
                 <CardDescription>Set and track patient health goals</CardDescription>
               </CardHeader>
-              <CardContent>
-                  <div className="bg-muted/50 rounded-xl p-4 border mb-6">
-                      <h3 className="text-lg font-semibold text-foreground mb-4">Add New Goal</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                           <div>
-                                <Label className="mb-2">Parameter</Label>
-                                <Select value={newGoal.clinical_parameter_id} onValueChange={(value) => setNewGoal(prev => ({...prev, clinical_parameter_id: value}))}>
-                                    <SelectTrigger><SelectValue placeholder="Select Parameter" /></SelectTrigger>
-                                    <SelectContent>
-                                        {clinicalParameters.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name} ({p.unit})</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                           </div>
-                           <div>
-                                <Label className="mb-2">Target Value</Label>
-                                <Input type="text" placeholder="Target value" value={newGoal.target_value} onChange={(e) => setNewGoal(prev => ({...prev, target_value: e.target.value}))}/>
-                           </div>
+              <CardContent className="pt-6">
+                  {canManageAssessments && (
+                    <div className="bg-primary/5 rounded-xl p-4 border border-primary/10 mb-6">
+                        <h3 className="text-lg font-bold text-primary mb-4 flex items-center gap-2"><PlusCircle className="h-5 w-5"/>Add New Goal</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <Label className="mb-2">Operator</Label>
-                                <Select value={newGoal.target_operator} onValueChange={(value) => setNewGoal(prev => ({...prev, target_operator: value as any}))}>
-                                    <SelectTrigger><SelectValue/></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="<">Below</SelectItem>
-                                      <SelectItem value="<=">At or below</SelectItem>
-                                      <SelectItem value="=">Equal to</SelectItem>
-                                      <SelectItem value=">=">At or above</SelectItem>
-                                      <SelectItem value=">">Above</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                           </div>
-                           <div>
-                                <Label className="mb-2">Deadline</Label>
-                                <Input type="date" value={newGoal.deadline} onChange={(e) => setNewGoal(prev => ({...prev, deadline: e.target.value}))}/>
-                           </div>
-                           <div className="md:col-span-2">
-                                <Label className="mb-2">Notes</Label>
-                                <Textarea placeholder="Additional notes..." value={newGoal.notes} onChange={(e) => setNewGoal(prev => ({...prev, notes: e.target.value}))}/>
-                           </div>
-                      </div>
-                      <Button onClick={handleAddGoal}><PlusCircle className="mr-2 h-4 w-4" /> Add Goal</Button>
-                  </div>
+                                    <Label className="mb-2 block font-semibold">Parameter</Label>
+                                    <Select value={newGoal.clinical_parameter_id} onValueChange={(value) => setNewGoal(prev => ({...prev, clinical_parameter_id: value}))}>
+                                        <SelectTrigger className="bg-background border-primary/20"><SelectValue placeholder="Select Parameter" /></SelectTrigger>
+                                        <SelectContent>
+                                            {clinicalParameters.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name} ({p.unit})</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                            </div>
+                            <div>
+                                    <Label className="mb-2 block font-semibold">Target Value</Label>
+                                    <Input type="text" placeholder="Value" className="bg-background border-primary/20" value={newGoal.target_value} onChange={(e) => setNewGoal(prev => ({...prev, target_value: e.target.value}))}/>
+                            </div>
+                                <div>
+                                    <Label className="mb-2 block font-semibold">Operator</Label>
+                                    <Select value={newGoal.target_operator} onValueChange={(value) => setNewGoal(prev => ({...prev, target_operator: value as any}))}>
+                                        <SelectTrigger className="bg-background border-primary/20"><SelectValue/></SelectTrigger>
+                                        <SelectContent>
+                                        <SelectItem value="<">Below</SelectItem>
+                                        <SelectItem value="<=">At or below</SelectItem>
+                                        <SelectItem value="=">Equal to</SelectItem>
+                                        <SelectItem value=">=">At or above</SelectItem>
+                                        <SelectItem value=">">Above</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                            </div>
+                            <div>
+                                    <Label className="mb-2 block font-semibold">Deadline</Label>
+                                    <Input type="date" className="bg-background border-primary/20" value={newGoal.deadline} onChange={(e) => setNewGoal(prev => ({...prev, deadline: e.target.value}))}/>
+                            </div>
+                            <div className="md:col-span-2">
+                                    <Label className="mb-2 block font-semibold">Notes</Label>
+                                    <Textarea placeholder="Additional notes..." className="bg-background border-primary/20" value={newGoal.notes} onChange={(e) => setNewGoal(prev => ({...prev, notes: e.target.value}))}/>
+                            </div>
+                        </div>
+                        <Button onClick={handleAddGoal} className="bg-primary hover:bg-primary/90 shadow-md">Add Goal</Button>
+                    </div>
+                  )}
                   
                   <div className="space-y-6">
-                      <h3 className="text-lg font-semibold text-foreground">Current Goals ({patient.goals.length})</h3>
+                      <h3 className="text-lg font-bold text-foreground">Current Goals ({patient.goals.length})</h3>
                       {patient.goals.map(goal => {
                           const parameter = clinicalParameters.find(p => p.id === goal.clinical_parameter_id);
                           const history = patient.assessments.filter(a => a.clinical_parameter_id === goal.clinical_parameter_id);
 
                           return (
-                              <div key={goal.id} className="p-4 rounded-xl border bg-background hover:shadow-sm transition-shadow">
+                              <div key={goal.id} className="p-4 rounded-xl border border-primary/10 bg-background hover:shadow-md transition-all">
                                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
                                       <div className="flex-1">
-                                          <h4 className="font-semibold text-foreground">{parameter?.name}</h4>
-                                          <p className="text-sm text-muted-foreground">Target: {getDisplayText(goal)}</p>
-                                          <p className="text-sm text-muted-foreground">Deadline: {new Date(goal.deadline).toLocaleDateString()}</p>
+                                          <h4 className="font-bold text-lg text-primary">{parameter?.name}</h4>
+                                          <p className="text-sm text-muted-foreground font-medium">Target: <span className="text-foreground">{getDisplayText(goal)}</span></p>
+                                          <p className="text-sm text-muted-foreground font-medium">Deadline: <span className="text-foreground">{new Date(goal.deadline).toLocaleDateString()}</span></p>
                                       </div>
                                       <div className="flex items-center gap-1">
                                           {getStatusBadge(goal)}
-                                          <Button variant="ghost" size="icon" onClick={() => handleOpenAddAssessmentModal(parameter!)}>
-                                              <PlusCircle className="h-4 w-4 text-green-500" />
-                                          </Button>
-                                          <Button variant="ghost" size="icon" onClick={() => handleDeleteGoalItem(goal.id)}>
-                                              <Trash2 className="h-4 w-4 text-red-500"/>
-                                          </Button>
+                                          {canManageAssessments && (
+                                              <>
+                                                <Button variant="ghost" size="icon" onClick={() => { setSelectedGoalParameter(parameter!); setAddAssessmentModalOpen(true); }} className="text-green-600 hover:bg-green-50">
+                                                    <PlusCircle className="h-5 w-5" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteGoalItem(goal.id)} className="text-red-500 hover:bg-red-50">
+                                                    <Trash2 className="h-5 w-5"/>
+                                                </Button>
+                                              </>
+                                          )}
                                       </div>
                                   </div>
 
                                   {history.length > 0 && (
                                     <div className="mt-4">
-                                        <h5 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2"><History className="h-4 w-4"/> Assessment History</h5>
-                                        <div className="overflow-x-auto rounded-lg border">
+                                        <h5 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2"><History className="h-4 w-4"/> Assessment History</h5>
+                                        <div className="overflow-x-auto rounded-lg border border-primary/10">
                                             <table className="min-w-full text-xs">
-                                                <thead>
-                                                    <tr className="bg-muted/50">
-                                                        <th className="text-left py-2 px-3 font-medium">Date</th>
-                                                        <th className="text-left py-2 px-3 font-medium">Week</th>
-                                                        <th className="text-left py-2 px-3 font-medium">Value</th>
-                                                        <th className="text-left py-2 px-3 font-medium">Status</th>
-                                                        <th className="text-left py-2 px-3 font-medium">Actions</th>
+                                                <thead className="bg-muted/50">
+                                                    <tr>
+                                                        <th className="text-left py-2 px-3 font-bold text-foreground">Date</th>
+                                                        <th className="text-left py-2 px-3 font-bold text-foreground">Week</th>
+                                                        <th className="text-left py-2 px-3 font-bold text-foreground">Value</th>
+                                                        <th className="text-left py-2 px-3 font-bold text-foreground">Status</th>
+                                                        {canManageAssessments && <th className="text-left py-2 px-3 font-bold text-foreground">Actions</th>}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {history.map(assessment => (
-                                                        <tr key={assessment.id} className="hover:bg-muted/50">
-                                                            <td className="py-2 px-3 whitespace-nowrap">{new Date(assessment.measured_at).toLocaleDateString()}</td>
-                                                            <td className="py-2 px-3"><Badge variant="outline">{calculateAssessmentWeek(assessment)}</Badge></td>
-                                                            <td className="py-2 px-3 font-medium">{assessment.value} {parameter?.unit}</td>
+                                                        <tr key={assessment.id} className="hover:bg-primary/5 transition-colors border-t border-primary/5">
+                                                            <td className="py-2 px-3 whitespace-nowrap text-foreground">{new Date(assessment.measured_at).toLocaleDateString()}</td>
+                                                            <td className="py-2 px-3"><Badge variant="outline" className="border-primary/20">{calculateAssessmentWeek(assessment)}</Badge></td>
+                                                            <td className="py-2 px-3 font-bold text-foreground">{assessment.value} {parameter?.unit}</td>
                                                             <td className="py-2 px-3">
                                                                 <Badge variant={assessment.is_normal ? "secondary" : "destructive"}>{assessment.is_normal ? 'Normal' : 'Abnormal'}</Badge>
                                                             </td>
-                                                            <td className="py-2 px-3"><Button variant="ghost" size="icon" onClick={() => handleDeleteAssessmentItem(assessment.id)}><Trash2 className="h-3 w-3 text-red-500"/></Button></td>
+                                                            {canManageAssessments && (
+                                                                <td className="py-2 px-3"><Button variant="ghost" size="icon" onClick={() => handleDeleteAssessmentItem(assessment.id)} className="h-7 w-7 text-red-500 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5"/></Button></td>
+                                                            )}
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -505,29 +524,53 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                               </div>
                           )
                       })}
-                      {patient.goals.length === 0 && <p className="text-center text-muted-foreground py-4">No goals set.</p>}
+                      {patient.goals.length === 0 && <p className="text-center text-muted-foreground py-8 italic border-2 border-dashed rounded-xl">No health goals defined for this patient.</p>}
                   </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Clinical Review</CardTitle>
-                <CardDescription>Conduct comprehensive clinical evaluation</CardDescription>
-              </CardHeader>
-              <CardContent>
-                  <div className="space-y-4">
-                      <h4 className="text-lg font-semibold text-foreground mb-2">New Review</h4>
-                      <div className="space-y-4">
-                          <Textarea placeholder="Subjective Findings..." value={reviewData.subjective_findings} onChange={(e) => setReviewData(p => ({...p, subjective_findings: e.target.value}))}/>
-                          <Textarea placeholder="Objective Findings..." value={reviewData.objective_findings} onChange={(e) => setReviewData(p => ({...p, objective_findings: e.target.value}))}/>
-                          <Textarea placeholder="Assessment & Diagnosis..." value={reviewData.assessment} onChange={(e) => setReviewData(p => ({...p, assessment: e.target.value}))}/>
-                          <Textarea placeholder="Treatment Plan..." value={reviewData.plan} onChange={(e) => setReviewData(p => ({...p, plan: e.target.value}))}/>
-                           <Button onClick={submitReview}><Save className="mr-2 h-4 w-4"/> Submit Review</Button>
-                      </div>
-                  </div>
-              </CardContent>
-            </Card>
+            {canManageReviews && (
+                <Card className="border-primary/10 shadow-sm overflow-hidden">
+                    <CardHeader className="bg-muted/30">
+                        <CardTitle className="text-xl">Clinical Review</CardTitle>
+                        <CardDescription>Conduct comprehensive clinical evaluation</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                        <div className="space-y-4">
+                            <h4 className="text-lg font-bold text-foreground mb-2">Submit New Review</h4>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="font-semibold">Subjective Findings</Label>
+                                    <Textarea placeholder="How is the patient feeling? Any complaints?..." className="bg-background border-primary/20" value={reviewData.subjective_findings} onChange={(e) => setReviewData(p => ({...p, subjective_findings: e.target.value}))}/>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="font-semibold">Objective Findings</Label>
+                                    <Textarea placeholder="Physical exam findings, lab observations?..." className="bg-background border-primary/20" value={reviewData.objective_findings} onChange={(e) => setReviewData(p => ({...p, objective_findings: e.target.value}))}/>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="font-semibold">Assessment & Diagnosis</Label>
+                                    <Textarea placeholder="Clinical impression and primary diagnosis..." className="bg-background border-primary/20" value={reviewData.assessment} onChange={(e) => setReviewData(p => ({...p, assessment: e.target.value}))}/>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="font-semibold">Treatment Plan</Label>
+                                    <Textarea placeholder="Next steps, changes to medication, follow-ups..." className="bg-background border-primary/20" value={reviewData.plan} onChange={(e) => setReviewData(p => ({...p, plan: e.target.value}))}/>
+                                </div>
+                                <Button onClick={submitReview} className="bg-primary hover:bg-primary/90 shadow-md px-8"><Save className="mr-2 h-4 w-4"/> Save Review</Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {isPayer && (
+                <div className="p-6 rounded-xl border border-amber-500/20 bg-amber-500/10 flex items-center gap-4">
+                    <ShieldAlert className="h-8 w-8 text-amber-600" />
+                    <div className="flex-1">
+                        <h4 className="font-bold text-amber-800">Restricted Access</h4>
+                        <p className="text-sm text-amber-700/80">As a Payer, you have view-only access to assessments and goals for your associated patients. Clinical modifications are restricted.</p>
+                    </div>
+                </div>
+            )}
 
           </div>
         </div>
@@ -541,37 +584,37 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
         />
       )}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl border-primary/20">
             <DialogHeader>
-                <DialogTitle>Edit Patient Details</DialogTitle>
+                <DialogTitle className="text-2xl text-primary font-bold">Edit Patient Details</DialogTitle>
                 <CardDescription>Update the patient's registration information below.</CardDescription>
             </DialogHeader>
             <form onSubmit={handleUpdatePatient}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="first_name">First Name</Label>
-                        <Input id="first_name" value={editFormData.first_name || ''} onChange={handleEditFormChange} required />
+                        <Label htmlFor="first_name" className="font-bold">First Name</Label>
+                        <Input id="first_name" className="border-primary/20" value={editFormData.first_name || ''} onChange={handleEditFormChange} required />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="middle_name">Middle Name</Label>
-                        <Input id="middle_name" value={editFormData.middle_name || ''} onChange={handleEditFormChange} />
+                        <Label htmlFor="middle_name" className="font-bold">Middle Name</Label>
+                        <Input id="middle_name" className="border-primary/20" value={editFormData.middle_name || ''} onChange={handleEditFormChange} />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="surname">Surname</Label>
-                        <Input id="surname" value={editFormData.surname || ''} onChange={handleEditFormChange} required />
+                        <Label htmlFor="surname" className="font-bold">Surname</Label>
+                        <Input id="surname" className="border-primary/20" value={editFormData.surname || ''} onChange={handleEditFormChange} required />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="dob">Date of Birth</Label>
-                        <Input id="dob" type="date" value={editFormData.dob || ''} onChange={handleEditFormChange} />
+                        <Label htmlFor="dob" className="font-bold">Date of Birth</Label>
+                        <Input id="dob" type="date" className="border-primary/20" value={editFormData.dob || ''} onChange={handleEditFormChange} />
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="age">Age</Label>
-                        <Input id="age" type="number" value={editFormData.age || ''} onChange={handleEditFormChange} />
+                        <Label htmlFor="age" className="font-bold">Age</Label>
+                        <Input id="age" type="number" className="border-primary/20" value={editFormData.age || ''} onChange={handleEditFormChange} />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="gender">Gender</Label>
+                        <Label htmlFor="gender" className="font-bold">Gender</Label>
                         <Select value={editFormData.gender || ''} onValueChange={(value) => handleEditSelectChange('gender', value)} required>
-                            <SelectTrigger id="gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
+                            <SelectTrigger id="gender" className="border-primary/20"><SelectValue placeholder="Select gender" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Male">Male</SelectItem>
                                 <SelectItem value="Female">Female</SelectItem>
@@ -579,23 +622,23 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                         </Select>
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input id="email" type="email" value={editFormData.email || ''} onChange={handleEditFormChange} />
+                        <Label htmlFor="email" className="font-bold">Email</Label>
+                        <Input id="email" type="email" className="border-primary/20" value={editFormData.email || ''} onChange={handleEditFormChange} />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="phone">Phone</Label>
-                        <Input id="phone" type="tel" value={editFormData.phone || ''} onChange={handleEditFormChange} />
+                        <Label htmlFor="phone" className="font-bold">Phone</Label>
+                        <Input id="phone" type="tel" className="border-primary/20" value={editFormData.phone || ''} onChange={handleEditFormChange} />
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="wellness_date">Wellness Date</Label>
-                        <Input id="wellness_date" type="date" value={editFormData.wellness_date || ''} onChange={handleEditFormChange} required />
+                        <Label htmlFor="wellness_date" className="font-bold">Wellness Date</Label>
+                        <Input id="wellness_date" type="date" className="border-primary/20" value={editFormData.wellness_date || ''} onChange={handleEditFormChange} required />
                     </div>
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button type="button" variant="outline">Cancel</Button>
+                        <Button type="button" variant="outline" className="border-primary/20">Cancel</Button>
                     </DialogClose>
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90">
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Save Changes
                     </Button>

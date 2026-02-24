@@ -1,13 +1,14 @@
 'use server';
 
 import bcrypt from 'bcryptjs';
-import { getUserByEmail, createUser, createPatient } from './data';
+import { getUserByEmail, createUser, createPatient, fetchPatientByUserId } from './data';
 import type { User } from './types';
 
 /**
  * Server Action to authenticate a user against the MySQL database.
+ * If user is a patient, includes their patientId for redirection.
  */
-export async function authenticateUser(email: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> {
+export async function authenticateUser(email: string, password: string): Promise<{ success: boolean; user?: User & { patientId?: number }; error?: string }> {
     try {
         const userFromDb = await getUserByEmail(email);
 
@@ -22,9 +23,18 @@ export async function authenticateUser(email: string, password: string): Promise
         }
 
         const { password: _, ...userWithoutPassword } = userFromDb;
+        const user: User & { patientId?: number } = { ...userWithoutPassword };
+
+        if (user.role === 'user') {
+            const patient = await fetchPatientByUserId(user.id);
+            if (patient) {
+                user.patientId = patient.id;
+            }
+        }
+
         return { 
             success: true, 
-            user: userWithoutPassword as User 
+            user
         };
     } catch (error) {
         console.error('Auth Error:', error);
@@ -50,7 +60,7 @@ export async function registerUser(formData: any): Promise<{ success: boolean; e
             name: `${first_name} ${surname}`,
             email,
             password: hashedPassword,
-            role: 'patient',
+            role: 'user', // Public signup is always 'patient' role
         });
 
         await createPatient({
@@ -88,7 +98,7 @@ export async function registerPatientByStaff(formData: any): Promise<{ success: 
             name: `${first_name} ${surname}`,
             email,
             password: hashedPassword,
-            role: 'patient',
+            role: 'user',
         });
 
         await createPatient({

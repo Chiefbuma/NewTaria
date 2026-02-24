@@ -6,47 +6,52 @@ import type {
     ClinicalParameter, 
     Assessment, 
     Goal, 
-    Diagnosis, 
     Medication, 
     Prescription, 
     Appointment, 
     Review, 
-    Payer 
+    Payer,
+    Message
 } from './types';
 import { unstable_noStore as noStore } from 'next/cache';
 
 /**
- * Helper to ensure database values are safe for Next.js serialization.
- * Handles Dates by converting to ISO strings and BigInt by converting to numbers.
+ * Robust serialization helper to handle BigInt, Date, and other non-POJO types
+ * returned by the MySQL driver, preventing "Internal Server Error" in Next.js 15.
  */
-function serialize<T>(data: T): T {
-    if (data === null || data === undefined) return data;
+function serialize(obj: any): any {
+    if (obj === null || obj === undefined) return obj;
     
-    return JSON.parse(JSON.stringify(data, (key, value) => {
-        if (typeof value === 'bigint') {
-            return value.toString();
+    if (typeof obj === 'bigint') return obj.toString();
+    
+    if (obj instanceof Date) return obj.toISOString();
+    
+    if (Array.isArray(obj)) return obj.map(serialize);
+    
+    if (typeof obj === 'object') {
+        const result: any = {};
+        for (const key in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                result[key] = serialize(obj[key]);
+            }
         }
-        return value;
-    }));
+        return result;
+    }
+    
+    return obj;
 }
 
-/**
- * Helper to calculate patient stats from their related data.
- */
 function calculatePatientStats(patient: Partial<Patient>) {
     const goals = patient.goals || [];
     const assessments = patient.assessments || [];
-    
     const totalGoals = goals.length;
     const activeGoals = goals.filter(g => g.status === 'active').length;
     const totalAssessments = assessments.length;
-    
     const isOverdue = (goal: Goal) => {
         if (!goal.deadline || goal.status !== 'active') return false;
         return new Date(goal.deadline) < new Date();
     };
     const needsAttention = (patient.status as string) === 'Critical' || goals.some(isOverdue);
-
     return {
         totalGoals,
         activeGoals,
@@ -58,10 +63,10 @@ function calculatePatientStats(patient: Partial<Patient>) {
 
 // --- READ OPERATIONS ---
 
-export async function fetchPatients(): Promise<Patient[]> {
+export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
     noStore();
     try {
-        const [rows] = await db.query(`
+        let query = `
             SELECT p.*, 
                    u.name as navigator_name, 
                    c.name as corporate_name, 
@@ -70,11 +75,21 @@ export async function fetchPatients(): Promise<Patient[]> {
             LEFT JOIN users u ON p.navigator_id = u.id
             LEFT JOIN corporates c ON p.corporate_id = c.id
             LEFT JOIN payers pay ON p.payer_id = pay.id
-            ORDER BY p.created_at DESC
-        `);
+        `;
+        let params: any[] = [];
+
+        if (requestingUser?.role === 'payer' && requestingUser.payer_id) {
+            query += ` WHERE p.payer_id = ? `;
+            params.push(requestingUser.payer_id);
+        }
+
+        query += ` ORDER BY p.created_at DESC `;
         
+        const [rows] = await db.query(query, params);
         const patients = rows as any[];
-        return serialize(patients.map(p => ({
+        
+        // Enhance with empty arrays for joined data to match Patient type
+        const enhancedPatients = patients.map(p => ({
             ...p,
             assessments: [], 
             goals: [],
@@ -82,7 +97,9 @@ export async function fetchPatients(): Promise<Patient[]> {
             appointments: [],
             reviews: [],
             stats: calculatePatientStats(p)
-        })));
+        }));
+
+        return serialize(enhancedPatients);
     } catch (error) {
         console.error('Database Error [fetchPatients]:', error);
         throw new Error('Failed to fetch patients.');
@@ -92,7 +109,6 @@ export async function fetchPatients(): Promise<Patient[]> {
 export async function fetchPatientById(id: string): Promise<Patient | null> {
     noStore();
     if (!id) return null;
-    
     try {
         const [patientRows] = await db.query(`
             SELECT p.*, 
@@ -105,7 +121,7 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
             LEFT JOIN payers pay ON p.payer_id = pay.id
             WHERE p.id = ?
         `, [id]);
-
+        
         const patient = (patientRows as any[])[0];
         if (!patient) return null;
 
@@ -147,24 +163,57 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
             reviews: reviews as Review[],
         };
 
-        return serialize({
-            ...basePatient,
-            stats: calculatePatientStats(basePatient)
-        });
+        return serialize({ ...basePatient, stats: calculatePatientStats(basePatient) });
     } catch (error) {
         console.error('Database Error [fetchPatientById]:', error);
         throw new Error('Failed to fetch patient details.');
     }
 }
 
+export async function fetchPatientByUserId(userId: number): Promise<Patient | null> {
+    noStore();
+    try {
+        const [rows] = await db.query('SELECT id FROM patients WHERE user_id = ?', [userId]);
+        const patient = (rows as any[])[0];
+        if (!patient) return null;
+        return fetchPatientById(patient.id);
+    } catch (error) {
+        console.error('Database Error [fetchPatientByUserId]:', error);
+        return null;
+    }
+}
+
 export async function fetchUsers(): Promise<User[]> {
     noStore();
     try {
-        const [rows] = await db.query('SELECT id, name, email, role, avatarUrl FROM users ORDER BY name ASC');
+        const [rows] = await db.query('SELECT id, name, email, role, avatarUrl, payer_id FROM users ORDER BY name ASC');
         return serialize(rows as User[]);
     } catch (error) {
         console.error('Database Error [fetchUsers]:', error);
         throw new Error('Failed to fetch users.');
+    }
+}
+
+export async function fetchMessages(userId: number, otherId?: number): Promise<Message[]> {
+    noStore();
+    try {
+        let query = `
+            SELECT m.*, u.name as sender_name
+            FROM messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE (m.sender_id = ? OR m.receiver_id = ?)
+        `;
+        let params = [userId, userId];
+        if (otherId) {
+            query += ` AND (m.sender_id = ? OR m.receiver_id = ?) `;
+            params.push(otherId, otherId);
+        }
+        query += ` ORDER BY m.created_at ASC `;
+        const [rows] = await db.query(query, params);
+        return serialize(rows as Message[]);
+    } catch (error) {
+        console.error('Database Error [fetchMessages]:', error);
+        return [];
     }
 }
 
@@ -226,12 +275,24 @@ export async function getUserByEmail(email: string) {
 
 // --- WRITE OPERATIONS ---
 
-export async function createUser(userData: any): Promise<number> {
+export async function sendMessage(senderId: number, receiverId: number, content: string): Promise<number> {
     const [result] = await db.query(
-        'INSERT INTO users (name, email, password, role, avatarUrl) VALUES (?, ?, ?, ?, ?)',
-        [userData.name, userData.email, userData.password, userData.role || 'patient', userData.avatarUrl || null]
+        'INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)',
+        [senderId, receiverId, content]
     );
     return Number((result as any).insertId);
+}
+
+export async function createUser(userData: any): Promise<number> {
+    const [result] = await db.query(
+        'INSERT INTO users (name, email, password, role, avatarUrl, payer_id) VALUES (?, ?, ?, ?, ?, ?)',
+        [userData.name, userData.email, userData.password, userData.role || 'user', userData.avatarUrl || null, userData.payer_id || null]
+    );
+    return Number((result as any).insertId);
+}
+
+export async function deleteUser(id: number): Promise<void> {
+    await db.query('DELETE FROM users WHERE id = ?', [id]);
 }
 
 export async function createPatient(patientData: any): Promise<number> {
@@ -240,6 +301,11 @@ export async function createPatient(patientData: any): Promise<number> {
         [patientData.user_id || null, patientData.first_name, patientData.surname, patientData.email, patientData.age, patientData.gender, patientData.status || 'Pending']
     );
     return Number((result as any).insertId);
+}
+
+export async function bulkDeletePatients(ids: number[]): Promise<void> {
+    if (ids.length === 0) return;
+    await db.query('DELETE FROM patients WHERE id IN (?)', [ids]);
 }
 
 export async function createAssessment(data: any): Promise<number> {

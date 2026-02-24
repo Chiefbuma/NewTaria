@@ -4,7 +4,7 @@ import type React from 'react';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Settings, Loader2, LayoutDashboard, Users, PanelLeft, Menu } from 'lucide-react';
+import { Settings, Loader2, LayoutDashboard, Users, PanelLeft, Menu, MessageSquare } from 'lucide-react';
 import type { User } from '@/lib/types';
 import Logo from '@/components/logo';
 import { placeholderImages } from '@/lib/placeholder-images';
@@ -54,32 +54,38 @@ const NavLink = ({ href, children, isActive, isCollapsed, title }: { href: strin
     );
 };
 
-function AppSidebarNav({ isCollapsed }: { isCollapsed: boolean }) {
+function AppSidebarNav({ isCollapsed, user }: { isCollapsed: boolean, user: User }) {
     const pathname = usePathname();
-    const dashboardPath = '/dashboard';
-    // Both patients and settings link to dashboard for now, as per original code
-    const patientsPath = '/dashboard'; 
-    const settingsPath = '/dashboard';
+    const isStaff = user.role !== 'user';
 
     return (
         <nav className={cn(
                 "grid items-start gap-2 text-sm font-medium", 
                 isCollapsed ? "justify-center px-2" : "bg-background border rounded-lg p-2 mx-4"
             )}>
-            <NavLink href={dashboardPath} isActive={pathname === dashboardPath} isCollapsed={isCollapsed} title="Dashboard">
-                <LayoutDashboard className="h-5 w-5" />
+            {isStaff && (
+                <>
+                    <NavLink href="/dashboard" isActive={pathname === '/dashboard'} isCollapsed={isCollapsed} title="Dashboard">
+                        <LayoutDashboard className="h-5 w-5" />
+                    </NavLink>
+                    <NavLink href="/dashboard" isActive={pathname.startsWith('/dashboard/patient')} isCollapsed={isCollapsed} title="Patients">
+                        <Users className="h-5 w-5" />
+                    </NavLink>
+                </>
+            )}
+            <NavLink href="/dashboard/messages" isActive={pathname === '/dashboard/messages'} isCollapsed={isCollapsed} title="Messages">
+                <MessageSquare className="h-5 w-5" />
             </NavLink>
-            <NavLink href={patientsPath} isActive={pathname.startsWith('/dashboard/patient')} isCollapsed={isCollapsed} title="Patients">
-                <Users className="h-5 w-5" />
-            </NavLink>
-            <NavLink href={settingsPath} isActive={pathname === settingsPath && false /* logic to be defined */} isCollapsed={isCollapsed} title="Settings">
-                <Settings className="h-5 w-5" />
-            </NavLink>
+            {user.role === 'admin' && (
+                <NavLink href="/dashboard" isActive={false} isCollapsed={isCollapsed} title="Settings">
+                    <Settings className="h-5 w-5" />
+                </NavLink>
+            )}
         </nav>
     );
 }
 
-function AppSidebar({ isCollapsed }: { isCollapsed: boolean }) {
+function AppSidebar({ isCollapsed, user }: { isCollapsed: boolean, user: User }) {
     return (
         <div className={cn("flex h-full max-h-screen flex-col gap-4")}>
             <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
@@ -94,7 +100,7 @@ function AppSidebar({ isCollapsed }: { isCollapsed: boolean }) {
                 </Link>
             </div>
             <div className="flex-1 py-2 overflow-y-auto overflow-x-hidden">
-                <AppSidebarNav isCollapsed={isCollapsed} />
+                <AppSidebarNav isCollapsed={isCollapsed} user={user} />
             </div>
         </div>
     )
@@ -105,7 +111,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<(User & { patientId?: number }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(true);
   const router = useRouter();
@@ -116,16 +122,20 @@ export default function DashboardLayout({
     const storedUser = localStorage.getItem('loggedInUser');
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
-      const userForState: User = {
-        ...parsedUser,
-        avatarUrl: parsedUser.avatarUrl || placeholderImages.find(p => p.id === 'user-avatar')?.imageUrl,
-      };
-      setUser(userForState);
+      setUser(parsedUser);
     } else {
       router.push('/');
     }
     setLoading(false);
   }, [router]);
+
+  useEffect(() => {
+      if (user?.role === 'user' && (pathname === '/dashboard' || pathname === '/dashboard/patient')) {
+          if (user.patientId) {
+              router.push(`/dashboard/patient/${user.patientId}/progress`);
+          }
+      }
+  }, [user, pathname, router]);
 
   if (loading || !user) {
     return (
@@ -135,10 +145,13 @@ export default function DashboardLayout({
     );
   }
   
-  if (isProgressPage) {
+  if (isProgressPage || user.role === 'user') {
     return (
         <div className="flex flex-col min-h-screen w-full">
             <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+                <Link href="/dashboard" className="flex items-center font-semibold md:hidden">
+                    <Logo className="h-6 w-auto" />
+                </Link>
                 <div className="w-full flex-1" />
                 <Header user={user} />
             </header>
@@ -155,14 +168,12 @@ export default function DashboardLayout({
         isSidebarCollapsed ? "md:grid-cols-[80px_1fr]" : "md:grid-cols-[280px_1fr]",
         "transition-[grid-template-columns] duration-300 ease-in-out"
     )}>
-        {/* Desktop Sidebar */}
         <div className="hidden border-r bg-muted/40 md:block">
-            <AppSidebar isCollapsed={isSidebarCollapsed} />
+            <AppSidebar isCollapsed={isSidebarCollapsed} user={user} />
         </div>
       
         <div className="flex flex-col">
             <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
-            {/* Mobile Sidebar Trigger */}
             <Sheet>
                 <SheetTrigger asChild>
                     <Button
@@ -175,11 +186,10 @@ export default function DashboardLayout({
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="flex flex-col p-0 max-w-[280px]">
-                    <AppSidebar isCollapsed={false} />
+                    <AppSidebar isCollapsed={false} user={user} />
                 </SheetContent>
             </Sheet>
 
-            {/* Desktop Sidebar Toggle */}
             <Button variant="ghost" size="icon" className="hidden md:flex" onClick={() => setSidebarCollapsed(!isSidebarCollapsed)}>
                 <PanelLeft className={cn("h-5 w-5 transition-transform duration-300", isSidebarCollapsed && "rotate-180")} />
                 <span className="sr-only">Toggle sidebar</span>

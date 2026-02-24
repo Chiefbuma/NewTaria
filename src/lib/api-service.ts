@@ -1,8 +1,3 @@
-/**
- * Central API Service for client-side interactions with the Taria Health backend.
- * Handles all requests to /api route handlers.
- */
-
 import type { 
     Patient, 
     User, 
@@ -11,12 +6,9 @@ import type {
     Appointment, 
     Prescription, 
     Review,
-    Medication,
-    Corporate,
-    Payer
+    Message
 } from '@/lib/types';
 
-// Generic error handler
 async function getErrorFromResponse(res: Response): Promise<Error> {
     try {
         const data = await res.json();
@@ -117,6 +109,15 @@ export async function updatePatient(id: number, data: Partial<Patient>): Promise
     return res.json();
 }
 
+export async function bulkDeletePatients(ids: number[]): Promise<void> {
+    const res = await fetch('/api/patients/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+}
+
 export async function activatePatient(id: number, data: Partial<Patient>): Promise<void> {
     const res = await fetch('/api/patients/activate', {
         method: 'POST',
@@ -132,6 +133,24 @@ export async function createReview(data: Partial<Review>): Promise<Review> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+// --- Messaging APIs ---
+export async function fetchMessages(receiverId?: number): Promise<Message[]> {
+    const url = receiverId ? `/api/messages?otherId=${receiverId}` : '/api/messages';
+    const res = await fetch(url);
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+export async function sendMessage(receiverId: number, content: string): Promise<Message> {
+    const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiverId, content })
     });
     if (!res.ok) throw await getErrorFromResponse(res);
     return res.json();

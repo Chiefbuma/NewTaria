@@ -59,10 +59,10 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
         <Input
-          placeholder="Search patients..."
+          placeholder="Search..."
           value={(table.getState().globalFilter as string) ?? ""}
           onChange={(event) => table.setGlobalFilter(event.target.value)}
-          className="h-8 w-[150px] lg:w-[250px]"
+          className="h-8 w-[150px] lg:w-[250px] border-primary/20 focus:border-primary"
         />
         {isFiltered && (
           <Button
@@ -78,9 +78,9 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
       <div className="flex items-center space-x-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="ml-auto hidden h-8 lg:flex">
+            <Button variant="outline" size="sm" className="ml-auto hidden h-8 lg:flex border-primary/30">
               <ListFilter className="mr-2 h-4 w-4" />
-              View
+              Columns
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[150px]">
@@ -117,7 +117,7 @@ interface DataTablePaginationProps<TData> {
 
 export function DataTablePagination<TData>({ table }: DataTablePaginationProps<TData>) {
   return (
-    <div className="flex items-center justify-between px-2">
+    <div className="flex items-center justify-between px-2 py-4 border-t">
       <div className="flex-1 text-sm text-muted-foreground">
         {table.getFilteredSelectedRowModel().rows.length} of{" "}
         {table.getFilteredRowModel().rows.length} row(s) selected.
@@ -193,9 +193,10 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  onSelectionChange?: (selectedRows: TData[]) => void
 }
 
-export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValue>) {
+export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -232,57 +233,68 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
     getSortedRowModel: getSortedRowModel(),
   })
 
+  // Hook into selection changes
+  React.useEffect(() => {
+      if (onSelectionChange) {
+          const selectedRows = table.getSelectedRowModel().rows.map(r => r.original);
+          onSelectionChange(selectedRows);
+      }
+  }, [rowSelection, table, onSelectionChange]);
+
   return (
     <div className="space-y-4">
       <DataTableToolbar table={table} />
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  )
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
+        <div className="rounded-md border border-primary/10 overflow-hidden">
+            <Table>
+            <TableHeader className="bg-muted/50">
+                {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                    return (
+                        <TableHead key={header.id} colSpan={header.colSpan} className="text-foreground font-bold h-12">
+                        {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                            )}
+                        </TableHead>
+                    )
+                    })}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                ))}
+            </TableHeader>
+            <TableBody>
+                {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                    <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className="hover:bg-primary/5 data-[state=selected]:bg-primary/10 transition-colors"
+                    >
+                    {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className="py-3 px-4">
+                        {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                        )}
+                        </TableCell>
+                    ))}
+                    </TableRow>
+                ))
+                ) : (
+                <TableRow>
+                    <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center text-muted-foreground"
+                    >
+                    No matching records found.
+                    </TableCell>
+                </TableRow>
+                )}
+            </TableBody>
+            </Table>
+        </div>
       <DataTablePagination table={table} />
     </div>
   )
