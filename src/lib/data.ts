@@ -29,8 +29,6 @@ function serialize(obj: any): any {
     
     if (typeof obj === 'object') {
         if (Buffer.isBuffer(obj)) return obj.toString('base64');
-        
-        // Handle standard objects and prevent potential prototype issues
         const result: any = {};
         for (const key in obj) {
             if (Object.prototype.hasOwnProperty.call(obj, key)) {
@@ -41,6 +39,28 @@ function serialize(obj: any): any {
     }
     
     return obj;
+}
+
+/**
+ * Formats a date for MySQL DATETIME/TIMESTAMP: YYYY-MM-DD HH:mm:00
+ */
+function toSqlDateTime(date: string | Date | null | undefined): string | null {
+    if (!date) return null;
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return null;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+}
+
+/**
+ * Formats a date for MySQL DATE: YYYY-MM-DD
+ */
+function toSqlDate(date: string | Date | null | undefined): string | null {
+    if (!date) return null;
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return null;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 function calculatePatientStats(patient: any) {
@@ -56,8 +76,6 @@ function calculatePatientStats(patient: any) {
         needsAttention: patient.status === 'Critical' || (totalGoals > 0 && totalAssessments === 0)
     };
 }
-
-// --- READ OPERATIONS ---
 
 export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
     noStore();
@@ -311,19 +329,14 @@ export async function bulkDeletePatients(ids: number[]): Promise<void> {
 }
 
 export async function createAssessment(data: any): Promise<number> {
-    // FIX: Properly handle date object and ensure MySQL-safe string format (YYYY-MM-DD HH:mm:00)
-    const d = data.measured_at ? new Date(data.measured_at) : new Date();
-    if (isNaN(d.getTime())) {
+    const formattedMeasuredAt = toSqlDateTime(data.measured_at);
+    if (!formattedMeasuredAt) {
         throw new Error('Invalid assessment date format.');
     }
     
-    // Formatting for MySQL: YYYY-MM-DD HH:mm:00
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
-
     const [result] = await db.query(
         'INSERT INTO assessments (patient_id, clinical_parameter_id, value, notes, is_normal, measured_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [data.patient_id, data.clinical_parameter_id, data.value, data.notes, data.is_normal, formatted]
+        [data.patient_id, data.clinical_parameter_id, data.value, data.notes, data.is_normal, formattedMeasuredAt]
     );
     return Number((result as any).insertId);
 }
@@ -335,7 +348,7 @@ export async function deleteAssessment(id: number): Promise<void> {
 export async function createGoal(data: any): Promise<number> {
     const [result] = await db.query(
         'INSERT INTO goals (patient_id, clinical_parameter_id, target_value, target_operator, status, notes, deadline) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [data.patient_id, data.clinical_parameter_id, data.target_value, data.target_operator, data.status, data.notes, data.deadline]
+        [data.patient_id, data.clinical_parameter_id, data.target_value, data.target_operator, data.status, data.notes, toSqlDate(data.deadline)]
     );
     return Number((result as any).insertId);
 }
@@ -343,7 +356,7 @@ export async function createGoal(data: any): Promise<number> {
 export async function updateGoal(id: number, data: any): Promise<void> {
     await db.query(
         'UPDATE goals SET target_value = ?, target_operator = ?, status = ?, notes = ?, deadline = ? WHERE id = ?',
-        [data.target_value, data.target_operator, data.status, data.notes, data.deadline, id]
+        [data.target_value, data.target_operator, data.status, data.notes, toSqlDate(data.deadline), id]
     );
 }
 
@@ -354,14 +367,24 @@ export async function deleteGoal(id: number): Promise<void> {
 export async function createReview(data: any): Promise<number> {
     const [result] = await db.query(
         'INSERT INTO reviews (patient_id, reviewed_by_id, review_date, subjective_findings, objective_findings, assessment, plan, recommendations, follow_up_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [data.patient_id, data.reviewed_by_id, data.review_date, data.subjective_findings, data.objective_findings, data.assessment, data.plan, data.recommendations, data.follow_up_date]
+        [
+            data.patient_id, 
+            data.reviewed_by_id, 
+            toSqlDate(data.review_date), 
+            data.subjective_findings, 
+            data.objective_findings, 
+            data.assessment, 
+            data.plan, 
+            data.recommendations, 
+            toSqlDate(data.follow_up_date)
+        ]
     );
     return Number((result as any).insertId);
 }
 
 export async function upsertAppointment(data: any): Promise<number> {
-    const appointmentDate = data.appointment_date ? new Date(data.appointment_date) : new Date();
-    const endDate = data.end_date ? new Date(data.end_date) : null;
+    const appointmentDate = toSqlDateTime(data.appointment_date);
+    const endDate = toSqlDateTime(data.end_date);
 
     if (data.id) {
         await db.query(
@@ -383,8 +406,8 @@ export async function updateAppointmentStatus(id: number, status: string): Promi
 }
 
 export async function upsertPrescription(data: any): Promise<number> {
-    const startDate = data.start_date ? new Date(data.start_date) : new Date();
-    const expiryDate = data.expiry_date ? new Date(data.expiry_date) : null;
+    const startDate = toSqlDate(data.start_date);
+    const expiryDate = toSqlDate(data.expiry_date);
 
     if (data.id) {
         await db.query(
@@ -408,7 +431,7 @@ export async function deletePrescription(id: number): Promise<void> {
 export async function updatePatientDetails(id: number, data: any): Promise<void> {
     await db.query(
         'UPDATE patients SET first_name = ?, middle_name = ?, surname = ?, dob = ?, age = ?, gender = ?, email = ?, phone = ?, wellness_date = ?, corporate_id = ? WHERE id = ?',
-        [data.first_name, data.middle_name, data.surname, data.dob, data.age, data.gender, data.email, data.phone, data.wellness_date, data.corporate_id, id]
+        [data.first_name, data.middle_name, data.surname, toSqlDate(data.dob), data.age, data.gender, data.email, data.phone, toSqlDate(data.wellness_date), data.corporate_id, id]
     );
 }
 
@@ -416,7 +439,7 @@ export async function activatePatient(id: number, data: any): Promise<void> {
     await db.query(
         'UPDATE patients SET status = "Active", date_of_onboarding = ?, emr_number = ?, navigator_id = ?, payer_id = ?, brief_medical_history = ?, years_since_diagnosis = ?, past_medical_interventions = ?, relevant_family_history = ?, dietary_restrictions = ?, allergies_intolerances = ?, lifestyle_factors = ?, physical_limitations = ?, psychosocial_factors = ?, emergency_contact_name = ?, emergency_contact_phone = ?, emergency_contact_relation = ?, has_weighing_scale = ?, has_glucometer = ?, has_bp_machine = ?, has_tape_measure = ? WHERE id = ?',
         [
-            data.date_of_onboarding, data.emr_number, data.navigator_id, data.payer_id, data.brief_medical_history, data.years_since_diagnosis, data.past_medical_interventions, data.relevant_family_history, data.dietary_restrictions, data.allergies_intolerances, data.lifestyle_factors, data.physical_limitations, data.psychosocial_factors, data.emergency_contact_name, data.emergency_contact_phone, data.emergency_contact_relation, 
+            toSqlDate(data.date_of_onboarding), data.emr_number, data.navigator_id, data.payer_id, data.brief_medical_history, data.years_since_diagnosis, data.past_medical_interventions, data.relevant_family_history, data.dietary_restrictions, data.allergies_intolerances, data.lifestyle_factors, data.physical_limitations, data.psychosocial_factors, data.emergency_contact_name, data.emergency_contact_phone, data.emergency_contact_relation, 
             data.has_weighing_scale, data.has_glucometer, data.has_bp_machine, data.has_tape_measure, id
         ]
     );

@@ -141,7 +141,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
   const isPayer = currentUser?.role === 'payer';
 
   const canEditPatient = isAdmin || isNavigator;
-  const canManageAssessments = isAdmin || isNavigator; // Clinicians view only assessments
+  const canManageAssessments = isAdmin || isNavigator;
   const canManageReviews = isAdmin || isNavigator || isClinician;
   const canManageAppointments = isAdmin || isNavigator;
 
@@ -554,6 +554,10 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                                 <div className="space-y-2">
                                     <Label className="font-semibold">Treatment Plan</Label>
                                     <Textarea placeholder="Next steps, changes to medication, follow-ups..." className="bg-background border-primary/20" value={reviewData.plan} onChange={(e) => setReviewData(p => ({...p, plan: e.target.value}))}/>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="font-semibold">Follow-up Date</Label>
+                                    <Input type="date" className="bg-background border-primary/20 w-full md:w-fit" value={reviewData.follow_up_date} onChange={(e) => setReviewData(p => ({...p, follow_up_date: e.target.value}))}/>
                                 </div>
                                 <Button onClick={submitReview} className="bg-primary hover:bg-primary/90 shadow-md px-8"><Save className="mr-2 h-4 w-4"/> Save Review</Button>
                             </div>

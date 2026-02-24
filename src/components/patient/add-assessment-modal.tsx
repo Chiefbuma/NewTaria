@@ -26,7 +26,7 @@ interface AddAssessmentModalProps {
   allParameters?: ClinicalParameter[];
 }
 
-// Helper to get local ISO string for datetime-local input
+// Helper to get local ISO string for datetime-local input (YYYY-MM-DDTHH:mm)
 const getLocalDateTimeString = (date: Date) => {
     const pad = (num: number) => num.toString().padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -66,7 +66,7 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
         clinical_parameter_id: parseInt(selectedParamId, 10),
         value,
         notes,
-        measured_at: new Date(measuredAt).toISOString(),
+        measured_at: measuredAt, // toSqlDateTime in data.ts handles this
         is_normal: null 
     });
   };
@@ -76,13 +76,13 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
 
     switch (selectedParameter.type) {
       case 'numeric':
-        return <Input type="number" value={value} onChange={(e) => setValue(e.target.value)} required />;
+        return <Input type="number" step="any" value={value} onChange={(e) => setValue(e.target.value)} required className="border-primary/20" />;
       case 'text':
-        return <Input type="text" value={value} onChange={(e) => setValue(e.target.value)} required />;
+        return <Input type="text" value={value} onChange={(e) => setValue(e.target.value)} required className="border-primary/20" />;
       case 'choice':
         return (
           <Select onValueChange={setValue} value={value} required>
-            <SelectTrigger>
+            <SelectTrigger className="border-primary/20">
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
             <SelectContent>
@@ -93,15 +93,15 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
           </Select>
         );
       default:
-        return <Input type="text" value={value} onChange={(e) => setValue(e.target.value)} required />;
+        return <Input type="text" value={value} onChange={(e) => setValue(e.target.value)} required className="border-primary/20" />;
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="border-primary/20">
         <DialogHeader>
-          <DialogTitle>{existingAssessment ? 'Edit' : 'Add'} Assessment for {selectedParameter?.name || '...'}</DialogTitle>
+          <DialogTitle className="text-primary font-bold">{existingAssessment ? 'Edit' : 'Add'} Assessment for {selectedParameter?.name || '...'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
@@ -109,7 +109,7 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
                 <div className="space-y-2">
                     <Label htmlFor="parameter">Parameter</Label>
                      <Select onValueChange={setSelectedParamId} value={selectedParamId}>
-                        <SelectTrigger id="parameter">
+                        <SelectTrigger id="parameter" className="border-primary/20">
                             <SelectValue placeholder="Select a clinical parameter" />
                         </SelectTrigger>
                         <SelectContent>
@@ -123,25 +123,25 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
             {selectedParamId && (
                 <>
                     <div className="space-y-2">
-                        <Label htmlFor="value">Value {selectedParameter?.unit ? `(${selectedParameter.unit})` : ''}</Label>
+                        <Label htmlFor="value" className="font-bold text-foreground">Value {selectedParameter?.unit ? `(${selectedParameter.unit})` : ''}</Label>
                         {renderInput()}
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="notes">Notes</Label>
-                        <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+                        <Label htmlFor="notes" className="font-bold text-foreground">Notes</Label>
+                        <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="border-primary/20" />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="measuredAt">Date & Time of Assessment</Label>
-                        <Input id="measuredAt" type="datetime-local" value={measuredAt} onChange={(e) => setMeasuredAt(e.target.value)} required />
+                        <Label htmlFor="measuredAt" className="font-bold text-foreground">Date & Time of Assessment</Label>
+                        <Input id="measuredAt" type="datetime-local" value={measuredAt} onChange={(e) => setMeasuredAt(e.target.value)} required className="border-primary/20" />
                     </div>
                 </>
             )}
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">Cancel</Button>
+              <Button type="button" variant="outline" className="border-primary/20">Cancel</Button>
             </DialogClose>
-            <Button type="submit">Save Assessment</Button>
+            <Button type="submit" className="bg-primary hover:bg-primary/90">Save Assessment</Button>
           </DialogFooter>
         </form>
       </DialogContent>

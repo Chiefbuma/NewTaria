@@ -119,8 +119,7 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
   return (
     <div className="flex items-center justify-between px-2 py-4 border-t">
       <div className="flex-1 text-sm text-muted-foreground pl-4">
-        {table.getFilteredSelectedRowModel().rows.length} of{" "}
-        {table.getFilteredRowModel().rows.length} row(s) selected.
+        {table.getFilteredSelectedRowModel().rows.length} row(s) selected.
       </div>
       <div className="flex items-center space-x-6 lg:space-x-8 pr-4">
         <div className="flex items-center space-x-2">
@@ -230,7 +229,7 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
     getSortedRowModel: getSortedRowModel(),
   })
 
-  // FIX: Use refs to track values without causing re-renders (Error #185 Ref Fix)
+  // Use refs to track values without causing re-renders
   const prevSelectionKeysRef = React.useRef("")
   const onSelectionChangeRef = React.useRef(onSelectionChange)
   const tableRef = React.useRef(table)
@@ -252,7 +251,6 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
     if (prevSelectionKeysRef.current !== selectionKeys) {
       prevSelectionKeysRef.current = selectionKeys
       
-      // Use tableRef.current instead of table to avoid dependency cycles
       const selectedRows = tableRef.current.getSelectedRowModel().rows.map(r => r.original)
       onSelectionChangeRef.current?.(selectedRows)
     }
