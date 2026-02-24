@@ -64,6 +64,7 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
+  /* Ensure labels and muted text are highly visible in dark mode */
   .dark label, 
   .dark .text-muted-foreground,
   .dark .text-gray-500,
@@ -72,6 +73,7 @@
     opacity: 1;
   }
   
+  /* Force Teal borders and outlines in dark mode */
   .dark .border,
   .dark .border-t,
   .dark .border-b,
