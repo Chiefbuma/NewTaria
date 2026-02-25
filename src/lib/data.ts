@@ -25,7 +25,6 @@ function serialize(obj: any): any {
     if (Object.prototype.toString.call(obj) === '[object Date]') return obj.toISOString();
     if (Array.isArray(obj)) return obj.map(serialize);
     if (typeof obj === 'object') {
-        if (typeof Buffer !== 'undefined' && Buffer.isBuffer(obj)) return obj.toString('base64');
         const result: any = {};
         for (const key in obj) {
             if (Object.prototype.hasOwnProperty.call(obj, key)) {
@@ -263,6 +262,16 @@ export async function upsertPartner(data: any): Promise<number> {
     }
 }
 
+export async function upsertMedication(data: any): Promise<number> {
+    if (data.id) {
+        await db.query('UPDATE medications SET name = ?, dosage = ? WHERE id = ?', [data.name, data.dosage, data.id]);
+        return Number(data.id);
+    } else {
+        const [result] = await db.query('INSERT INTO medications (name, dosage) VALUES (?, ?)', [data.name, data.dosage]);
+        return Number((result as any).insertId);
+    }
+}
+
 export async function activatePatient(id: number, data: any): Promise<void> {
     await db.query(
         'UPDATE patients SET status = "Active", date_of_onboarding = ?, emr_number = ?, navigator_id = ?, partner_id = ?, brief_medical_history = ?, years_since_diagnosis = ?, past_medical_interventions = ?, relevant_family_history = ?, dietary_restrictions = ?, allergies_intolerances = ?, lifestyle_factors = ?, physical_limitations = ?, psychosocial_factors = ?, emergency_contact_name = ?, emergency_contact_phone = ?, emergency_contact_relation = ?, has_weighing_scale = ?, has_glucometer = ?, has_bp_machine = ?, has_tape_measure = ? WHERE id = ?',
@@ -279,13 +288,13 @@ export async function updatePatientDetails(id: number, data: any): Promise<void>
 
 export async function fetchMessages(userId: number, otherId?: number): Promise<Message[]> {
     noStore();
-    let query = 'SELECT m.*, u.name as sender_name FROM messages m JOIN users u ON m.sender_id = u.id WHERE (m.sender_id = ? OR m.receiver_id = ?) AND m.deleted_at IS NULL';
+    let query = 'SELECT m.*, u.name as sender_name, u.avatarUrl as sender_avatar FROM messages m JOIN users u ON m.sender_id = u.id WHERE (m.sender_id = ? OR m.receiver_id = ?) AND m.deleted_at IS NULL';
     let params = [userId, userId];
     if (otherId) { 
         query += ' AND (m.sender_id = ? OR m.receiver_id = ?) '; 
         params.push(otherId, otherId); 
     }
-    query += ' ORDER BY m.created_at ASC ';
+    query += ' ORDER BY m.created_at DESC ';
     const [rows] = await db.query(query, params);
     return serialize(rows as Message[]);
 }
@@ -325,6 +334,11 @@ export async function deleteAssessment(id: number): Promise<void> { await db.que
 export async function deleteGoal(id: number): Promise<void> { await db.query('UPDATE goals SET deleted_at = NOW() WHERE id = ?', [id]); }
 export async function deletePrescription(id: number): Promise<void> { await db.query('UPDATE prescriptions SET deleted_at = NOW() WHERE id = ?', [id]); }
 export async function bulkDeletePatients(ids: number[]): Promise<void> { if (ids.length) await db.query('UPDATE patients SET deleted_at = NOW() WHERE id IN (?)', [ids]); }
+export async function bulkDeleteMedications(ids: number[]): Promise<void> { if (ids.length) await db.query('UPDATE medications SET deleted_at = NOW() WHERE id IN (?)', [ids]); }
+export async function bulkDeleteUsers(ids: number[]): Promise<void> { if (ids.length) await db.query('UPDATE users SET deleted_at = NOW() WHERE id IN (?)', [ids]); }
+export async function bulkDeletePartners(ids: number[]): Promise<void> { if (ids.length) await db.query('UPDATE partners SET deleted_at = NOW() WHERE id IN (?)', [ids]); }
+export async function bulkDeleteParameters(ids: number[]): Promise<void> { if (ids.length) await db.query('UPDATE clinical_parameters SET deleted_at = NOW() WHERE id IN (?)', [ids]); }
 export async function updateAppointmentStatus(id: number, status: string): Promise<void> { await db.query('UPDATE appointments SET status = ? WHERE id = ?', [status, id]); }
 export async function deletePartner(id: number): Promise<void> { await db.query('UPDATE partners SET deleted_at = NOW() WHERE id = ?', [id]); }
+export async function deleteMedication(id: number): Promise<void> { await db.query('UPDATE medications SET deleted_at = NOW() WHERE id = ?', [id]); }
 export async function sendMessage(senderId: number, receiverId: number, content: string): Promise<number> { const [result] = await db.query('INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)', [senderId, receiverId, content]); return Number((result as any).insertId); }

@@ -6,7 +6,8 @@ import type {
     Appointment, 
     Prescription, 
     Review,
-    Message
+    Message,
+    Medication
 } from '@/lib/types';
 
 async function getErrorFromResponse(res: Response): Promise<Error> {
@@ -111,6 +112,38 @@ export async function updatePatient(id: number, data: Partial<Patient>): Promise
 
 export async function bulkDeletePatients(ids: number[]): Promise<void> {
     const res = await fetch('/api/patients/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+}
+
+// --- Medication APIs ---
+export async function fetchMedications(): Promise<Medication[]> {
+    const res = await fetch('/api/medications');
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+export async function upsertMedication(data: Partial<Medication>): Promise<Medication> {
+    const method = data.id ? 'PUT' : 'POST';
+    const res = await fetch('/api/medications', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+export async function deleteMedication(id: number): Promise<void> {
+    const res = await fetch(`/api/medications?id=${id}`, { method: 'DELETE' });
+    if (!res.ok) throw await getErrorFromResponse(res);
+}
+
+export async function bulkDeleteMedications(ids: number[]): Promise<void> {
+    const res = await fetch('/api/medications/bulk-delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids })

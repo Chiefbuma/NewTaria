@@ -28,6 +28,7 @@ export type Message = {
     content: string;
     created_at: string;
     sender_name?: string;
+    sender_avatar?: string;
     deleted_at?: string | null;
 };
 
