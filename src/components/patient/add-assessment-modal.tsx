@@ -27,7 +27,6 @@ interface AddAssessmentModalProps {
   allParameters?: ClinicalParameter[];
 }
 
-// Helper to get local ISO string for datetime-local input (YYYY-MM-DDTHH:mm)
 const getLocalDateTimeString = (date: Date) => {
     const pad = (num: number) => num.toString().padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -67,7 +66,7 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
         clinical_parameter_id: parseInt(selectedParamId, 10),
         value,
         notes,
-        measured_at: measuredAt, // toSqlDateTime in data.ts handles this
+        measured_at: measuredAt,
         is_normal: null 
     });
   };

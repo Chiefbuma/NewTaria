@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { 
     Patient, 
-    Corporate, 
     User, 
     Goal, 
     ClinicalParameter, 
@@ -138,7 +137,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
   const isAdmin = currentUser?.role === 'admin';
   const isNavigator = currentUser?.role === 'navigator';
   const isClinician = currentUser?.role === 'clinician';
-  const isPartner = currentUser?.role === 'partner' || currentUser?.role === 'payer';
+  const isPartner = currentUser?.role === 'partner';
 
   const canEditPatient = isAdmin || isNavigator;
   const canManageAssessments = (isAdmin || isNavigator) && !isPartner;
@@ -185,6 +184,8 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     deadline: '',
     notes: ''
   });
+
+  const selectedParameterForGoal = clinicalParameters.find(p => p.id.toString() === newGoal.clinical_parameter_id);
 
   const handleAddGoal = async () => {
     if (!canManageAssessments) return;
@@ -236,45 +237,47 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
   };
 
   const getAssessmentStatus = (current: Assessment, previous: Assessment | undefined, goal: Goal) => {
-    const curVal = parseFloat(current.value);
-    const tarVal = parseFloat(goal.target_value);
+    const val = current.value;
+    const target = goal.target_value;
     const op = goal.target_operator;
 
-    if (isNaN(curVal) || isNaN(tarVal)) return { label: 'Pending', variant: 'secondary' as const };
+    const nCur = parseFloat(val);
+    const nTar = parseFloat(target);
 
-    const isTargetMet = (val: number, target: number, operator: string) => {
-        switch (operator) {
-            case '<': return val < target;
-            case '<=': return val <= target;
-            case '=': return val === target;
-            case '>=': return val >= target;
-            case '>': return val > target;
-            default: return false;
+    const isTargetMet = (v: string, t: string, o: string) => {
+        const nv = parseFloat(v);
+        const nt = parseFloat(t);
+        if (!isNaN(nv) && !isNaN(nt)) {
+            switch (o) {
+                case '<': return nv < nt;
+                case '<=': return nv <= nt;
+                case '=': return nv === nt;
+                case '>=': return nv >= nt;
+                case '>': return nv > nt;
+                default: return false;
+            }
         }
+        return v === t;
     };
 
-    if (isTargetMet(curVal, tarVal, op)) {
+    if (isTargetMet(val, target, op)) {
         return { label: 'Achieved', variant: 'default' as const };
     }
 
-    if (!previous) {
-        return { label: 'In Progress', variant: 'secondary' as const };
-    }
+    if (!previous) return { label: 'In Progress', variant: 'secondary' as const };
 
-    const prevVal = parseFloat(previous.value);
-    if (isNaN(prevVal)) return { label: 'In Progress', variant: 'secondary' as const };
-
-    const isImproving = (cur: number, prev: number, operator: string) => {
-        if (operator === '>=' || operator === '>') return cur > prev;
-        if (operator === '<=' || operator === '<') return cur < prev;
-        return Math.abs(cur - tarVal) < Math.abs(prev - tarVal);
-    };
-
-    if (isImproving(curVal, prevVal, op)) {
-        return { label: 'On Track', variant: 'outline' as const };
-    } else {
+    const nPrev = parseFloat(previous.value);
+    if (!isNaN(nCur) && !isNaN(nPrev) && !isNaN(nTar)) {
+        const isImproving = (c: number, p: number, o: string) => {
+            if (o === '>=' || o === '>') return c > p;
+            if (o === '<=' || o === '<') return c < p;
+            return Math.abs(c - nTar) < Math.abs(p - nTar);
+        };
+        if (isImproving(nCur, nPrev, op)) return { label: 'On Track', variant: 'outline' as const };
         return { label: 'Needs Improvement', variant: 'destructive' as const };
     }
+
+    return { label: 'In Progress', variant: 'secondary' as const };
   };
 
   const handleDeleteAssessmentItem = async (assessmentId: number) => {
@@ -466,16 +469,25 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
                                     <Label className="mb-2 block font-semibold">Parameter</Label>
-                                    <Select value={newGoal.clinical_parameter_id} onValueChange={(value) => setNewGoal(prev => ({...prev, clinical_parameter_id: value}))}>
+                                    <Select value={newGoal.clinical_parameter_id} onValueChange={(value) => setNewGoal(prev => ({...prev, clinical_parameter_id: value, target_value: ''}))}>
                                         <SelectTrigger className="bg-background border-primary/20"><SelectValue placeholder="Select Parameter" /></SelectTrigger>
                                         <SelectContent>
-                                            {clinicalParameters.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name} ({p.unit})</SelectItem>)}
+                                            {clinicalParameters.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name} ({p.unit || 'No unit'})</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                             </div>
                             <div>
                                     <Label className="mb-2 block font-semibold">Target Value</Label>
-                                    <Input type="text" placeholder="Value" className="bg-background border-primary/20" value={newGoal.target_value} onChange={(e) => setNewGoal(prev => ({...prev, target_value: e.target.value}))}/>
+                                    {selectedParameterForGoal?.type === 'choice' ? (
+                                        <Select value={newGoal.target_value} onValueChange={(value) => setNewGoal(prev => ({...prev, target_value: value}))}>
+                                            <SelectTrigger className="bg-background border-primary/20"><SelectValue placeholder="Select Target" /></SelectTrigger>
+                                            <SelectContent>
+                                                {selectedParameterForGoal.options?.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <Input type="text" placeholder="Value" className="bg-background border-primary/20" value={newGoal.target_value} onChange={(e) => setNewGoal(prev => ({...prev, target_value: e.target.value}))}/>
+                                    )}
                             </div>
                                 <div>
                                     <Label className="mb-2 block font-semibold">Operator</Label>
@@ -715,6 +727,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
             onClose={() => setAddAssessmentModalOpen(false)}
             onSave={handleSaveAssessment}
             parameter={selectedGoalParameter}
+            allParameters={clinicalParameters}
         />
       )}
       {isAppointmentModalOpen && (
