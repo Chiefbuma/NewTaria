@@ -141,6 +141,19 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
     }
 }
 
+export async function fetchPatientByUserId(userId: number): Promise<Patient | null> {
+    noStore();
+    try {
+        const [rows] = await db.query('SELECT * FROM patients WHERE user_id = ? AND deleted_at IS NULL', [userId]);
+        const patient = (rows as any[])[0];
+        if (!patient) return null;
+        return serialize(patient as Patient);
+    } catch (error) {
+        console.error('fetchPatientByUserId Error:', error);
+        return null;
+    }
+}
+
 export async function fetchUsers(): Promise<User[]> {
     noStore();
     try {
