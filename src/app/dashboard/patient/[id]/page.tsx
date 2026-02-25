@@ -1,4 +1,4 @@
-import { fetchPatientById, fetchClinicalParameters, fetchUsers, fetchPayers, fetchMedications } from '@/lib/data';
+import { fetchPatientById, fetchClinicalParameters, fetchUsers, fetchPartners, fetchMedications } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import PatientDetailsPage from './patient-details-page';
 import OnboardingForm from './onboarding-form';
@@ -12,8 +12,8 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
   }
   
   if (patient.status === 'Pending') {
-      const payers = await fetchPayers();
-      return <OnboardingForm patient={patient} initialPayers={payers} />;
+      const partners = await fetchPartners();
+      return <OnboardingForm patient={patient} initialPartners={partners} />;
   }
 
   const [clinicalParameters, users, medications] = await Promise.all([

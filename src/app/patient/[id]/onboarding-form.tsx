@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Patient, User, Corporate, Payer } from '@/lib/types';
+import type { Patient, User, Corporate, Partner } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,10 +18,10 @@ interface OnboardingFormProps {
     patient: Patient;
     initialNavigators: User[];
     initialCorporates: Corporate[];
-    initialPayers: Payer[];
+    initialPartners: Partner[];
 }
 
-export default function OnboardingForm({ patient, initialNavigators, initialCorporates, initialPayers }: OnboardingFormProps) {
+export default function OnboardingForm({ patient, initialNavigators, initialCorporates, initialPartners }: OnboardingFormProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [formData, setFormData] = useState<Partial<Patient>>({ 
@@ -162,12 +162,12 @@ export default function OnboardingForm({ patient, initialNavigators, initialCorp
                                 </Select>
                             </div>
                              <div className="space-y-2">
-                                <Label htmlFor="payer_id">Assign Payer</Label>
-                                <Select value={String(formData.payer_id || 'null')} onValueChange={(value) => handleSelectChange('payer_id', value)}>
-                                    <SelectTrigger><SelectValue placeholder="Select a payer" /></SelectTrigger>
+                                <Label htmlFor="partner_id">Assign Partner</Label>
+                                <Select value={String(formData.partner_id || 'null')} onValueChange={(value) => handleSelectChange('partner_id', value)}>
+                                    <SelectTrigger><SelectValue placeholder="Select a partner" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="null">None</SelectItem>
-                                        {initialPayers.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                                        {initialPartners.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
