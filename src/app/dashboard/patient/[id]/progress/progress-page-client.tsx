@@ -1,16 +1,18 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Patient, ClinicalParameter, User, Appointment } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MessageSquare } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Calendar } from 'lucide-react';
 import PatientInfoCard from '@/components/patient/patient-info-card';
 import AllNotesCard from './all-notes-card';
 import ProgressDashboard from './progress-dashboard';
 import AppointmentsCard from '@/components/patient/appointments-card';
 import AddAppointmentModal from '@/components/patient/add-appointment-modal';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ProgressPageClient({ 
@@ -27,6 +29,12 @@ export default function ProgressPageClient({
     const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+    // Filter state
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const [selectedMonth, setSelectedMonth] = useState(currentMonth.toString());
+    const [selectedYear, setSelectedYear] = useState(currentYear.toString());
 
     useEffect(() => {
         const stored = localStorage.getItem('loggedInUser');
@@ -58,6 +66,13 @@ export default function ProgressPageClient({
         toast({ title: 'Success', description: 'Appointment saved.' });
     };
 
+    const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+
+    const years = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
+
     return (
         <>
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
@@ -88,25 +103,58 @@ export default function ProgressPageClient({
                     <AllNotesCard assessments={patient.assessments} clinicalParameters={clinicalParameters} />
                 </div>
                 <div className="lg:col-span-3 space-y-6">
-                    <div className="flex items-center gap-4">
-                        {!isPatientView && (
-                            <Button asChild variant="outline" size="icon" className="border-primary/20">
-                                <Link href={`/dashboard/patient/${patient.id}`}>
-                                    <ArrowLeft className="h-4 w-4" />
-                                    <span className="sr-only">Back to Patient Details</span>
-                                </Link>
-                            </Button>
-                        )}
-                        <div>
-                            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
-                                {isPatientView ? 'Your Health Progress' : 'Progress Dashboard'}
-                            </h1>
-                            <p className="text-muted-foreground">
-                                {isPatientView ? 'Tracking your journey to wellness' : `Visualizing progress for ${patient.first_name} ${patient.surname || ''}`}
-                            </p>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            {!isPatientView && (
+                                <Button asChild variant="outline" size="icon" className="border-primary/20">
+                                    <Link href={`/dashboard/patient/${patient.id}`}>
+                                        <ArrowLeft className="h-4 w-4" />
+                                        <span className="sr-only">Back to Patient Details</span>
+                                    </Link>
+                                </Button>
+                            )}
+                            <div>
+                                <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
+                                    {isPatientView ? 'Your Health Progress' : 'Progress Dashboard'}
+                                </h1>
+                                <p className="text-muted-foreground">
+                                    {isPatientView ? 'Tracking your journey to wellness' : `Visualizing progress for ${patient.first_name} ${patient.surname || ''}`}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Filters */}
+                        <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-xl border border-primary/10">
+                            <Calendar className="h-4 w-4 text-primary ml-2 hidden sm:block" />
+                            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                                <SelectTrigger className="w-[120px] h-9 bg-background border-primary/20">
+                                    <SelectValue placeholder="Month" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {months.map((m, idx) => (
+                                        <SelectItem key={m} value={idx.toString()}>{m}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select value={selectedYear} onValueChange={setSelectedYear}>
+                                <SelectTrigger className="w-[90px] h-9 bg-background border-primary/20">
+                                    <SelectValue placeholder="Year" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {years.map(y => (
+                                        <SelectItem key={y} value={y}>{y}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                   </div>
-                  <ProgressDashboard patient={patient} clinicalParameters={clinicalParameters} />
+                  
+                  <ProgressDashboard 
+                    patient={patient} 
+                    clinicalParameters={clinicalParameters} 
+                    selectedMonth={parseInt(selectedMonth)}
+                    selectedYear={parseInt(selectedYear)}
+                  />
                 </div>
             </div>
             

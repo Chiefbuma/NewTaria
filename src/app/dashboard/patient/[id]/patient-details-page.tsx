@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -235,9 +236,17 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     return `Week ${weeksDiff}`;
   };
 
+  /**
+   * Health status logic as requested:
+   * Achieved: met target
+   * On Track: improving toward target
+   * Needs Improvement: moving away from target
+   */
   const getAssessmentStatus = (current: Assessment, previous: Assessment | undefined, goal: Goal) => {
     const curVal = parseFloat(current.value);
     const tarVal = parseFloat(goal.target_value);
+    const op = goal.target_operator;
+
     if (isNaN(curVal) || isNaN(tarVal)) return { label: 'Pending', variant: 'secondary' as const };
 
     const isTargetMet = (val: number, target: number, operator: string) => {
@@ -251,7 +260,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
         }
     };
 
-    if (isTargetMet(curVal, tarVal, goal.target_operator)) {
+    if (isTargetMet(curVal, tarVal, op)) {
         return { label: 'Achieved', variant: 'default' as const };
     }
 
@@ -262,17 +271,16 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     const prevVal = parseFloat(previous.value);
     if (isNaN(prevVal)) return { label: 'In Progress', variant: 'secondary' as const };
 
+    // "Improving" logic: 
+    // If target is high (>=), current > previous is on track.
+    // If target is low (<=), current < previous is on track.
     const isImproving = (cur: number, prev: number, operator: string) => {
-        if (operator === '>=' || operator === '>') {
-            return cur > prev;
-        }
-        if (operator === '<=' || operator === '<') {
-            return cur < prev;
-        }
+        if (operator === '>=' || operator === '>') return cur > prev;
+        if (operator === '<=' || operator === '<') return cur < prev;
         return Math.abs(cur - tarVal) < Math.abs(prev - tarVal);
     };
 
-    if (isImproving(curVal, prevVal, goal.target_operator)) {
+    if (isImproving(curVal, prevVal, op)) {
         return { label: 'On Track', variant: 'outline' as const };
     } else {
         return { label: 'Needs Improvement', variant: 'destructive' as const };

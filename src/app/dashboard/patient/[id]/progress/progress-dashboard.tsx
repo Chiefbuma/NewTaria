@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -7,7 +8,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from '@/components/ui/card';
 import {
   LineChart,
@@ -24,15 +24,12 @@ import {
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Target } from 'lucide-react';
 
-
-const calculateAssessmentWeek = (assessment: Assessment, patient: Patient) => {
-    if (!patient?.date_of_onboarding) return null;
-    const assessmentDate = new Date(assessment.measured_at);
-    const treatmentStartDate = new Date(patient.date_of_onboarding);
-    const timeDiff = assessmentDate.getTime() - treatmentStartDate.getTime();
-    if (timeDiff < 0) return 1;
-    const weeksDiff = Math.floor(timeDiff / (1000 * 3600 * 24 * 7)) + 1;
-    return weeksDiff;
+/**
+ * Calculates the calendar week of the month (1-5) for a given assessment date.
+ */
+const getCalendarWeekOfMonth = (date: Date) => {
+    const day = date.getDate();
+    return Math.ceil(day / 7);
 };
 
 const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: Assessment[], parameter: ClinicalParameter, goal?: Goal | null }) => {
@@ -83,7 +80,7 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
     }, [assessments, goal]);
 
     const title = goal ? 'Goal Status' : 'Overall Status';
-    const noDataMessage = goal ? 'No assessments yet.' : 'No data.';
+    const noDataMessage = goal ? 'No assessments for selected period.' : 'No data.';
 
     const chartConfig = {
         value: { label: 'Assessments', color: 'hsl(var(--primary))' }
@@ -141,7 +138,9 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }} />
                                 <span className="text-muted-foreground font-medium">{entry.name}</span>
                             </div>
-                            <span className="font-bold text-foreground">{((entry.value / data.reduce((acc, curr) => acc + curr.value, 0)) * 100).toFixed(0)}%</span>
+                            <span className="font-bold text-foreground">
+                                {((entry.value / data.reduce((acc, curr) => acc + curr.value, 0)) * 100).toFixed(0)}%
+                            </span>
                         </div>
                     ))}
                 </div>
@@ -150,32 +149,38 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
     )
 }
 
-const ParameterLineChart = ({ assessments, patient, parameter }: { assessments: Assessment[], patient: Patient, parameter: ClinicalParameter }) => {
+const ParameterLineChart = ({ assessments, parameter }: { assessments: Assessment[], parameter: ClinicalParameter }) => {
     const weeklyData = useMemo(() => {
         const weeklySummary: { [week: number]: { sum: number, count: number } } = {};
 
         assessments.forEach(assessment => {
-            const week = calculateAssessmentWeek(assessment, patient);
-            if (week !== null) {
-                const value = parseFloat(assessment.value);
-                if (!isNaN(value)) {
-                    if (!weeklySummary[week]) {
-                        weeklySummary[week] = { sum: 0, count: 0 };
-                    }
-                    weeklySummary[week].sum += value;
-                    weeklySummary[week].count += 1;
+            const date = new Date(assessment.measured_at);
+            const week = getCalendarWeekOfMonth(date);
+            const value = parseFloat(assessment.value);
+            
+            if (!isNaN(value)) {
+                if (!weeklySummary[week]) {
+                    weeklySummary[week] = { sum: 0, count: 0 };
                 }
+                weeklySummary[week].sum += value;
+                weeklySummary[week].count += 1;
             }
         });
         
-        return Object.entries(weeklySummary)
-            .map(([week, { sum, count }]) => ({
-                week: `Week ${week}`,
-                value: sum / count,
-            }))
-            .sort((a, b) => parseInt(a.week.split(' ')[1]) - parseInt(b.week.split(' ')[1]));
+        // Ensure all weeks 1-4/5 are represented if there's any data
+        const maxWeek = Math.max(...Object.keys(weeklySummary).map(Number), 4);
+        const result = [];
+        for (let i = 1; i <= maxWeek; i++) {
+            if (weeklySummary[i]) {
+                result.push({
+                    week: `Week ${i}`,
+                    value: weeklySummary[i].sum / weeklySummary[i].count,
+                });
+            }
+        }
+        return result;
 
-    }, [assessments, patient]);
+    }, [assessments]);
 
     const chartConfig = {
         value: { label: parameter.name, color: 'hsl(var(--primary))' }
@@ -187,7 +192,7 @@ const ParameterLineChart = ({ assessments, patient, parameter }: { assessments: 
                 <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground"><BarChart className="h-4 w-4 text-primary"/>Weekly Trend</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 pt-4">
-                {weeklyData.length > 1 ? (
+                {weeklyData.length > 0 ? (
                     <div className="h-full min-h-[200px]">
                         <ChartContainer config={chartConfig} className="h-full w-full">
                             <ResponsiveContainer width="100%" height="100%">
@@ -228,14 +233,27 @@ const ParameterLineChart = ({ assessments, patient, parameter }: { assessments: 
     );
 };
 
-export default function ProgressDashboard({ patient, clinicalParameters }: { patient: Patient, clinicalParameters: ClinicalParameter[] }) {
+export default function ProgressDashboard({ 
+    patient, 
+    clinicalParameters,
+    selectedMonth,
+    selectedYear
+}: { 
+    patient: Patient, 
+    clinicalParameters: ClinicalParameter[],
+    selectedMonth: number,
+    selectedYear: number
+}) {
     
-    const assessedParameters = useMemo(() => {
+    const filteredAssessedParameters = useMemo(() => {
         const numericParamIds = new Set(clinicalParameters.filter(p => p.type === 'numeric').map(p => p.id));
         const assessmentsByParam = new Map<number, Assessment[]>();
         
         patient.assessments.forEach(a => {
-            if (numericParamIds.has(a.clinical_parameter_id)) {
+            const date = new Date(a.measured_at);
+            const matchesFilter = date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
+
+            if (matchesFilter && numericParamIds.has(a.clinical_parameter_id)) {
                 const current = assessmentsByParam.get(a.clinical_parameter_id) || [];
                 assessmentsByParam.set(a.clinical_parameter_id, [...current, a]);
             }
@@ -244,16 +262,16 @@ export default function ProgressDashboard({ patient, clinicalParameters }: { pat
         return Array.from(assessmentsByParam.entries())
             .map(([id, assessments]) => ({
                 parameter: clinicalParameters.find(p => p.id === id),
-                assessments
+                assessments: assessments.sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())
             }))
             .filter((item): item is { parameter: ClinicalParameter, assessments: Assessment[] } => !!item.parameter);
-    }, [patient.assessments, clinicalParameters]);
+    }, [patient.assessments, clinicalParameters, selectedMonth, selectedYear]);
 
 
     return (
         <div className="space-y-8">
-            {assessedParameters.length > 0 ? (
-                assessedParameters.map(({ parameter, assessments }) => {
+            {filteredAssessedParameters.length > 0 ? (
+                filteredAssessedParameters.map(({ parameter, assessments }) => {
                     const goal = patient.goals.find(g => g.clinical_parameter_id === parameter.id);
 
                     return (
@@ -267,7 +285,7 @@ export default function ProgressDashboard({ patient, clinicalParameters }: { pat
                                     <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
                                 </div>
                                 <div className="md:col-span-8">
-                                     <ParameterLineChart assessments={assessments} patient={patient} parameter={parameter} />
+                                     <ParameterLineChart assessments={assessments} parameter={parameter} />
                                 </div>
                             </div>
                         </div>
@@ -278,8 +296,8 @@ export default function ProgressDashboard({ patient, clinicalParameters }: { pat
                     <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
                         <BarChart className="h-6 w-6 text-primary/40" />
                     </div>
-                    <h3 className="text-lg font-semibold text-foreground">No Progress Data Available</h3>
-                    <p className="text-muted-foreground mt-1 max-w-xs mx-auto">Record some clinical assessments to begin visualizing trends and goal progress.</p>
+                    <h3 className="text-lg font-semibold text-foreground">No Data for Selected Month</h3>
+                    <p className="text-muted-foreground mt-1 max-w-xs mx-auto">Try selecting a different month or record new assessments to visualize progress.</p>
                 </div>
             )}
         </div>

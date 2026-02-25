@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -244,7 +245,7 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
     onSelectionChangeRef.current = onSelectionChange
   }, [onSelectionChange])
 
-  // Use a separate effect that only depends on rowSelection to break infinite loop
+  // Use a separate effect that only depends on rowSelection
   React.useEffect(() => {
     const selectionKeys = Object.keys(rowSelection).sort().join(",")
     
