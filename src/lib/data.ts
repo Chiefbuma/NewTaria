@@ -34,7 +34,7 @@ function toSqlDateTime(date: string | Date | null | undefined): string | null {
     const d = new Date(date);
     if (isNaN(d.getTime())) return null;
     const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`;
 }
 
 function toSqlDate(date: string | Date | null | undefined): string | null {
@@ -362,56 +362,18 @@ export async function fetchDashboardStats(requestingUser?: User) {
     try {
         const isPartner = requestingUser?.role === 'partner' && requestingUser.partner_id;
         const partnerParam = isPartner ? [requestingUser.partner_id] : [];
+        const partnerFilter = isPartner ? 'AND partner_id = ?' : '';
 
-        const [patientCounts] = await db.query(`
-            SELECT status, COUNT(*) as count FROM patients WHERE deleted_at IS NULL 
-            ${isPartner ? 'AND partner_id = ?' : ''} GROUP BY status
-        `, partnerParam);
-
-        const [summaryCounts] = await db.query(`
-            SELECT 
-                SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as registeredCount,
-                SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) as activeCount
-            FROM patients WHERE deleted_at IS NULL ${isPartner ? 'AND partner_id = ?' : ''}
-        `, partnerParam);
-        
-        const [goalStatus] = await db.query(`
-            SELECT status, COUNT(*) as count FROM goals WHERE deleted_at IS NULL 
-            ${isPartner ? 'AND patient_id IN (SELECT id FROM patients WHERE partner_id = ?)' : ''} GROUP BY status
-        `, partnerParam);
-
-        const [primaryDiagnosis] = await db.query(`
-            SELECT diagnosis, COUNT(*) as count FROM patients WHERE deleted_at IS NULL AND diagnosis IS NOT NULL AND diagnosis != ''
-            ${isPartner ? 'AND partner_id = ?' : ''} GROUP BY diagnosis
-        `, partnerParam);
-
-        const [ageDistribution] = await db.query(`
-            SELECT 
-                CASE 
-                    WHEN age BETWEEN 18 AND 35 THEN '18-35'
-                    WHEN age BETWEEN 36 AND 50 THEN '36-50'
-                    WHEN age > 50 THEN '50+'
-                    ELSE 'Under 18'
-                END as age_group, COUNT(*) as count
-            FROM patients WHERE deleted_at IS NULL ${isPartner ? 'AND partner_id = ?' : ''}
-            GROUP BY age_group ORDER BY age_group ASC
-        `, partnerParam);
-
-        const [systemTotals] = await db.query(`
-            SELECT 
-                (SELECT COUNT(*) FROM partners WHERE deleted_at IS NULL) as totalPartners,
-                (SELECT COUNT(*) FROM clinical_parameters WHERE deleted_at IS NULL) as totalMetrics
-        `);
+        // Simplified aggregate queries for robust data fetching
+        const [totalRows] = await db.query(`SELECT COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${partnerFilter}`, partnerParam);
+        const [genderRows] = await db.query(`SELECT gender, COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${partnerFilter} GROUP BY gender`, partnerParam);
 
         return serialize({
-            patientCounts: patientCounts as any[],
-            registeredCount: (summaryCounts as any)[0]?.registeredCount || 0,
-            activeCount: (summaryCounts as any)[0]?.activeCount || 0,
-            goalStatus: goalStatus as any[],
-            primaryDiagnosis: primaryDiagnosis as any[],
-            ageDistribution: ageDistribution as any[],
-            totalPartners: (systemTotals as any)[0]?.totalPartners || 0,
-            totalMetrics: (systemTotals as any)[0]?.totalMetrics || 0,
+            totalPatients: (totalRows as any)[0]?.count || 0,
+            genderDistribution: (genderRows as any[]).map(row => ({
+                gender: row.gender || 'Other',
+                count: Number(row.count)
+            }))
         });
     } catch (error) {
         console.error('fetchDashboardStats Error:', error);
