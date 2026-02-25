@@ -50,7 +50,6 @@ function serialize(obj: any): any {
 
 /**
  * Formats a date for MySQL DATETIME/TIMESTAMP: YYYY-MM-DD HH:mm:00
- * Strictly truncates to minutes as requested.
  */
 function toSqlDateTime(date: string | Date | null | undefined): string | null {
     if (!date) return null;
