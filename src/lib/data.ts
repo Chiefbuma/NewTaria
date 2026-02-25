@@ -1,3 +1,4 @@
+
 import { db } from './db';
 import type { 
     Patient, 
@@ -16,13 +17,14 @@ import type {
 import { unstable_noStore as noStore } from 'next/cache';
 
 /**
- * Enhanced serialization helper for Next.js 15.
+ * Robust serialization helper for Next.js 15.
  * Strictly converts non-serializable MySQL types into plain JSON-safe types.
  */
 function serialize<T>(obj: T): T {
-    if (!obj) return obj;
+    if (obj === null || obj === undefined) return obj;
     return JSON.parse(JSON.stringify(obj, (key, value) => {
         if (typeof value === 'bigint') return Number(value);
+        if (value instanceof Date) return value.toISOString();
         return value;
     }));
 }
@@ -74,7 +76,7 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
             WHERE p.deleted_at IS NULL
         `;
         let params: any[] = [];
-        if (requestingUser && (requestingUser.role === 'partner' || requestingUser.role === 'payer') && requestingUser.partner_id) {
+        if (requestingUser && (requestingUser.role === 'partner') && requestingUser.partner_id) {
             query += ` AND p.partner_id = ? `;
             params.push(requestingUser.partner_id);
         }
@@ -139,17 +141,6 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
     }
 }
 
-export async function fetchPatientByUserId(userId: number): Promise<Patient | null> {
-    noStore();
-    try {
-        const [rows] = await db.query('SELECT id FROM patients WHERE user_id = ? AND deleted_at IS NULL', [userId]);
-        const patient = (rows as any[])[0];
-        return patient ? fetchPatientById(patient.id) : null;
-    } catch (error) {
-        return null;
-    }
-}
-
 export async function fetchUsers(): Promise<User[]> {
     noStore();
     try {
@@ -184,7 +175,11 @@ export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
     noStore();
     try {
         const [rows] = await db.query('SELECT * FROM clinical_parameters WHERE deleted_at IS NULL ORDER BY name ASC');
-        return serialize(rows as ClinicalParameter[]);
+        const parameters = (rows as any[]).map(p => ({
+            ...p,
+            options: typeof p.options === 'string' ? JSON.parse(p.options) : p.options
+        }));
+        return serialize(parameters as ClinicalParameter[]);
     } catch (error) {
         throw new Error('Failed to fetch parameters.');
     }
@@ -334,3 +329,50 @@ export async function updateAppointmentStatus(id: number, status: string): Promi
 export async function deletePartner(id: number): Promise<void> { await db.query('UPDATE partners SET deleted_at = NOW() WHERE id = ?', [id]); }
 export async function deleteMedication(id: number): Promise<void> { await db.query('UPDATE medications SET deleted_at = NOW() WHERE id = ?', [id]); }
 export async function sendMessage(senderId: number, receiverId: number, content: string): Promise<number> { const [result] = await db.query('INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)', [senderId, receiverId, content]); return Number((result as any).insertId); }
+
+export async function fetchDashboardStats(requestingUser?: User) {
+    noStore();
+    try {
+        let patientWhere = 'deleted_at IS NULL';
+        let params: any[] = [];
+        if (requestingUser && requestingUser.role === 'partner' && requestingUser.partner_id) {
+            patientWhere += ' AND partner_id = ?';
+            params.push(requestingUser.partner_id);
+        }
+
+        const [patientCounts] = await db.query(`SELECT status, COUNT(*) as count FROM patients WHERE ${patientWhere} GROUP BY status`, params);
+        const [registeredCount] = await db.query(`SELECT COUNT(*) as count FROM patients WHERE ${patientWhere} AND status = 'Pending'`, params);
+        const [activeCount] = await db.query(`SELECT COUNT(*) as count FROM patients WHERE ${patientWhere} AND status = 'Active'`, params);
+        
+        const [goalStatus] = await db.query(`SELECT status, COUNT(*) as count FROM goals WHERE deleted_at IS NULL ${requestingUser?.role === 'partner' ? 'AND patient_id IN (SELECT id FROM patients WHERE partner_id = ?)' : ''} GROUP BY status`, params);
+        const [primaryDiagnosis] = await db.query(`SELECT diagnosis, gender, COUNT(*) as count FROM patients WHERE ${patientWhere} AND diagnosis IS NOT NULL GROUP BY diagnosis, gender`, params);
+        const [ageDistribution] = await db.query(`
+            SELECT 
+                CASE 
+                    WHEN age BETWEEN 18 AND 35 THEN '18-35'
+                    WHEN age BETWEEN 36 AND 50 THEN '35-50'
+                    WHEN age > 50 THEN '50+'
+                    ELSE 'Under 18'
+                END as age_group,
+                COUNT(*) as count
+            FROM patients WHERE ${patientWhere} GROUP BY age_group
+        `, params);
+
+        const [totalPartners] = await db.query('SELECT COUNT(*) as count FROM partners WHERE deleted_at IS NULL');
+        const [totalMetrics] = await db.query('SELECT COUNT(*) as count FROM clinical_parameters WHERE deleted_at IS NULL');
+
+        return serialize({
+            patientCounts: patientCounts as any[],
+            registeredCount: (registeredCount as any)[0]?.count || 0,
+            activeCount: (activeCount as any)[0]?.count || 0,
+            goalStatus: goalStatus as any[],
+            primaryDiagnosis: primaryDiagnosis as any[],
+            ageDistribution: ageDistribution as any[],
+            totalPartners: (totalPartners as any)[0]?.count || 0,
+            totalMetrics: (totalMetrics as any)[0]?.count || 0,
+        });
+    } catch (error) {
+        console.error('fetchDashboardStats Error:', error);
+        return null;
+    }
+}

@@ -1,29 +1,34 @@
+
 'use client';
 
 import { useState } from 'react';
 import type { Patient, ClinicalParameter, User } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, SlidersHorizontal } from 'lucide-react';
+import { Users, SlidersHorizontal, LayoutDashboard } from 'lucide-react';
 import PatientList from '@/components/dashboard/patient-list';
 import SettingsView from '@/components/settings/settings-view';
 import CriticalPatients from '@/components/dashboard/critical-patients';
 import Notifications from '@/components/dashboard/notifications';
+import AdminOverview from '@/components/dashboard/admin-overview';
 
-type View = 'patients' | 'settings';
+type View = 'dashboard' | 'patients' | 'settings';
 
 export default function DashboardClient({ 
   initialPatients, 
   initialClinicalParameters,
   initialUsers,
+  initialStats,
 }: { 
   initialPatients: Patient[],
   initialClinicalParameters: ClinicalParameter[],
   initialUsers: User[],
+  initialStats: any
 }) {
   const [patients, setPatients] = useState(initialPatients);
   const [clinicalParameters, setClinicalParameters] = useState(initialClinicalParameters);
   const [users, setUsers] = useState(initialUsers);
-  const [activeView, setActiveView] = useState<View>('patients');
+  const [activeView, setActiveView] = useState<View>('dashboard');
+  const [stats, setStats] = useState(initialStats);
 
   const handleUpdateParameters = (updatedParameters: ClinicalParameter[]) => {
     setClinicalParameters(updatedParameters);
@@ -35,16 +40,22 @@ export default function DashboardClient({
 
   return (
     <div className="space-y-8">
-       <div className="flex justify-between items-start">
+       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <h1 className="text-3xl font-bold text-foreground tracking-tight">
-                {activeView === 'patients' ? 'Patient Dashboard' : 'Settings'}
+                {activeView === 'dashboard' ? 'Health Overview' : activeView === 'patients' ? 'Patient Management' : 'System Settings'}
                 </h1>
                 <p className="text-muted-foreground">
-                {activeView === 'patients' ? 'View and manage patient records' : 'Configure application settings'}
+                {activeView === 'dashboard' ? 'Analyze population health trends' : activeView === 'patients' ? 'View and manage patient records' : 'Configure application parameters'}
                 </p>
             </div>
             <div className="flex items-center gap-2 p-1 bg-muted rounded-xl border w-fit">
+                <NavButton 
+                    label="Dashboard" 
+                    icon={<LayoutDashboard />} 
+                    isActive={activeView === 'dashboard'}
+                    onClick={() => setActiveView('dashboard')}
+                />
                 <NavButton 
                     label="Patients" 
                     icon={<Users />} 
@@ -69,6 +80,8 @@ export default function DashboardClient({
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.3 }}
         >
+          {activeView === 'dashboard' && <AdminOverview stats={stats} user={users[0]} />}
+          
           {activeView === 'patients' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                 <div className="lg:col-span-2 space-y-8">
@@ -80,6 +93,7 @@ export default function DashboardClient({
                 </div>
             </div>
           )}
+          
           {activeView === 'settings' && <SettingsView 
               clinicalParameters={clinicalParameters} 
               onParametersUpdate={handleUpdateParameters}
@@ -105,7 +119,7 @@ const NavButton = ({ label, icon, isActive, onClick }: { label: string, icon: Re
       {isActive && (
         <motion.div
           layoutId="active-nav-bg"
-          className="absolute inset-0 bg-background rounded-lg shadow-sm z-0"
+          className="absolute inset-0 bg-background rounded-lg shadow-sm z-0 border border-primary/10"
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         />
       )}

@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -257,9 +258,9 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
             <Table>
             <TableHeader className="bg-muted/50">
                 {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
+                <TableRow key={headerGroup.id} className="border-b border-primary/10">
                     {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id} colSpan={header.colSpan} className="text-foreground font-bold h-12">
+                        <TableHead key={header.id} colSpan={header.colSpan} className="text-foreground font-bold h-12 uppercase text-[10px] tracking-wider">
                         {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                         </TableHead>
                     ))}
@@ -269,7 +270,7 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
             <TableBody>
                 {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="hover:bg-primary/5 data-[state=selected]:bg-primary/10 transition-colors">
+                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="hover:bg-primary/5 data-[state=selected]:bg-primary/10 transition-colors border-b border-primary/5">
                     {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id} className="py-3 px-4">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

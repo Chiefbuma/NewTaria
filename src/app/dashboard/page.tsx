@@ -1,16 +1,21 @@
-import { fetchPatients, fetchClinicalParameters, fetchUsers } from '@/lib/data';
+
+import { fetchPatients, fetchClinicalParameters, fetchUsers, fetchDashboardStats } from '@/lib/data';
 import DashboardClient from './dashboard-client';
 
 export default async function DashboardPage() {
-  const patients = await fetchPatients();
-  const clinicalParameters = await fetchClinicalParameters();
-  const users = await fetchUsers();
+  const [patients, clinicalParameters, users, stats] = await Promise.all([
+      fetchPatients(),
+      fetchClinicalParameters(),
+      fetchUsers(),
+      fetchDashboardStats()
+  ]);
   
   return (
     <DashboardClient 
       initialPatients={patients} 
       initialClinicalParameters={clinicalParameters}
       initialUsers={users}
+      initialStats={stats}
     />
   );
 }

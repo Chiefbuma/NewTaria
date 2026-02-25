@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -41,7 +42,6 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
             setDeadline(new Date(existingGoal.deadline).toISOString().split('T')[0]);
             setStatus(existingGoal.status);
         } else {
-            // Reset form for new goal
             setClinicalParameterId('');
             setTargetValue('');
             setTargetOperator('<=');
@@ -49,14 +49,11 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
             setDeadline('');
             setStatus('active');
         }
-    }, [existingGoal]);
+    }, [existingGoal, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clinicalParameterId) {
-        alert('Please select a parameter.');
-        return;
-    }
+    if (!clinicalParameterId) return;
     
     onSave({
         id: existingGoal?.id,
@@ -69,25 +66,23 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
     });
   };
 
-  const numericParameters = clinicalParameters.filter(p => p.type === 'numeric');
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="border-primary/20">
         <DialogHeader>
-          <DialogTitle>{existingGoal ? 'Edit' : 'Add'} Patient Goal</DialogTitle>
+          <DialogTitle className="text-primary font-bold">{existingGoal ? 'Edit' : 'Add'} Patient Goal</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="parameter">Parameter</Label>
+              <Label htmlFor="parameter" className="font-bold">Parameter</Label>
               <Select onValueChange={setClinicalParameterId} value={clinicalParameterId} required>
-                <SelectTrigger id="parameter">
-                  <SelectValue placeholder="Select a numeric parameter" />
+                <SelectTrigger id="parameter" className="border-primary/20">
+                  <SelectValue placeholder="Select from clinical parameters" />
                 </SelectTrigger>
                 <SelectContent>
-                  {numericParameters.map(p => (
-                    <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+                  {clinicalParameters.map(p => (
+                    <SelectItem key={p.id} value={p.id.toString()}>{p.name} {p.unit ? `(${p.unit})` : ''}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -95,40 +90,40 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
             
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="operator">Condition</Label>
+                    <Label htmlFor="operator" className="font-bold">Operator</Label>
                     <Select onValueChange={(v) => setTargetOperator(v as any)} value={targetOperator}>
-                        <SelectTrigger id="operator">
+                        <SelectTrigger id="operator" className="border-primary/20">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="<=">Less than or equal to</SelectItem>
-                            <SelectItem value="<">Less than</SelectItem>
+                            <SelectItem value="<=">At or below</SelectItem>
+                            <SelectItem value="<">Below</SelectItem>
                             <SelectItem value="=">Equal to</SelectItem>
-                            <SelectItem value=">=">Greater than or equal to</SelectItem>
-                             <SelectItem value=">">Greater than</SelectItem>
+                            <SelectItem value=">=">At or above</SelectItem>
+                             <SelectItem value=">">Above</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
                  <div className="space-y-2">
-                    <Label htmlFor="targetValue">Target Value</Label>
-                    <Input id="targetValue" type="number" value={targetValue} onChange={(e) => setTargetValue(e.target.value)} required />
+                    <Label htmlFor="targetValue" className="font-bold">Target Value</Label>
+                    <Input id="targetValue" type="text" value={targetValue} onChange={(e) => setTargetValue(e.target.value)} required className="border-primary/20" />
                 </div>
             </div>
 
              <div className="space-y-2">
-                <Label htmlFor="deadline">Deadline</Label>
-                <Input id="deadline" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} required />
+                <Label htmlFor="deadline" className="font-bold">Deadline</Label>
+                <Input id="deadline" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} required className="border-primary/20" />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <Label htmlFor="notes" className="font-bold">Notes</Label>
+              <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="border-primary/20" />
             </div>
 
              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="status" className="font-bold">Status</Label>
                 <Select onValueChange={(v) => setStatus(v as any)} value={status}>
-                    <SelectTrigger id="status"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="status" className="border-primary/20"><SelectValue /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="active">Active</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>
@@ -140,9 +135,9 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">Cancel</Button>
+              <Button type="button" variant="outline" className="border-primary/20">Cancel</Button>
             </DialogClose>
-            <Button type="submit">Save Goal</Button>
+            <Button type="submit" className="bg-primary hover:bg-primary/90">Save Goal</Button>
           </DialogFooter>
         </form>
       </DialogContent>

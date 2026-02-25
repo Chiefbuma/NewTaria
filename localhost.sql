@@ -193,7 +193,7 @@ CREATE TABLE IF NOT EXISTS messages (
 
 -- SEED DATA (Passwords are 'password')
 INSERT INTO users (name, email, password, role) VALUES 
-('Admin User', 'admin@taria.com', '$2a$10$px.vNb.vOfX6XPB.Z6XPB.Z6XPB.Z6XPB.Z6XPB.Z6XPB.Z6XPB.Z6', 'admin'),
+('Admin User', 'admin@taria.com', '$2a$12$jgUPVh3QVYwJvn/Xb15uIeAsncqKM5uYrtq/Eg.Giz9VK8WXyISW2', 'admin'),
 ('John Navigator', 'navigator@taria.com', '$2a$10$px.vNb.vOfX6XPB.Z6XPB.Z6XPB.Z6XPB.Z6XPB.Z6XPB.Z6XPB.Z6', 'navigator');
 
 INSERT INTO clinical_parameters (name, type, unit, category) VALUES 
