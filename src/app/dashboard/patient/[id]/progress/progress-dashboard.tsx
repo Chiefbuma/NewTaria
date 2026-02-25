@@ -85,6 +85,10 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
     const title = goal ? 'Goal Status' : 'Overall Status';
     const noDataMessage = goal ? 'No assessments yet.' : 'No data.';
 
+    const chartConfig = {
+        value: { label: 'Assessments', color: 'hsl(var(--primary))' }
+    };
+
     if (data.length === 0) {
         return (
             <Card className="h-full flex flex-col border-primary/20">
@@ -105,28 +109,30 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
             </CardHeader>
             <CardContent className="flex-1 flex flex-col items-center justify-center pt-0">
                 <div className="w-full aspect-square max-h-[180px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={data}
-                                dataKey="value"
-                                nameKey="name"
-                                cx="50%"
-                                cy="50%"
-                                innerRadius="60%"
-                                outerRadius="90%"
-                                paddingAngle={5}
-                                stroke="none"
-                            >
-                                {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                                ))}
-                            </Pie>
-                            <Tooltip
-                                content={<ChartTooltipContent hideLabel />}
-                            />
-                        </PieChart>
-                    </ResponsiveContainer>
+                    <ChartContainer config={chartConfig} className="h-full w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={data}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius="60%"
+                                    outerRadius="90%"
+                                    paddingAngle={5}
+                                    stroke="none"
+                                >
+                                    {data.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    content={<ChartTooltipContent hideLabel />}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </ChartContainer>
                 </div>
                 <div className="mt-4 space-y-1 w-full">
                     {data.map((entry, index) => (
@@ -171,6 +177,10 @@ const ParameterLineChart = ({ assessments, patient, parameter }: { assessments: 
 
     }, [assessments, patient]);
 
+    const chartConfig = {
+        value: { label: parameter.name, color: 'hsl(var(--primary))' }
+    };
+
     return (
         <Card className="h-full flex flex-col border-primary/20">
             <CardHeader className="pb-2">
@@ -179,32 +189,34 @@ const ParameterLineChart = ({ assessments, patient, parameter }: { assessments: 
             <CardContent className="flex-1 pt-4">
                 {weeklyData.length > 1 ? (
                     <div className="h-full min-h-[200px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={weeklyData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsla(var(--muted-foreground), 0.1)" />
-                                <XAxis 
-                                    dataKey="week" 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 10 }}
-                                />
-                                <YAxis 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 10 }}
-                                />
-                                <Tooltip content={<ChartTooltipContent />} />
-                                <Line 
-                                    type="monotone" 
-                                    dataKey="value" 
-                                    name={parameter.name} 
-                                    stroke="hsl(var(--primary))" 
-                                    strokeWidth={3} 
-                                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                                    activeDot={{ r: 6 }}
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
+                        <ChartContainer config={chartConfig} className="h-full w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={weeklyData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsla(var(--muted-foreground), 0.1)" />
+                                    <XAxis 
+                                        dataKey="week" 
+                                        axisLine={false} 
+                                        tickLine={false} 
+                                        tick={{ fill: 'hsl(var(--foreground))', fontSize: 10 }}
+                                    />
+                                    <YAxis 
+                                        axisLine={false} 
+                                        tickLine={false} 
+                                        tick={{ fill: 'hsl(var(--foreground))', fontSize: 10 }}
+                                    />
+                                    <Tooltip content={<ChartTooltipContent />} />
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="value" 
+                                        name={parameter.name} 
+                                        stroke="hsl(var(--primary))" 
+                                        strokeWidth={3} 
+                                        dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                                        activeDot={{ r: 6 }}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </ChartContainer>
                     </div>
                 ) : (
                     <div className="h-full flex items-center justify-center min-h-[200px]">

@@ -235,6 +235,50 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     return `Week ${weeksDiff}`;
   };
 
+  const getAssessmentStatus = (current: Assessment, previous: Assessment | undefined, goal: Goal) => {
+    const curVal = parseFloat(current.value);
+    const tarVal = parseFloat(goal.target_value);
+    if (isNaN(curVal) || isNaN(tarVal)) return { label: 'Pending', variant: 'secondary' as const };
+
+    const isTargetMet = (val: number, target: number, operator: string) => {
+        switch (operator) {
+            case '<': return val < target;
+            case '<=': return val <= target;
+            case '=': return val === target;
+            case '>=': return val >= target;
+            case '>': return val > target;
+            default: return false;
+        }
+    };
+
+    if (isTargetMet(curVal, tarVal, goal.target_operator)) {
+        return { label: 'Achieved', variant: 'default' as const };
+    }
+
+    if (!previous) {
+        return { label: 'In Progress', variant: 'secondary' as const };
+    }
+
+    const prevVal = parseFloat(previous.value);
+    if (isNaN(prevVal)) return { label: 'In Progress', variant: 'secondary' as const };
+
+    const isImproving = (cur: number, prev: number, operator: string) => {
+        if (operator === '>=' || operator === '>') {
+            return cur > prev;
+        }
+        if (operator === '<=' || operator === '<') {
+            return cur < prev;
+        }
+        return Math.abs(cur - tarVal) < Math.abs(prev - tarVal);
+    };
+
+    if (isImproving(curVal, prevVal, goal.target_operator)) {
+        return { label: 'On Track', variant: 'outline' as const };
+    } else {
+        return { label: 'Needs Improvement', variant: 'destructive' as const };
+    }
+  };
+
   const handleDeleteAssessmentItem = async (assessmentId: number) => {
       if (!canManageAssessments) return;
       try {
@@ -462,7 +506,9 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                       <h3 className="text-lg font-bold text-foreground">Current Goals ({patient.goals.length})</h3>
                       {patient.goals.map(goal => {
                           const parameter = clinicalParameters.find(p => p.id === goal.clinical_parameter_id);
-                          const history = patient.assessments.filter(a => a.clinical_parameter_id === goal.clinical_parameter_id);
+                          const history = patient.assessments
+                            .filter(a => a.clinical_parameter_id === goal.clinical_parameter_id)
+                            .sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime());
 
                           return (
                               <div key={goal.id} className="p-4 rounded-xl border border-primary/10 bg-background hover:shadow-md transition-all">
@@ -502,19 +548,30 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {history.map(assessment => (
-                                                        <tr key={assessment.id} className="hover:bg-primary/5 transition-colors border-t border-primary/5">
-                                                            <td className="py-2 px-3 whitespace-nowrap text-foreground">{new Date(assessment.measured_at).toLocaleDateString()}</td>
-                                                            <td className="py-2 px-3"><Badge variant="outline" className="border-primary/20">{calculateAssessmentWeek(assessment)}</Badge></td>
-                                                            <td className="py-2 px-3 font-bold text-foreground">{assessment.value} {parameter?.unit}</td>
-                                                            <td className="py-2 px-3">
-                                                                <Badge variant={assessment.is_normal ? "secondary" : "destructive"}>{assessment.is_normal ? 'Normal' : 'Abnormal'}</Badge>
-                                                            </td>
-                                                            {canManageAssessments && (
-                                                                <td className="py-2 px-3"><Button variant="ghost" size="icon" onClick={() => handleDeleteAssessmentItem(assessment.id)} className="h-7 w-7 text-red-500 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5"/></Button></td>
-                                                            )}
-                                                        </tr>
-                                                    ))}
+                                                    {history.map((assessment, index) => {
+                                                        const prev = history[index + 1];
+                                                        const status = getAssessmentStatus(assessment, prev, goal);
+                                                        
+                                                        return (
+                                                            <tr key={assessment.id} className="hover:bg-primary/5 transition-colors border-t border-primary/5">
+                                                                <td className="py-2 px-3 whitespace-nowrap text-foreground">{new Date(assessment.measured_at).toLocaleDateString()}</td>
+                                                                <td className="py-2 px-3"><Badge variant="outline" className="border-primary/20">{calculateAssessmentWeek(assessment)}</Badge></td>
+                                                                <td className="py-2 px-3 font-bold text-foreground">{assessment.value} {parameter?.unit}</td>
+                                                                <td className="py-2 px-3">
+                                                                    <Badge variant={status.variant} className={status.variant === 'default' ? 'bg-green-500/20 text-green-700 border-green-500/30' : ''}>
+                                                                        {status.label}
+                                                                    </Badge>
+                                                                </td>
+                                                                {canManageAssessments && (
+                                                                    <td className="py-2 px-3">
+                                                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteAssessmentItem(assessment.id)} className="h-7 w-7 text-red-500 hover:bg-red-50">
+                                                                            <Trash2 className="h-3.5 w-3.5"/>
+                                                                        </Button>
+                                                                    </td>
+                                                                )}
+                                                            </tr>
+                                                        )
+                                                    })}
                                                 </tbody>
                                             </table>
                                         </div>
