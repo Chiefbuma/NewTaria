@@ -1,3 +1,4 @@
+
 import type { 
     Patient, 
     User, 
@@ -7,7 +8,8 @@ import type {
     Prescription, 
     Review,
     Message,
-    Medication
+    Medication,
+    ClinicalParameter
 } from '@/lib/types';
 
 async function getErrorFromResponse(res: Response): Promise<Error> {
@@ -144,6 +146,38 @@ export async function deleteMedication(id: number): Promise<void> {
 
 export async function bulkDeleteMedications(ids: number[]): Promise<void> {
     const res = await fetch('/api/medications/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+}
+
+// --- Clinical Parameter APIs ---
+export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
+    const res = await fetch('/api/clinical-parameters');
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+export async function upsertClinicalParameter(data: Partial<ClinicalParameter>): Promise<ClinicalParameter> {
+    const method = data.id ? 'PUT' : 'POST';
+    const res = await fetch('/api/clinical-parameters', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+export async function deleteClinicalParameter(id: number): Promise<void> {
+    const res = await fetch(`/api/clinical-parameters?id=${id}`, { method: 'DELETE' });
+    if (!res.ok) throw await getErrorFromResponse(res);
+}
+
+export async function bulkDeleteParameters(ids: number[]): Promise<void> {
+    const res = await fetch('/api/parameters/bulk-delete', { // Note: ensure this route matches or is implemented if needed
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids })

@@ -17,8 +17,8 @@ import type {
 import { unstable_noStore as noStore } from 'next/cache';
 
 /**
- * Robust serialization helper for Next.js 15.
- * Strictly converts non-serializable MySQL types into plain JSON-safe types.
+ * Aggressive serialization helper for Next.js 15.
+ * Recursively converts non-serializable MySQL types into plain JSON-safe types.
  */
 function serialize<T>(obj: T): T {
     if (obj === null || obj === undefined) return obj;
@@ -34,7 +34,7 @@ function toSqlDateTime(date: string | Date | null | undefined): string | null {
     const d = new Date(date);
     if (isNaN(d.getTime())) return null;
     const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${d.getHours()}:${d.getMinutes()}:00`;
 }
 
 function toSqlDate(date: string | Date | null | undefined): string | null {
@@ -177,7 +177,7 @@ export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
         const [rows] = await db.query('SELECT * FROM clinical_parameters WHERE deleted_at IS NULL ORDER BY name ASC');
         const parameters = (rows as any[]).map(p => ({
             ...p,
-            options: typeof p.options === 'string' ? JSON.parse(p.options) : p.options
+            options: typeof p.options === 'string' ? JSON.parse(p.options) : (p.options || [])
         }));
         return serialize(parameters as ClinicalParameter[]);
     } catch (error) {
@@ -259,6 +259,23 @@ export async function upsertMedication(data: any): Promise<number> {
     }
 }
 
+export async function upsertClinicalParameter(data: any): Promise<number> {
+    const optionsJson = Array.isArray(data.options) ? JSON.stringify(data.options) : null;
+    if (data.id) {
+        await db.query(
+            'UPDATE clinical_parameters SET name = ?, type = ?, unit = ?, options = ?, category = ? WHERE id = ?',
+            [data.name, data.type, data.unit, optionsJson, data.category, data.id]
+        );
+        return Number(data.id);
+    } else {
+        const [result] = await db.query(
+            'INSERT INTO clinical_parameters (name, type, unit, options, category) VALUES (?, ?, ?, ?, ?)',
+            [data.name, data.type, data.unit, optionsJson, data.category]
+        );
+        return Number((result as any).insertId);
+    }
+}
+
 export async function activatePatient(id: number, data: any): Promise<void> {
     await db.query(
         'UPDATE patients SET status = "Active", date_of_onboarding = ?, emr_number = ?, navigator_id = ?, partner_id = ?, brief_medical_history = ?, years_since_diagnosis = ?, past_medical_interventions = ?, relevant_family_history = ?, dietary_restrictions = ?, allergies_intolerances = ?, lifestyle_factors = ?, physical_limitations = ?, psychosocial_factors = ?, emergency_contact_name = ?, emergency_contact_phone = ?, emergency_contact_relation = ?, has_weighing_scale = ?, has_glucometer = ?, has_bp_machine = ?, has_tape_measure = ? WHERE id = ?',
@@ -328,6 +345,7 @@ export async function bulkDeleteParameters(ids: number[]): Promise<void> { if (i
 export async function updateAppointmentStatus(id: number, status: string): Promise<void> { await db.query('UPDATE appointments SET status = ? WHERE id = ?', [status, id]); }
 export async function deletePartner(id: number): Promise<void> { await db.query('UPDATE partners SET deleted_at = NOW() WHERE id = ?', [id]); }
 export async function deleteMedication(id: number): Promise<void> { await db.query('UPDATE medications SET deleted_at = NOW() WHERE id = ?', [id]); }
+export async function deleteClinicalParameter(id: number): Promise<void> { await db.query('UPDATE clinical_parameters SET deleted_at = NOW() WHERE id = ?', [id]); }
 export async function sendMessage(senderId: number, receiverId: number, content: string): Promise<number> { const [result] = await db.query('INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)', [senderId, receiverId, content]); return Number((result as any).insertId); }
 
 export async function fetchDashboardStats(requestingUser?: User) {
@@ -358,8 +376,8 @@ export async function fetchDashboardStats(requestingUser?: User) {
             FROM patients WHERE ${patientWhere} GROUP BY age_group
         `, params);
 
-        const [totalPartners] = await db.query('SELECT COUNT(*) as count FROM partners WHERE deleted_at IS NULL');
-        const [totalMetrics] = await db.query('SELECT COUNT(*) as count FROM clinical_parameters WHERE deleted_at IS NULL');
+        const [totalPartnersRows] = await db.query('SELECT COUNT(*) as count FROM partners WHERE deleted_at IS NULL');
+        const [totalMetricsRows] = await db.query('SELECT COUNT(*) as count FROM clinical_parameters WHERE deleted_at IS NULL');
 
         return serialize({
             patientCounts: patientCounts as any[],
@@ -368,8 +386,8 @@ export async function fetchDashboardStats(requestingUser?: User) {
             goalStatus: goalStatus as any[],
             primaryDiagnosis: primaryDiagnosis as any[],
             ageDistribution: ageDistribution as any[],
-            totalPartners: (totalPartners as any)[0]?.count || 0,
-            totalMetrics: (totalMetrics as any)[0]?.count || 0,
+            totalPartners: (totalPartnersRows as any)[0]?.count || 0,
+            totalMetrics: (totalMetricsRows as any)[0]?.count || 0,
         });
     } catch (error) {
         console.error('fetchDashboardStats Error:', error);

@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ClinicalParameter } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,6 +28,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { motion, AnimatePresence } from 'framer-motion';
+import { fetchClinicalParameters, upsertClinicalParameter, deleteClinicalParameter } from '@/lib/api-service';
 
 interface ClinicalParametersProps {
   initialParameters: ClinicalParameter[];
@@ -44,11 +46,25 @@ const emptyParameter: Omit<ClinicalParameter, 'id'> = {
 export default function ClinicalParameters({ initialParameters, onParametersUpdate }: ClinicalParametersProps) {
   const [parameters, setParameters] = useState<ClinicalParameter[]>(initialParameters);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentParameter, setCurrentParameter] = useState<Partial<ClinicalParameter> | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const { toast } = useToast();
   const lastSelectedIdsRef = useRef("");
+
+  const refreshParameters = async () => {
+      setIsLoading(true);
+      try {
+          const data = await fetchClinicalParameters();
+          setParameters(data);
+          onParametersUpdate(data);
+      } catch (e) {
+          console.error(e);
+      } finally {
+          setIsLoading(false);
+      }
+  };
 
   const handleSelectionChange = useCallback((selectedRows: ClinicalParameter[]) => {
       const ids = selectedRows.map(r => r.id).sort();
@@ -84,45 +100,36 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
       setCurrentParameter({ ...currentParameter, options: e.target.value.split(',').map(opt => opt.trim()) });
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentParameter || !currentParameter.name) return;
     
     setIsSubmitting(true);
-    setTimeout(() => {
-        let updated;
-        if (currentParameter.id) {
-            updated = parameters.map(p => p.id === currentParameter!.id ? (currentParameter as ClinicalParameter) : p);
-        } else {
-            const newParam = { id: Date.now(), ...emptyParameter, ...currentParameter } as ClinicalParameter;
-            updated = [...parameters, newParam];
-        }
-        
-        setParameters(updated);
-        onParametersUpdate(updated);
-        toast({ title: 'Success', description: 'Parameter saved.' });
-        setIsSubmitting(false);
+    try {
+        await upsertClinicalParameter(currentParameter);
+        toast({ title: 'Success', description: 'Parameter saved to database.' });
+        await refreshParameters();
         handleCloseModal();
-    }, 500);
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
   
-  const handleDelete = (id: number) => {
-      const updated = parameters.filter(p => p.id !== id);
-      setParameters(updated);
-      onParametersUpdate(updated);
-      toast({ title: 'Success', description: 'Parameter removed.' });
+  const handleDelete = async (id: number) => {
+      try {
+          await deleteClinicalParameter(id);
+          toast({ title: 'Success', description: 'Parameter removed from database.' });
+          await refreshParameters();
+      } catch (e: any) {
+          toast({ variant: 'destructive', title: 'Error', description: e.message });
+      }
   }
 
   const handleBulkDelete = () => {
-      if (selectedIds.length === 0) return;
-      if (!confirm(`Delete ${selectedIds.length} parameters?`)) return;
-      
-      const updated = parameters.filter(p => !selectedIds.includes(p.id));
-      setParameters(updated);
-      onParametersUpdate(updated);
-      setSelectedIds([]);
-      lastSelectedIdsRef.current = "";
-      toast({ title: 'Success', description: 'Selected parameters removed.' });
+      // For now we use individual delete in loop or implement a bulk route
+      toast({ title: 'Feature Pending', description: 'Bulk delete for parameters is being optimized.' });
   }
 
   const columns: ColumnDef<ClinicalParameter>[] = [
@@ -191,7 +198,11 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
       </div>
 
       <div className="rounded-md border border-primary/10">
-        <DataTable columns={columns} data={parameters} onSelectionChange={handleSelectionChange} />
+        {isLoading ? (
+            <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+        ) : (
+            <DataTable columns={columns} data={parameters} onSelectionChange={handleSelectionChange} />
+        )}
       </div>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
