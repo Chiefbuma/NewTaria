@@ -170,6 +170,16 @@ export async function fetchPartners(): Promise<Partner[]> {
     }
 }
 
+export async function fetchCorporates(): Promise<Corporate[]> {
+    noStore();
+    try {
+        const [rows] = await db.query('SELECT id, name, created_at as wellness_date FROM partners WHERE deleted_at IS NULL ORDER BY name ASC');
+        return serialize(rows as Corporate[]);
+    } catch (error) {
+        throw new Error('Failed to fetch corporates.');
+    }
+}
+
 export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
     noStore();
     try {
@@ -353,38 +363,26 @@ export async function fetchDashboardStats(requestingUser?: User) {
         const isPartner = requestingUser?.role === 'partner' && requestingUser.partner_id;
         const partnerParam = isPartner ? [requestingUser.partner_id] : [];
 
-        // Simplified aggregate queries for robustness
         const [patientCounts] = await db.query(`
-            SELECT status, COUNT(*) as count 
-            FROM patients 
-            WHERE deleted_at IS NULL 
-            ${isPartner ? 'AND partner_id = ?' : ''}
-            GROUP BY status
+            SELECT status, COUNT(*) as count FROM patients WHERE deleted_at IS NULL 
+            ${isPartner ? 'AND partner_id = ?' : ''} GROUP BY status
         `, partnerParam);
 
         const [summaryCounts] = await db.query(`
             SELECT 
                 SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as registeredCount,
                 SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) as activeCount
-            FROM patients 
-            WHERE deleted_at IS NULL 
-            ${isPartner ? 'AND partner_id = ?' : ''}
+            FROM patients WHERE deleted_at IS NULL ${isPartner ? 'AND partner_id = ?' : ''}
         `, partnerParam);
         
         const [goalStatus] = await db.query(`
-            SELECT status, COUNT(*) as count 
-            FROM goals 
-            WHERE deleted_at IS NULL 
-            ${isPartner ? 'AND patient_id IN (SELECT id FROM patients WHERE partner_id = ?)' : ''}
-            GROUP BY status
+            SELECT status, COUNT(*) as count FROM goals WHERE deleted_at IS NULL 
+            ${isPartner ? 'AND patient_id IN (SELECT id FROM patients WHERE partner_id = ?)' : ''} GROUP BY status
         `, partnerParam);
 
         const [primaryDiagnosis] = await db.query(`
-            SELECT diagnosis, COUNT(*) as count 
-            FROM patients 
-            WHERE deleted_at IS NULL AND diagnosis IS NOT NULL AND diagnosis != ''
-            ${isPartner ? 'AND partner_id = ?' : ''}
-            GROUP BY diagnosis
+            SELECT diagnosis, COUNT(*) as count FROM patients WHERE deleted_at IS NULL AND diagnosis IS NOT NULL AND diagnosis != ''
+            ${isPartner ? 'AND partner_id = ?' : ''} GROUP BY diagnosis
         `, partnerParam);
 
         const [ageDistribution] = await db.query(`
@@ -394,13 +392,9 @@ export async function fetchDashboardStats(requestingUser?: User) {
                     WHEN age BETWEEN 36 AND 50 THEN '36-50'
                     WHEN age > 50 THEN '50+'
                     ELSE 'Under 18'
-                END as age_group,
-                COUNT(*) as count
-            FROM patients 
-            WHERE deleted_at IS NULL 
-            ${isPartner ? 'AND partner_id = ?' : ''}
-            GROUP BY age_group
-            ORDER BY age_group ASC
+                END as age_group, COUNT(*) as count
+            FROM patients WHERE deleted_at IS NULL ${isPartner ? 'AND partner_id = ?' : ''}
+            GROUP BY age_group ORDER BY age_group ASC
         `, partnerParam);
 
         const [systemTotals] = await db.query(`
