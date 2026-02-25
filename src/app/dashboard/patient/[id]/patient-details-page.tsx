@@ -39,7 +39,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -139,12 +138,12 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
   const isAdmin = currentUser?.role === 'admin';
   const isNavigator = currentUser?.role === 'navigator';
   const isClinician = currentUser?.role === 'clinician';
-  const isPayer = currentUser?.role === 'payer';
+  const isPartner = currentUser?.role === 'partner' || currentUser?.role === 'payer';
 
   const canEditPatient = isAdmin || isNavigator;
-  const canManageAssessments = isAdmin || isNavigator;
-  const canManageReviews = isAdmin || isNavigator || isClinician;
-  const canManageAppointments = isAdmin || isNavigator;
+  const canManageAssessments = (isAdmin || isNavigator) && !isPartner;
+  const canManageReviews = (isAdmin || isNavigator || isClinician) && !isPartner;
+  const canManageAppointments = (isAdmin || isNavigator) && !isPartner;
 
   const handleOpenEditModal = () => {
     setEditFormData({
@@ -236,12 +235,6 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     return `Week ${weeksDiff}`;
   };
 
-  /**
-   * Health status logic as requested:
-   * Achieved: met target
-   * On Track: improving toward target
-   * Needs Improvement: moving away from target
-   */
   const getAssessmentStatus = (current: Assessment, previous: Assessment | undefined, goal: Goal) => {
     const curVal = parseFloat(current.value);
     const tarVal = parseFloat(goal.target_value);
@@ -271,9 +264,6 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     const prevVal = parseFloat(previous.value);
     if (isNaN(prevVal)) return { label: 'In Progress', variant: 'secondary' as const };
 
-    // "Improving" logic: 
-    // If target is high (>=), current > previous is on track.
-    // If target is low (<=), current < previous is on track.
     const isImproving = (cur: number, prev: number, operator: string) => {
         if (operator === '>=' || operator === '>') return cur > prev;
         if (operator === '<=' || operator === '<') return cur < prev;
@@ -407,6 +397,9 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-6">
             <PatientInfoCard patient={patient} />
+            <div className="p-4 bg-muted/30 rounded-xl border border-primary/10">
+                <DetailItem label="Assigned Partner" value={patient.partner_name || 'N/A'} icon={Building2} />
+            </div>
             {patient.corporate_name && (
               <Card className="border-primary/10">
                 <CardHeader>
@@ -459,7 +452,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                 prescriptions={patient.prescriptions}
                 medications={initialMedications}
                 onPrescriptionsUpdate={handlePrescriptionsUpdate}
-                readOnly={isPayer || isClinician}
+                readOnly={isPartner || isClinician}
             />
             <Card className="border-primary/10 shadow-sm overflow-hidden">
               <CardHeader className="bg-muted/30">
@@ -499,7 +492,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                             </div>
                             <div>
                                     <Label className="mb-2 block font-semibold">Deadline</Label>
-                                    <Input type="date" className="bg-background border-primary/20" value={newGoal.deadline} onChange={(e) => setNewGoal(prev => ({...prev, deadline: e.target.value}))}/>
+                                    <Input id="deadline" type="date" className="bg-background border-primary/20" value={newGoal.deadline} onChange={(e) => setNewGoal(prev => ({...prev, deadline: e.target.value}))}/>
                             </div>
                             <div className="md:col-span-2">
                                     <Label className="mb-2 block font-semibold">Notes</Label>
@@ -622,7 +615,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="font-semibold">Follow-up Date</Label>
-                                    <Input type="date" className="bg-background border-primary/20 w-full md:w-fit" value={reviewData.follow_up_date} onChange={(e) => setReviewData(p => ({...p, follow_up_date: e.target.value}))}/>
+                                    <Input id="follow_up_date" type="date" className="bg-background border-primary/20 w-full md:w-fit" value={reviewData.follow_up_date} onChange={(e) => setReviewData(p => ({...p, follow_up_date: e.target.value}))}/>
                                 </div>
                                 <Button onClick={submitReview} className="bg-primary hover:bg-primary/90 shadow-md px-8"><Save className="mr-2 h-4 w-4"/> Save Review</Button>
                             </div>
@@ -631,12 +624,12 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                 </Card>
             )}
 
-            {isPayer && (
+            {isPartner && (
                 <div className="p-6 rounded-xl border border-amber-500/20 bg-amber-500/10 flex items-center gap-4">
                     <ShieldAlert className="h-8 w-8 text-amber-600" />
                     <div className="flex-1">
-                        <h4 className="font-bold text-amber-800">Restricted Access</h4>
-                        <p className="text-sm text-amber-700/80">As a Payer, you have view-only access to assessments and goals for your associated patients. Clinical modifications are restricted.</p>
+                        <h4 className="font-bold text-amber-800">Restricted Partner Access</h4>
+                        <p className="text-sm text-amber-700/80">As a Partner, you have view-only access to progress dashboards and assessment history for your associated patients. Clinical modifications are restricted.</p>
                     </div>
                 </div>
             )}
@@ -683,7 +676,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                     <div className="space-y-2">
                         <Label htmlFor="gender" className="font-bold">Gender</Label>
                         <Select value={editFormData.gender || ''} onValueChange={(value) => handleEditSelectChange('gender', value)} required>
-                            <SelectTrigger id="gender" className="border-primary/20"><SelectValue placeholder="Select gender" /></SelectTrigger>
+                            <SelectTrigger className="border-primary/20"><SelectValue placeholder="Select gender" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Male">Male</SelectItem>
                                 <SelectItem value="Female">Female</SelectItem>

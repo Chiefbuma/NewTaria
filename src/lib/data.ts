@@ -11,7 +11,7 @@ import type {
     Prescription, 
     Appointment, 
     Review, 
-    Payer,
+    Partner,
     Message
 } from './types';
 import { unstable_noStore as noStore } from 'next/cache';
@@ -86,6 +86,7 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
                    u.name as navigator_name, 
                    c.name as corporate_name, 
                    pay.name as payer_name,
+                   pay.name as partner_name,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.deleted_at IS NULL) as total_goals,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.status = 'active' AND g.deleted_at IS NULL) as active_goals,
                    (SELECT COUNT(*) FROM assessments a WHERE a.patient_id = p.id AND a.deleted_at IS NULL) as total_assessments
@@ -97,7 +98,7 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
         `;
         let params: any[] = [];
 
-        if (requestingUser?.role === 'payer' && requestingUser.payer_id) {
+        if (requestingUser && (requestingUser.role === 'payer' || requestingUser.role === 'partner') && requestingUser.payer_id) {
             query += ` AND p.payer_id = ? `;
             params.push(requestingUser.payer_id);
         }
@@ -133,6 +134,7 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
                    u.name as navigator_name, 
                    c.name as corporate_name, 
                    pay.name as payer_name,
+                   pay.name as partner_name,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.deleted_at IS NULL) as total_goals,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.status = 'active' AND g.deleted_at IS NULL) as active_goals,
                    (SELECT COUNT(*) FROM assessments a WHERE a.patient_id = p.id AND a.deleted_at IS NULL) as total_assessments
@@ -260,15 +262,19 @@ export async function fetchCorporates(): Promise<Corporate[]> {
     }
 }
 
-export async function fetchPayers(): Promise<Payer[]> {
+export async function fetchPartners(): Promise<Partner[]> {
     noStore();
     try {
         const [rows] = await db.query('SELECT * FROM payers WHERE deleted_at IS NULL ORDER BY name ASC');
-        return serialize(rows as Payer[]);
+        return serialize(rows as Partner[]);
     } catch (error) {
-        console.error('Database Error [fetchPayers]:', error);
-        throw new Error('Failed to fetch payers.');
+        console.error('Database Error [fetchPartners]:', error);
+        throw new Error('Failed to fetch partners.');
     }
+}
+
+export async function fetchPayers(): Promise<Partner[]> {
+    return fetchPartners();
 }
 
 export async function fetchMedications(): Promise<Medication[]> {
@@ -444,4 +450,18 @@ export async function activatePatient(id: number, data: any): Promise<void> {
             data.has_weighing_scale, data.has_glucometer, data.has_bp_machine, data.has_tape_measure, id
         ]
     );
+}
+
+export async function upsertPartner(data: any): Promise<number> {
+    if (data.id) {
+        await db.query('UPDATE payers SET name = ? WHERE id = ?', [data.name, data.id]);
+        return Number(data.id);
+    } else {
+        const [result] = await db.query('INSERT INTO payers (name) VALUES (?)', [data.name]);
+        return Number((result as any).insertId);
+    }
+}
+
+export async function deletePartner(id: number): Promise<void> {
+    await db.query('UPDATE payers SET deleted_at = NOW() WHERE id = ?', [id]);
 }

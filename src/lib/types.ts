@@ -1,10 +1,11 @@
+
 export type User = {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'navigator' | 'clinician' | 'user' | 'payer';
+  role: 'admin' | 'navigator' | 'clinician' | 'user' | 'payer' | 'partner';
   avatarUrl?: string;
-  payer_id?: number | null; // For payer role access
+  payer_id?: number | null; // Database column name retained, used for Partner association
   deleted_at?: string | null;
 };
 
@@ -15,11 +16,13 @@ export type Corporate = {
   deleted_at?: string | null;
 };
 
-export type Payer = {
+export type Partner = {
   id: number;
   name: string;
   deleted_at?: string | null;
 };
+
+export type Payer = Partner; // Alias for backward compatibility if needed
 
 export type Message = {
     id: number;
@@ -163,12 +166,13 @@ export type Patient = {
   middle_name?: string | null;
   wellness_date: string;
   corporate_id: number | null;
-  payer_id: number | null;
+  payer_id: number | null; // Database column name retained
   date_of_diagnosis: string | null;
   deleted_at?: string | null;
   corporate_name?: string;
   navigator_name?: string;
-  payer_name?: string;
+  payer_name?: string; // UI will label this Partner Name
+  partner_name?: string;
   assessments: Assessment[];
   goals: Goal[];
   prescriptions: Prescription[];

@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Patient, User, Payer } from '@/lib/types';
+import type { Patient, User, Partner } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,12 +18,13 @@ import { activatePatient } from '@/lib/api-service';
 
 interface OnboardingFormProps {
     patient: Patient;
-    initialPayers: Payer[];
+    initialPayers: Partner[];
 }
 
 export default function OnboardingForm({ patient, initialPayers }: OnboardingFormProps) {
     const router = useRouter();
     const { toast } = useToast();
+    const [partners, setPartners] = useState<Partner[]>(initialPayers);
     const [formData, setFormData] = useState<Partial<Patient>>({ 
         ...patient,
         date_of_onboarding: patient.date_of_onboarding ? new Date(patient.date_of_onboarding).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -41,6 +43,8 @@ export default function OnboardingForm({ patient, initialPayers }: OnboardingFor
                 emr_number: `EMR/TAR/${patient.id}`
             }));
         }
+        // Fetch fresh partners
+        fetch('/api/partners').then(res => res.json()).then(setPartners);
     }, [patient.id]);
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -83,9 +87,9 @@ export default function OnboardingForm({ patient, initialPayers }: OnboardingFor
             <PatientHeader patient={patient} />
             <form onSubmit={handleSubmit}>
                 <div className="space-y-6">
-                    <Card>
+                    <Card className="border-primary/10">
                         <CardHeader className="items-center">
-                            <div className="bg-muted px-4 py-2 rounded-lg">
+                            <div className="bg-muted px-4 py-2 rounded-lg border border-primary/10">
                                 <CardTitle className="text-center text-primary">Medical History</CardTitle>
                             </div>
                             <CardDescription className="pt-2">Capture important medical history and diagnoses.</CardDescription>
@@ -112,9 +116,9 @@ export default function OnboardingForm({ patient, initialPayers }: OnboardingFor
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="border-primary/10">
                         <CardHeader className="items-center">
-                             <div className="bg-muted px-4 py-2 rounded-lg">
+                             <div className="bg-muted px-4 py-2 rounded-lg border border-primary/10">
                                 <CardTitle className="text-center text-primary">Lifestyle & Environment</CardTitle>
                             </div>
                             <CardDescription className="pt-2">Understand the patient's daily life and environment.</CardDescription>
@@ -143,9 +147,9 @@ export default function OnboardingForm({ patient, initialPayers }: OnboardingFor
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="border-primary/10">
                         <CardHeader className="items-center">
-                             <div className="bg-muted px-4 py-2 rounded-lg">
+                             <div className="bg-muted px-4 py-2 rounded-lg border border-primary/10">
                                 <CardTitle className="text-center text-primary">Emergency Contact & Administrative</CardTitle>
                             </div>
                         </CardHeader>
@@ -161,7 +165,7 @@ export default function OnboardingForm({ patient, initialPayers }: OnboardingFor
                             <div className="space-y-2">
                                 <Label htmlFor="emergency_contact_relation">Relation</Label>
                                 <Select value={formData.emergency_contact_relation || ''} onValueChange={(value) => handleSelectChange('emergency_contact_relation', value)}>
-                                    <SelectTrigger><SelectValue placeholder="Select a relation" /></SelectTrigger>
+                                    <SelectTrigger className="border-primary/20"><SelectValue placeholder="Select a relation" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="spouse">Spouse</SelectItem>
                                         <SelectItem value="sibling">Sibling</SelectItem>
@@ -171,28 +175,28 @@ export default function OnboardingForm({ patient, initialPayers }: OnboardingFor
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="emr_number">EMR Number</Label>
-                                <Input id="emr_number" value={formData.emr_number || ''} readOnly />
+                                <Input id="emr_number" value={formData.emr_number || ''} readOnly className="bg-muted" />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="navigator_name">Navigator</Label>
-                                <Input id="navigator_name" value={currentUser?.name || ''} readOnly />
+                                <Input id="navigator_name" value={currentUser?.name || ''} readOnly className="bg-muted" />
                             </div>
                              <div className="space-y-2">
-                                <Label htmlFor="payer_id">Assign Payer</Label>
+                                <Label htmlFor="payer_id">Assign Partner</Label>
                                 <Select value={String(formData.payer_id || 'null')} onValueChange={(value) => handleSelectChange('payer_id', value)}>
-                                    <SelectTrigger><SelectValue placeholder="Select a payer" /></SelectTrigger>
+                                    <SelectTrigger className="border-primary/20"><SelectValue placeholder="Select a partner" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="null">None</SelectItem>
-                                        {initialPayers.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                                        {partners.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </CardContent>
                     </Card>
                     
-                    <Card>
+                    <Card className="border-primary/10">
                         <CardHeader className="items-center">
-                            <div className="bg-muted px-4 py-2 rounded-lg">
+                            <div className="bg-muted px-4 py-2 rounded-lg border border-primary/10">
                                 <CardTitle className="text-center text-primary">Equipment & Consent</CardTitle>
                             </div>
                         </CardHeader>
@@ -225,7 +229,7 @@ export default function OnboardingForm({ patient, initialPayers }: OnboardingFor
                     </Card>
 
                     <div className="flex justify-end gap-4">
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90 shadow-lg px-8">
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Complete Onboarding & Activate Patient
                         </Button>
