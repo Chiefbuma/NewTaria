@@ -1,4 +1,3 @@
-
 import { db } from './db';
 import type { 
     Patient, 
@@ -34,7 +33,7 @@ function toSqlDateTime(date: string | Date | null | undefined): string | null {
     const d = new Date(date);
     if (isNaN(d.getTime())) return null;
     const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 function toSqlDate(date: string | Date | null | undefined): string | null {
@@ -224,8 +223,8 @@ export async function createUser(userData: any): Promise<number> {
 
 export async function createPatient(patientData: any): Promise<number> {
     const [result] = await db.query(
-        'INSERT INTO patients (user_id, first_name, surname, email, age, gender, status, partner_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [patientData.user_id || null, patientData.first_name, patientData.surname, patientData.email, patientData.age, patientData.gender, patientData.status || 'Pending', patientData.partner_id || null]
+        'INSERT INTO patients (user_id, first_name, surname, email, status, partner_id) VALUES (?, ?, ?, ?, ?, ?)',
+        [patientData.user_id || null, patientData.first_name, patientData.surname, patientData.email, patientData.status || 'Pending', patientData.partner_id || null]
     );
     return Number((result as any).insertId);
 }
@@ -287,8 +286,8 @@ export async function upsertClinicalParameter(data: any): Promise<number> {
 
 export async function activatePatient(id: number, data: any): Promise<void> {
     await db.query(
-        'UPDATE patients SET status = "Active", date_of_onboarding = ?, emr_number = ?, navigator_id = ?, partner_id = ?, brief_medical_history = ?, years_since_diagnosis = ?, past_medical_interventions = ?, relevant_family_history = ?, dietary_restrictions = ?, allergies_intolerances = ?, lifestyle_factors = ?, physical_limitations = ?, psychosocial_factors = ?, emergency_contact_name = ?, emergency_contact_phone = ?, emergency_contact_relation = ?, has_weighing_scale = ?, has_glucometer = ?, has_bp_machine = ?, has_tape_measure = ? WHERE id = ?',
-        [toSqlDate(data.date_of_onboarding), data.emr_number, data.navigator_id, data.partner_id, data.brief_medical_history, data.years_since_diagnosis, data.past_medical_interventions, data.relevant_family_history, data.dietary_restrictions, data.allergies_intolerances, data.lifestyle_factors, data.physical_limitations, data.psychosocial_factors, data.emergency_contact_name, data.emergency_contact_phone, data.emergency_contact_relation, data.has_weighing_scale, data.has_glucometer, data.has_bp_machine, data.has_tape_measure, id]
+        'UPDATE patients SET status = "Active", dob = ?, phone = ?, gender = ?, primary_diagnosis = ?, date_of_onboarding = ?, emr_number = ?, navigator_id = ?, partner_id = ?, brief_medical_history = ?, years_since_diagnosis = ?, past_medical_interventions = ?, relevant_family_history = ?, dietary_restrictions = ?, allergies_intolerances = ?, lifestyle_factors = ?, physical_limitations = ?, psychosocial_factors = ?, emergency_contact_name = ?, emergency_contact_phone = ?, emergency_contact_relation = ?, has_weighing_scale = ?, has_glucometer = ?, has_bp_machine = ?, has_tape_measure = ? WHERE id = ?',
+        [toSqlDate(data.dob), data.phone, data.gender, data.primary_diagnosis, toSqlDate(data.date_of_onboarding), data.emr_number, data.navigator_id, data.partner_id, data.brief_medical_history, data.years_since_diagnosis, data.past_medical_interventions, data.relevant_family_history, data.dietary_restrictions, data.allergies_intolerances, data.lifestyle_factors, data.physical_limitations, data.psychosocial_factors, data.emergency_contact_name, data.emergency_contact_phone, data.emergency_contact_relation, data.has_weighing_scale, data.has_glucometer, data.has_bp_machine, data.has_tape_measure, id]
     );
 }
 
@@ -339,7 +338,7 @@ export async function upsertPrescription(data: any): Promise<number> {
         await db.query('UPDATE prescriptions SET medication_id = ?, dosage = ?, frequency = ?, start_date = ?, expiry_date = ?, notes = ?, status = ? WHERE id = ?', [data.medication_id, data.dosage, data.frequency, sDate, eDate, data.notes, data.status, data.id]);
         return Number(data.id);
     }
-    const [result] = await db.query('INSERT INTO prescriptions (patient_id, medication_id, dosage, frequency, start_date, expiry_date, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [data.patient_id, data.medication_id, data.dosage, data.frequency, sDate, eDate, data.notes, data.status]);
+    const [result] = await db.query('INSERT INTO prescriptions (patient_id, medication_id, dosage, frequency, start_date, expiry_date, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [data.patient_id, data. medication_id, data.dosage, data.frequency, sDate, eDate, data.notes, data.status]);
     return Number((result as any).insertId);
 }
 
@@ -364,14 +363,30 @@ export async function fetchDashboardStats(requestingUser?: User) {
         const partnerParam = isPartner ? [requestingUser.partner_id] : [];
         const partnerFilter = isPartner ? 'AND partner_id = ?' : '';
 
-        // Simplified aggregate queries for robust data fetching
-        const [totalRows] = await db.query(`SELECT COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${partnerFilter}`, partnerParam);
+        // Core counts
+        const [totalPatientsRows] = await db.query(`SELECT COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${partnerFilter}`, partnerParam);
+        const [totalPartnersRows] = await db.query(`SELECT COUNT(*) as count FROM partners WHERE deleted_at IS NULL`);
+        const [totalOnboardedRows] = await db.query(`SELECT COUNT(*) as count FROM patients WHERE status != 'Pending' AND deleted_at IS NULL ${partnerFilter}`, partnerParam);
+        const [totalInactiveRows] = await db.query(`SELECT COUNT(*) as count FROM patients WHERE status = 'Pending' AND deleted_at IS NULL ${partnerFilter}`, partnerParam);
+        
+        // Progress counts
+        const [totalCompletedRows] = await db.query(`SELECT COUNT(DISTINCT patient_id) as count FROM goals WHERE status = 'completed' AND deleted_at IS NULL ${isPartner ? 'AND patient_id IN (SELECT id FROM patients WHERE partner_id = ?)' : ''}`, partnerParam);
+        const [totalCriticalRows] = await db.query(`SELECT COUNT(DISTINCT patient_id) as count FROM goals WHERE status = 'active' AND deadline < NOW() AND deleted_at IS NULL ${isPartner ? 'AND patient_id IN (SELECT id FROM patients WHERE partner_id = ?)' : ''}`, partnerParam);
+        const [totalInProgressRows] = await db.query(`SELECT COUNT(DISTINCT patient_id) as count FROM goals WHERE status = 'active' AND deadline >= NOW() AND deleted_at IS NULL ${isPartner ? 'AND patient_id IN (SELECT id FROM patients WHERE partner_id = ?)' : ''}`, partnerParam);
+
+        // Distributions
         const [genderRows] = await db.query(`SELECT gender, COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${partnerFilter} GROUP BY gender`, partnerParam);
 
         return serialize({
-            totalPatients: (totalRows as any)[0]?.count || 0,
+            totalPatients: (totalPatientsRows as any)[0]?.count || 0,
+            totalPartners: (totalPartnersRows as any)[0]?.count || 0,
+            totalOnboarded: (totalOnboardedRows as any)[0]?.count || 0,
+            totalInactive: (totalInactiveRows as any)[0]?.count || 0,
+            totalCompleted: (totalCompletedRows as any)[0]?.count || 0,
+            totalCritical: (totalCriticalRows as any)[0]?.count || 0,
+            totalInProgress: (totalInProgressRows as any)[0]?.count || 0,
             genderDistribution: (genderRows as any[]).map(row => ({
-                gender: row.gender || 'Other',
+                gender: row.gender || 'Not Specified',
                 count: Number(row.count)
             }))
         });

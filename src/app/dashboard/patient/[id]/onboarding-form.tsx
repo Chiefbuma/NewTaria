@@ -27,6 +27,7 @@ export default function OnboardingForm({ patient, initialPartners }: OnboardingF
     const [formData, setFormData] = useState<Partial<Patient>>({ 
         ...patient,
         date_of_onboarding: patient.date_of_onboarding ? new Date(patient.date_of_onboarding).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        dob: patient.dob ? new Date(patient.dob).toISOString().split('T')[0] : '',
      });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -86,19 +87,60 @@ export default function OnboardingForm({ patient, initialPartners }: OnboardingF
             <PatientHeader patient={patient} />
             <form onSubmit={handleSubmit}>
                 <div className="space-y-6">
+                    {/* Patient Bio Section */}
+                    <Card className="border-primary/10">
+                        <CardHeader className="items-center">
+                            <div className="bg-muted px-4 py-2 rounded-lg border border-primary/10">
+                                <CardTitle className="text-center text-primary">Patient Bio</CardTitle>
+                            </div>
+                            <CardDescription className="pt-2">Capture basic demographic information.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="dob">Date of Birth</Label>
+                                <Input id="dob" type="date" value={formData.dob || ''} onChange={handleInputChange} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="gender">Gender</Label>
+                                <Select value={formData.gender || ''} onValueChange={(v) => handleSelectChange('gender', v)} required>
+                                    <SelectTrigger className="border-primary/20"><SelectValue placeholder="Select Gender" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Male">Male</SelectItem>
+                                        <SelectItem value="Female">Female</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="phone">Phone Number</Label>
+                                <Input id="phone" type="tel" value={formData.phone || ''} onChange={handleInputChange} required />
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     <Card className="border-primary/10">
                         <CardHeader className="items-center">
                             <div className="bg-muted px-4 py-2 rounded-lg border border-primary/10">
                                 <CardTitle className="text-center text-primary">Medical History</CardTitle>
                             </div>
-                            <CardDescription className="pt-2">Capture important medical history and diagnoses.</CardDescription>
+                            <CardDescription className="pt-2">Capture clinical history and primary diagnosis.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="primary_diagnosis">Primary Diagnosis</Label>
+                                <Select value={formData.primary_diagnosis || ''} onValueChange={(v) => handleSelectChange('primary_diagnosis', v)} required>
+                                    <SelectTrigger className="border-primary/20 font-semibold"><SelectValue placeholder="Select Diagnosis" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Hypertension">Hypertension</SelectItem>
+                                        <SelectItem value="Diabetes">Diabetes</SelectItem>
+                                        <SelectItem value="Hypertension and Diabetes">Hypertension and Diabetes</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor="brief_medical_history">Brief Medical History</Label>
                                 <Textarea id="brief_medical_history" value={formData.brief_medical_history || ''} onChange={handleInputChange} />
                             </div>
-                             <div className="grid grid-cols-1 gap-4">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="years_since_diagnosis">Years Since Primary Diagnosis</Label>
                                     <Input id="years_since_diagnosis" type="number" value={formData.years_since_diagnosis || ''} onChange={handleInputChange} />
@@ -169,6 +211,8 @@ export default function OnboardingForm({ patient, initialPartners }: OnboardingF
                                         <SelectItem value="spouse">Spouse</SelectItem>
                                         <SelectItem value="sibling">Sibling</SelectItem>
                                         <SelectItem value="friend">Friend</SelectItem>
+                                        <SelectItem value="child">Child</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

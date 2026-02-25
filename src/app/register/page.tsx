@@ -13,7 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import Logo from '@/components/logo';
@@ -25,8 +24,6 @@ export default function RegisterPage() {
     surname: '',
     email: '',
     password: '',
-    age: '',
-    gender: '',
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -35,16 +32,12 @@ export default function RegisterPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };
-  
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData({ ...formData, [name]: value });
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const result = await registerUser(formData);
+    const result = await registerUser({ ...formData, role: 'user' });
 
     if (result.success) {
         toast({
@@ -65,7 +58,7 @@ export default function RegisterPage() {
 
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/40">
-        <div className="w-full max-w-md">
+        <div className="w-full max-md">
             <div className="flex justify-center items-center mb-6">
                 <Logo className="h-8 w-auto" />
             </div>
@@ -73,7 +66,7 @@ export default function RegisterPage() {
                 <CardHeader className="text-center">
                     <CardTitle>Create Your Account</CardTitle>
                     <CardDescription>
-                        Sign up to begin your journey with Taria Health.
+                        Sign up to begin your journey with Taria Health. Clinical details will be collected during onboarding.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -94,20 +87,6 @@ export default function RegisterPage() {
                         <div className="grid gap-2">
                             <Label htmlFor="password">Password</Label>
                             <Input id="password" type="password" required value={formData.password} onChange={handleInputChange} placeholder="Create a password" />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="age">Age</Label>
-                            <Input id="age" type="number" required value={formData.age} onChange={handleInputChange} />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="gender">Gender</Label>
-                            <Select name="gender" onValueChange={(value) => handleSelectChange('gender', value)} required>
-                                <SelectTrigger id="gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Male">Male</SelectItem>
-                                    <SelectItem value="Female">Female</SelectItem>
-                                </SelectContent>
-                            </Select>
                         </div>
                     </div>
                     <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">

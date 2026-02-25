@@ -137,6 +137,7 @@ export type Patient = {
   gender: 'Male' | 'Female' | null;
   email: string | null;
   diagnosis: string | null;
+  primary_diagnosis: 'Hypertension' | 'Diabetes' | 'Hypertension and Diabetes' | null;
   created_at: string;
   status: 'Active' | 'Pending' | 'Critical' | 'Discharged' | 'In Review';
   emr_number: string | null;

@@ -13,7 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { registerPatientByStaff } from '@/lib/actions';
@@ -24,8 +23,6 @@ export default function StaffRegisterPatientPage() {
     surname: '',
     email: '',
     password: '',
-    age: '',
-    gender: '',
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -34,21 +31,17 @@ export default function StaffRegisterPatientPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };
-  
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData({ ...formData, [name]: value });
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const result = await registerPatientByStaff(formData);
+    const result = await registerPatientByStaff({ ...formData, role: 'user' });
 
     if (result.success) {
         toast({
             title: 'Patient Registered',
-            description: 'The patient record and user account have been created.',
+            description: 'The patient record and user account have been created. Complete onboarding next.',
         });
         router.push('/dashboard');
     } else {
@@ -68,7 +61,7 @@ export default function StaffRegisterPatientPage() {
         <CardHeader>
           <CardTitle>New Patient Registration</CardTitle>
           <CardDescription>
-            Enter the patient's basic information to create their profile and login.
+            Enter the patient's account details. Clinical and demographic data will be collected during onboarding.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -92,25 +85,8 @@ export default function StaffRegisterPatientPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" required value={formData.password} onChange={handleInputChange} placeholder="Create a password" />
+                  <Input id="password" type="password" required value={formData.password} onChange={handleInputChange} placeholder="Create a temporary password" />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="grid gap-2">
-                    <Label htmlFor="age">Age</Label>
-                    <Input id="age" type="number" required value={formData.age} onChange={handleInputChange} />
-                </div>
-                 <div className="grid gap-2">
-                    <Label htmlFor="gender">Gender</Label>
-                    <Select name="gender" onValueChange={(value) => handleSelectChange('gender', value)} required>
-                        <SelectTrigger id="gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Male">Male</SelectItem>
-                            <SelectItem value="Female">Female</SelectItem>
-                        </SelectContent>
-                    </Select>
-                 </div>
               </div>
             </div>
             <div className="mt-8 flex justify-end gap-4">
