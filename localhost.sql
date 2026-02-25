@@ -1,6 +1,6 @@
 -- Taria Health - Production Schema with Soft Delete Support
 
--- Partners Table (Replaces Payers)
+-- Partners Table
 CREATE TABLE IF NOT EXISTS partners (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     role ENUM('admin', 'navigator', 'clinician', 'user', 'partner') DEFAULT 'user',
     avatarUrl VARCHAR(255),
-    partner_id INT,
+    partner_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
@@ -72,9 +72,7 @@ CREATE TABLE IF NOT EXISTS patients (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-    FOREIGN KEY (partner_id) REFERENCES partners(id) ON DELETE SET NULL,
-    FOREIGN KEY (corporate_id) REFERENCES corporates(id) ON DELETE SET NULL,
-    FOREIGN KEY (navigator_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (partner_id) REFERENCES partners(id) ON DELETE SET NULL
 );
 
 -- Clinical Parameters
@@ -83,7 +81,7 @@ CREATE TABLE IF NOT EXISTS clinical_parameters (
     name VARCHAR(255) NOT NULL,
     type ENUM('numeric', 'text', 'choice') DEFAULT 'numeric',
     unit VARCHAR(50),
-    options JSON,
+    options JSON, -- Store options as JSON array
     category ENUM('vital_sign', 'lab_result', 'clinical_measurement', 'symptom', 'assessment'),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL

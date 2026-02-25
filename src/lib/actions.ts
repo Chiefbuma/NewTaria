@@ -35,7 +35,7 @@ export async function authenticateUser(email: string, password: string): Promise
  */
 export async function registerUser(formData: any): Promise<{ success: boolean; error?: string }> {
     try {
-        const { first_name, surname, email, password, age, gender } = formData;
+        const { first_name, surname, email, password, age, gender, role, partner_id } = formData;
         const existingUser = await getUserByEmail(email);
         if (existingUser) return { success: false, error: 'A user with this email already exists.' };
 
@@ -44,20 +44,23 @@ export async function registerUser(formData: any): Promise<{ success: boolean; e
             name: `${first_name} ${surname}`,
             email,
             password: hashedPassword,
-            role: 'user',
-            partner_id: formData.partner_id || null
+            role: role || 'user',
+            partner_id: partner_id || null
         });
 
-        await createPatient({
-            user_id: userId,
-            first_name,
-            surname,
-            email,
-            age: parseInt(age),
-            gender,
-            status: 'Pending',
-            partner_id: formData.partner_id || null
-        });
+        // If it's a regular patient user, create the patient profile
+        if (!role || role === 'user') {
+            await createPatient({
+                user_id: userId,
+                first_name,
+                surname,
+                email,
+                age: parseInt(age),
+                gender,
+                status: 'Pending',
+                partner_id: partner_id || null
+            });
+        }
 
         return { success: true };
     } catch (error) {

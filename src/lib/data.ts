@@ -74,7 +74,7 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
             WHERE p.deleted_at IS NULL
         `;
         let params: any[] = [];
-        if (requestingUser && requestingUser.role === 'partner' && requestingUser.partner_id) {
+        if (requestingUser && (requestingUser.role === 'partner' || requestingUser.role === 'payer') && requestingUser.partner_id) {
             query += ` AND p.partner_id = ? `;
             params.push(requestingUser.partner_id);
         }

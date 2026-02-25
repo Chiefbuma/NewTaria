@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import type { User } from '@/lib/types';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import type { User, Partner } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -39,11 +39,13 @@ const emptyUser: Omit<User, 'id'> = {
   name: '',
   email: '',
   role: 'navigator',
-  avatarUrl: ''
+  avatarUrl: '',
+  partner_id: null
 };
 
 export default function UserManagement({ initialUsers, onUsersUpdate }: UserManagementProps) {
   const [users, setUsers] = useState<User[]>(initialUsers);
+  const [partners, setPartners] = useState<Partner[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentUser, setCurrentUser] = useState<Partial<User> | null>(null);
@@ -51,6 +53,10 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
   const { toast } = useToast();
   const userAvatar = placeholderImages.find(p => p.id === 'user-avatar');
   const lastSelectedIdsRef = useRef("");
+
+  useEffect(() => {
+      fetch('/api/partners').then(res => res.json()).then(setPartners);
+  }, []);
 
   const handleSelectionChange = useCallback((selectedRows: User[]) => {
       const ids = selectedRows.map(r => r.id).sort();
@@ -78,7 +84,8 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
   
   const handleSelectChange = (name: string, value: string) => {
     if (!currentUser) return;
-    setCurrentUser({ ...currentUser, [name]: value });
+    const val = value === 'null' ? null : value;
+    setCurrentUser({ ...currentUser, [name]: val });
   };
   
   const handleSubmit = (e: React.FormEvent) => {
@@ -238,6 +245,19 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
                     </SelectContent>
                 </Select>
               </div>
+              
+              {currentUser?.role === 'partner' && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <Label htmlFor="partner_id">Assign to Partner</Label>
+                    <Select name="partner_id" value={String(currentUser?.partner_id || 'null')} onValueChange={(value) => handleSelectChange('partner_id', value)}>
+                        <SelectTrigger><SelectValue placeholder="Select partner organization" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="null">None</SelectItem>
+                            {partners.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                  </div>
+              )}
             </div>
             <DialogFooter>
               <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>

@@ -21,12 +21,28 @@ import {
   Cell,
 } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Target } from 'lucide-react';
+import { BarChart, Target, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 
 const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: Assessment[], parameter: ClinicalParameter, goal?: Goal | null }) => {
     
     const data = useMemo(() => {
+        if (parameter.type === 'choice') {
+            // Calculate distribution of choices
+            const distribution: Record<string, number> = {};
+            assessments.forEach(a => {
+                distribution[a.value] = (distribution[a.value] || 0) + 1;
+            });
+            
+            const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+            
+            return Object.entries(distribution).map(([name, value], idx) => ({
+                name,
+                value,
+                fill: COLORS[idx % COLORS.length]
+            }));
+        }
+
         if (!goal) {
             const normal = assessments.filter(a => a.is_normal === true).length;
             const abnormal = assessments.filter(a => a.is_normal === false).length;
@@ -69,27 +85,14 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
         
         return result;
 
-    }, [assessments, goal]);
+    }, [assessments, goal, parameter]);
 
-    const title = goal ? 'Goal Status' : 'Overall Status';
-    const noDataMessage = goal ? 'No assessments for selected range.' : 'No data.';
-
+    const title = parameter.type === 'choice' ? 'Distribution' : (goal ? 'Goal Status' : 'Overall Status');
     const chartConfig = {
         value: { label: 'Assessments', color: 'hsl(var(--primary))' }
     };
 
-    if (data.length === 0) {
-        return (
-            <Card className="h-full flex flex-col border-primary/20">
-                <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground"><Target className="h-4 w-4 text-primary"/>{title}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-1 flex items-center justify-center">
-                    <p className="text-xs text-muted-foreground">{noDataMessage}</p>
-                </CardContent>
-            </Card>
-        );
-    }
+    if (data.length === 0) return null;
     
     return (
         <Card className="h-full flex flex-col border-primary/20">
@@ -141,9 +144,36 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
     )
 }
 
+const ParameterTextTable = ({ assessments }: { assessments: Assessment[] }) => {
+    const latestAssessments = assessments
+        .sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())
+        .slice(0, 4);
+
+    return (
+        <Card className="h-full border-primary/20">
+            <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground"><FileText className="h-4 w-4 text-primary"/>Recent History</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-3">
+                    {latestAssessments.map((a) => (
+                        <div key={a.id} className="p-3 bg-muted/50 rounded-lg border border-primary/5">
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                    {format(new Date(a.measured_at), 'MMM dd, yyyy')}
+                                </span>
+                            </div>
+                            <p className="text-sm text-foreground leading-relaxed">{a.value}</p>
+                        </div>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
 const ParameterLineChart = ({ assessments, parameter }: { assessments: Assessment[], parameter: ClinicalParameter }) => {
     const chartData = useMemo(() => {
-        // Dynamic continuous trend: Group by day to keep the line smooth, but plot sequentially
         const dailySummary: { [date: string]: { sum: number, count: number } } = {};
 
         assessments.forEach(assessment => {
@@ -233,14 +263,13 @@ export default function ProgressDashboard({
 }) {
     
     const filteredAssessedParameters = useMemo(() => {
-        const numericParamIds = new Set(clinicalParameters.filter(p => p.type === 'numeric').map(p => p.id));
         const assessmentsByParam = new Map<number, Assessment[]>();
         
         patient.assessments.forEach(a => {
             const date = new Date(a.measured_at);
             const matchesFilter = date >= fromDate && date <= toDate;
 
-            if (matchesFilter && numericParamIds.has(a.clinical_parameter_id)) {
+            if (matchesFilter) {
                 const current = assessmentsByParam.get(a.clinical_parameter_id) || [];
                 assessmentsByParam.set(a.clinical_parameter_id, [...current, a]);
             }
@@ -249,7 +278,7 @@ export default function ProgressDashboard({
         return Array.from(assessmentsByParam.entries())
             .map(([id, assessments]) => ({
                 parameter: clinicalParameters.find(p => p.id === id),
-                assessments: assessments.sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())
+                assessments: assessments.sort((a, b) => new Date(a.measured_at).getTime() - new Date(a.measured_at).getTime())
             }))
             .filter((item): item is { parameter: ClinicalParameter, assessments: Assessment[] } => !!item.parameter);
     }, [patient.assessments, clinicalParameters, fromDate, toDate]);
@@ -268,12 +297,29 @@ export default function ProgressDashboard({
                                 {parameter.unit && <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">{parameter.unit}</span>}
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                                <div className="md:col-span-4">
-                                    <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
-                                </div>
-                                <div className="md:col-span-8">
-                                     <ParameterLineChart assessments={assessments} parameter={parameter} />
-                                </div>
+                                {parameter.type === 'numeric' ? (
+                                    <>
+                                        <div className="md:col-span-4">
+                                            <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
+                                        </div>
+                                        <div className="md:col-span-8">
+                                             <ParameterLineChart assessments={assessments} parameter={parameter} />
+                                        </div>
+                                    </>
+                                ) : parameter.type === 'choice' ? (
+                                    <>
+                                        <div className="md:col-span-4">
+                                            <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
+                                        </div>
+                                        <div className="md:col-span-8">
+                                             <ParameterTextTable assessments={assessments} />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="md:col-span-12">
+                                        <ParameterTextTable assessments={assessments} />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )
