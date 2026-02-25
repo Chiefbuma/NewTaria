@@ -1,5 +1,13 @@
 -- Taria Health - Production Schema with Soft Delete Support
 
+-- Partners Table (Replaces Payers)
+CREATE TABLE IF NOT EXISTS partners (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL
+);
+
 -- Users Table
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -11,7 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
     partner_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (partner_id) REFERENCES partners(id) ON DELETE SET NULL
 );
 
 -- Corporates Table
@@ -19,14 +28,6 @@ CREATE TABLE IF NOT EXISTS corporates (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     wellness_date DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL
-);
-
--- Partners Table (Renamed from payers)
-CREATE TABLE IF NOT EXISTS partners (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL
 );
@@ -71,7 +72,9 @@ CREATE TABLE IF NOT EXISTS patients (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-    FOREIGN KEY (partner_id) REFERENCES partners(id) ON DELETE SET NULL
+    FOREIGN KEY (partner_id) REFERENCES partners(id) ON DELETE SET NULL,
+    FOREIGN KEY (corporate_id) REFERENCES corporates(id) ON DELETE SET NULL,
+    FOREIGN KEY (navigator_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Clinical Parameters
@@ -80,7 +83,7 @@ CREATE TABLE IF NOT EXISTS clinical_parameters (
     name VARCHAR(255) NOT NULL,
     type ENUM('numeric', 'text', 'choice') DEFAULT 'numeric',
     unit VARCHAR(50),
-    options JSON, 
+    options JSON,
     category ENUM('vital_sign', 'lab_result', 'clinical_measurement', 'symptom', 'assessment'),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL

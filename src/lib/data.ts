@@ -16,24 +16,15 @@ import type {
 import { unstable_noStore as noStore } from 'next/cache';
 
 /**
- * Enhanced serialization helper for Next.js 15 compatibility.
- * Recursively converts non-serializable types (BigInt, Date, etc.) into JSON-safe values.
+ * Enhanced serialization helper for Next.js 15.
+ * Strictly converts non-serializable MySQL types into plain JSON-safe types.
  */
-function serialize(obj: any): any {
-    if (obj === null || obj === undefined) return obj;
-    if (typeof obj === 'bigint') return Number(obj);
-    if (Object.prototype.toString.call(obj) === '[object Date]') return obj.toISOString();
-    if (Array.isArray(obj)) return obj.map(serialize);
-    if (typeof obj === 'object') {
-        const result: any = {};
-        for (const key in obj) {
-            if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                result[key] = serialize(obj[key]);
-            }
-        }
-        return result;
-    }
-    return obj;
+function serialize<T>(obj: T): T {
+    if (!obj) return obj;
+    return JSON.parse(JSON.stringify(obj, (key, value) => {
+        if (typeof value === 'bigint') return Number(value);
+        return value;
+    }));
 }
 
 function toSqlDateTime(date: string | Date | null | undefined): string | null {
@@ -89,7 +80,7 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
         }
         query += ` ORDER BY p.created_at DESC `;
         const [rows] = await db.query(query, params);
-        return serialize((rows as any[]).map(p => ({ 
+        const mapped = (rows as any[]).map(p => ({ 
             ...p, 
             assessments: [], 
             goals: [], 
@@ -97,7 +88,8 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
             appointments: [], 
             reviews: [], 
             stats: calculatePatientStats(p) 
-        })));
+        }));
+        return serialize(mapped);
     } catch (error) {
         console.error('fetchPatients Error:', error);
         throw new Error('Failed to fetch patients.');

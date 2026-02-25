@@ -1,19 +1,20 @@
-
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import type { Patient, ClinicalParameter, User, Appointment } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MessageSquare, Calendar } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Calendar, Filter } from 'lucide-react';
 import PatientInfoCard from '@/components/patient/patient-info-card';
 import AllNotesCard from './all-notes-card';
 import ProgressDashboard from './progress-dashboard';
 import AppointmentsCard from '@/components/patient/appointments-card';
 import AddAppointmentModal from '@/components/patient/add-appointment-modal';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { format, subMonths, startOfDay, endOfDay } from 'date-fns';
 
 export default function ProgressPageClient({ 
     patient: initialPatient, 
@@ -30,11 +31,9 @@ export default function ProgressPageClient({
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-    // Filter state
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const [selectedMonth, setSelectedMonth] = useState(currentMonth.toString());
-    const [selectedYear, setSelectedYear] = useState(currentYear.toString());
+    // Default to last 6 months
+    const [fromDate, setFromDate] = useState(format(subMonths(new Date(), 6), 'yyyy-MM-dd'));
+    const [toDate, setToDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
     useEffect(() => {
         const stored = localStorage.getItem('loggedInUser');
@@ -66,13 +65,6 @@ export default function ProgressPageClient({
         toast({ title: 'Success', description: 'Appointment saved.' });
     };
 
-    const months = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-    ];
-
-    const years = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
-
     return (
         <>
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
@@ -103,7 +95,7 @@ export default function ProgressPageClient({
                     <AllNotesCard assessments={patient.assessments} clinicalParameters={clinicalParameters} />
                 </div>
                 <div className="lg:col-span-3 space-y-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6">
                         <div className="flex items-center gap-4">
                             {!isPatientView && (
                                 <Button asChild variant="outline" size="icon" className="border-primary/20">
@@ -123,37 +115,51 @@ export default function ProgressPageClient({
                             </div>
                         </div>
 
-                        {/* Filters */}
-                        <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-xl border border-primary/10">
-                            <Calendar className="h-4 w-4 text-primary ml-2 hidden sm:block" />
-                            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                <SelectTrigger className="w-[120px] h-9 bg-background border-primary/20">
-                                    <SelectValue placeholder="Month" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {months.map((m, idx) => (
-                                        <SelectItem key={m} value={idx.toString()}>{m}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <Select value={selectedYear} onValueChange={setSelectedYear}>
-                                <SelectTrigger className="w-[90px] h-9 bg-background border-primary/20">
-                                    <SelectValue placeholder="Year" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {years.map(y => (
-                                        <SelectItem key={y} value={y}>{y}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        {/* Advanced Filters */}
+                        <div className="flex flex-wrap items-end gap-4 p-4 bg-muted/30 rounded-2xl border border-primary/10">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="fromDate" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" /> From Date
+                                </Label>
+                                <Input 
+                                    id="fromDate" 
+                                    type="date" 
+                                    className="h-9 w-[150px] bg-background border-primary/20 text-sm focus:border-primary"
+                                    value={fromDate}
+                                    onChange={(e) => setFromDate(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="toDate" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" /> To Date
+                                </Label>
+                                <Input 
+                                    id="toDate" 
+                                    type="date" 
+                                    className="h-9 w-[150px] bg-background border-primary/20 text-sm focus:border-primary"
+                                    value={toDate}
+                                    onChange={(e) => setToDate(e.target.value)}
+                                />
+                            </div>
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-9 text-xs text-muted-foreground hover:text-primary"
+                                onClick={() => {
+                                    setFromDate(format(subMonths(new Date(), 6), 'yyyy-MM-dd'));
+                                    setToDate(format(new Date(), 'yyyy-MM-dd'));
+                                }}
+                            >
+                                Reset Range
+                            </Button>
                         </div>
                   </div>
                   
                   <ProgressDashboard 
                     patient={patient} 
                     clinicalParameters={clinicalParameters} 
-                    selectedMonth={parseInt(selectedMonth)}
-                    selectedYear={parseInt(selectedYear)}
+                    fromDate={startOfDay(new Date(fromDate))}
+                    toDate={endOfDay(new Date(toDate))}
                   />
                 </div>
             </div>

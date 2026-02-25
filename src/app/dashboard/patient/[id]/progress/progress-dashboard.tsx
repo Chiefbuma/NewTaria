@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -23,14 +22,7 @@ import {
 } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Target } from 'lucide-react';
-
-/**
- * Calculates the calendar week of the month (1-5) for a given assessment date.
- */
-const getCalendarWeekOfMonth = (date: Date) => {
-    const day = date.getDate();
-    return Math.ceil(day / 7);
-};
+import { format } from 'date-fns';
 
 const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: Assessment[], parameter: ClinicalParameter, goal?: Goal | null }) => {
     
@@ -80,7 +72,7 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
     }, [assessments, goal]);
 
     const title = goal ? 'Goal Status' : 'Overall Status';
-    const noDataMessage = goal ? 'No assessments for selected period.' : 'No data.';
+    const noDataMessage = goal ? 'No assessments for selected range.' : 'No data.';
 
     const chartConfig = {
         value: { label: 'Assessments', color: 'hsl(var(--primary))' }
@@ -150,35 +142,30 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
 }
 
 const ParameterLineChart = ({ assessments, parameter }: { assessments: Assessment[], parameter: ClinicalParameter }) => {
-    const weeklyData = useMemo(() => {
-        const weeklySummary: { [week: number]: { sum: number, count: number } } = {};
+    const chartData = useMemo(() => {
+        // Dynamic continuous trend: Group by day to keep the line smooth, but plot sequentially
+        const dailySummary: { [date: string]: { sum: number, count: number } } = {};
 
         assessments.forEach(assessment => {
-            const date = new Date(assessment.measured_at);
-            const week = getCalendarWeekOfMonth(date);
+            const dateKey = format(new Date(assessment.measured_at), 'yyyy-MM-dd');
             const value = parseFloat(assessment.value);
             
             if (!isNaN(value)) {
-                if (!weeklySummary[week]) {
-                    weeklySummary[week] = { sum: 0, count: 0 };
+                if (!dailySummary[dateKey]) {
+                    dailySummary[dateKey] = { sum: 0, count: 0 };
                 }
-                weeklySummary[week].sum += value;
-                weeklySummary[week].count += 1;
+                dailySummary[dateKey].sum += value;
+                dailySummary[dateKey].count += 1;
             }
         });
         
-        // Ensure all weeks 1-4/5 are represented if there's any data
-        const maxWeek = Math.max(...Object.keys(weeklySummary).map(Number), 4);
-        const result = [];
-        for (let i = 1; i <= maxWeek; i++) {
-            if (weeklySummary[i]) {
-                result.push({
-                    week: `Week ${i}`,
-                    value: weeklySummary[i].sum / weeklySummary[i].count,
-                });
-            }
-        }
-        return result;
+        return Object.entries(dailySummary)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, data]) => ({
+                date: format(new Date(date), 'MMM dd'),
+                fullDate: format(new Date(date), 'MMMM dd, yyyy'),
+                value: parseFloat((data.sum / data.count).toFixed(2)),
+            }));
 
     }, [assessments]);
 
@@ -189,17 +176,17 @@ const ParameterLineChart = ({ assessments, parameter }: { assessments: Assessmen
     return (
         <Card className="h-full flex flex-col border-primary/20">
             <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground"><BarChart className="h-4 w-4 text-primary"/>Weekly Trend</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground"><BarChart className="h-4 w-4 text-primary"/>Trend Analysis</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 pt-4">
-                {weeklyData.length > 0 ? (
+                {chartData.length > 0 ? (
                     <div className="h-full min-h-[200px]">
                         <ChartContainer config={chartConfig} className="h-full w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={weeklyData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                                <LineChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsla(var(--muted-foreground), 0.1)" />
                                     <XAxis 
-                                        dataKey="week" 
+                                        dataKey="date" 
                                         axisLine={false} 
                                         tickLine={false} 
                                         tick={{ fill: 'hsl(var(--foreground))', fontSize: 10 }}
@@ -209,7 +196,7 @@ const ParameterLineChart = ({ assessments, parameter }: { assessments: Assessmen
                                         tickLine={false} 
                                         tick={{ fill: 'hsl(var(--foreground))', fontSize: 10 }}
                                     />
-                                    <Tooltip content={<ChartTooltipContent />} />
+                                    <Tooltip content={<ChartTooltipContent labelKey="fullDate" />} />
                                     <Line 
                                         type="monotone" 
                                         dataKey="value" 
@@ -236,13 +223,13 @@ const ParameterLineChart = ({ assessments, parameter }: { assessments: Assessmen
 export default function ProgressDashboard({ 
     patient, 
     clinicalParameters,
-    selectedMonth,
-    selectedYear
+    fromDate,
+    toDate
 }: { 
     patient: Patient, 
     clinicalParameters: ClinicalParameter[],
-    selectedMonth: number,
-    selectedYear: number
+    fromDate: Date,
+    toDate: Date
 }) {
     
     const filteredAssessedParameters = useMemo(() => {
@@ -251,7 +238,7 @@ export default function ProgressDashboard({
         
         patient.assessments.forEach(a => {
             const date = new Date(a.measured_at);
-            const matchesFilter = date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
+            const matchesFilter = date >= fromDate && date <= toDate;
 
             if (matchesFilter && numericParamIds.has(a.clinical_parameter_id)) {
                 const current = assessmentsByParam.get(a.clinical_parameter_id) || [];
@@ -265,7 +252,7 @@ export default function ProgressDashboard({
                 assessments: assessments.sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())
             }))
             .filter((item): item is { parameter: ClinicalParameter, assessments: Assessment[] } => !!item.parameter);
-    }, [patient.assessments, clinicalParameters, selectedMonth, selectedYear]);
+    }, [patient.assessments, clinicalParameters, fromDate, toDate]);
 
 
     return (
@@ -296,8 +283,8 @@ export default function ProgressDashboard({
                     <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
                         <BarChart className="h-6 w-6 text-primary/40" />
                     </div>
-                    <h3 className="text-lg font-semibold text-foreground">No Data for Selected Month</h3>
-                    <p className="text-muted-foreground mt-1 max-w-xs mx-auto">Try selecting a different month or record new assessments to visualize progress.</p>
+                    <h3 className="text-lg font-semibold text-foreground">No Data for Selected Range</h3>
+                    <p className="text-muted-foreground mt-1 max-w-xs mx-auto">Try widening the date range or record new assessments to visualize progress.</p>
                 </div>
             )}
         </div>
