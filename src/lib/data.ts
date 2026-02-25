@@ -1,3 +1,4 @@
+
 import { db } from './db';
 import type { 
     Patient, 
@@ -111,6 +112,7 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
             LEFT JOIN partners pay ON p.partner_id = pay.id
             WHERE p.id = ? AND p.deleted_at IS NULL
         `, [id]);
+        
         const patient = (patientRows as any[])[0];
         if (!patient) return null;
         
@@ -124,9 +126,18 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
             ...patient,
             assessments: assessments as Assessment[],
             goals: goals as Goal[],
-            prescriptions: (prescriptions as any[]).map(p => ({ ...p, medication: { id: p.medication_id, name: p.medication_name, dosage: p.med_dosage } })),
-            appointments: (appointments as any[]).map(a => ({ ...a, clinician: { id: a.clinician_id, name: a.clinician_name } })),
-            reviews: (reviews as any[]).map(r => ({ ...r, reviewed_by: r.reviewed_by })),
+            prescriptions: (prescriptions as any[]).map(p => ({ 
+                ...p, 
+                medication: { id: p.medication_id, name: p.medication_name, dosage: p.med_dosage } 
+            })),
+            appointments: (appointments as any[]).map(a => ({ 
+                ...a, 
+                clinician: { id: a.clinician_id, name: a.clinician_name } 
+            })),
+            reviews: (reviews as any[]).map(r => ({ 
+                ...r, 
+                reviewed_by: r.reviewed_by 
+            })),
         };
         
         return serialize({ ...basePatient, stats: calculatePatientStats(basePatient) });

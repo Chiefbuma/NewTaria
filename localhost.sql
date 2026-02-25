@@ -1,56 +1,50 @@
--- Taria Health - Database Schema and Initial Data
--- Use this script to initialize your MySQL database.
 
-SET NAMES utf8mb4;
-SET FOREIGN_KEY_CHECKS = 0;
+-- Taria Health - Full Production Database Schema
+-- Optimized for Next.js 15 and MySQL 8.0+
 
--- ----------------------------
--- Table structure for users
--- ----------------------------
-DROP TABLE IF EXISTS `users`;
-CREATE TABLE `users` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) NOT NULL,
-  `email` varchar(255) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `role` enum('admin','navigator','physician','staff','user','partner') DEFAULT 'user',
-  `avatarUrl` varchar(500) DEFAULT NULL,
-  `partner_id` int(11) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `deleted_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
 
--- ----------------------------
--- Table structure for partners
--- ----------------------------
-DROP TABLE IF EXISTS `partners`;
+-- 1. Organizations & Partners
 CREATE TABLE `partners` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ----------------------------
--- Table structure for patients
--- ----------------------------
-DROP TABLE IF EXISTS `patients`;
+-- 2. System Users
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL UNIQUE,
+  `password` varchar(255) NOT NULL,
+  `role` enum('admin','staff','physician','navigator','payer','user','partner') NOT NULL DEFAULT 'user',
+  `avatarUrl` varchar(255) DEFAULT NULL,
+  `partner_id` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_user_partner` FOREIGN KEY (`partner_id`) REFERENCES `partners` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Patient Records
 CREATE TABLE `patients` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) DEFAULT NULL,
-  `first_name` varchar(100) NOT NULL,
-  `middle_name` varchar(100) DEFAULT NULL,
-  `surname` varchar(100) DEFAULT NULL,
+  `first_name` varchar(255) NOT NULL,
+  `middle_name` varchar(255) DEFAULT NULL,
+  `surname` varchar(255) DEFAULT NULL,
   `dob` date DEFAULT NULL,
   `age` int(11) DEFAULT NULL,
   `gender` enum('Male','Female') DEFAULT NULL,
   `email` varchar(255) DEFAULT NULL,
   `phone` varchar(50) DEFAULT NULL,
-  `status` enum('Active','Pending','Critical','Discharged','In Review') DEFAULT 'Pending',
+  `status` enum('Active','Pending','Critical','Discharged','In Review') NOT NULL DEFAULT 'Pending',
   `emr_number` varchar(100) DEFAULT NULL,
   `date_of_onboarding` date DEFAULT NULL,
   `navigator_id` int(11) DEFAULT NULL,
@@ -58,15 +52,15 @@ CREATE TABLE `patients` (
   `corporate_id` int(11) DEFAULT NULL,
   `wellness_date` date DEFAULT NULL,
   `date_of_diagnosis` date DEFAULT NULL,
-  `brief_medical_history` text DEFAULT NULL,
   `primary_diagnosis` enum('Hypertension','Diabetes','Hypertension and Diabetes') DEFAULT NULL,
+  `brief_medical_history` text DEFAULT NULL,
   `years_since_diagnosis` int(11) DEFAULT NULL,
   `past_medical_interventions` text DEFAULT NULL,
   `relevant_family_history` text DEFAULT NULL,
-  `has_weighing_scale` tinyint(1) DEFAULT 0,
-  `has_glucometer` tinyint(1) DEFAULT 0,
-  `has_bp_machine` tinyint(1) DEFAULT 0,
-  `has_tape_measure` tinyint(1) DEFAULT 0,
+  `has_weighing_scale` tinyint(1) NOT NULL DEFAULT 0,
+  `has_glucometer` tinyint(1) NOT NULL DEFAULT 0,
+  `has_bp_machine` tinyint(1) NOT NULL DEFAULT 0,
+  `has_tape_measure` tinyint(1) NOT NULL DEFAULT 0,
   `dietary_restrictions` text DEFAULT NULL,
   `allergies_intolerances` text DEFAULT NULL,
   `lifestyle_factors` text DEFAULT NULL,
@@ -75,36 +69,30 @@ CREATE TABLE `patients` (
   `emergency_contact_name` varchar(255) DEFAULT NULL,
   `emergency_contact_phone` varchar(50) DEFAULT NULL,
   `emergency_contact_relation` varchar(100) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `user_id` (`user_id`),
-  KEY `navigator_id` (`navigator_id`),
-  CONSTRAINT `patients_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `patients_ibfk_2` FOREIGN KEY (`navigator_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CONSTRAINT `fk_patient_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_patient_navigator` FOREIGN KEY (`navigator_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_patient_partner` FOREIGN KEY (`partner_id`) REFERENCES `partners` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ----------------------------
--- Table structure for clinical_parameters
--- ----------------------------
-DROP TABLE IF EXISTS `clinical_parameters`;
+-- 4. Clinical Parameters
 CREATE TABLE `clinical_parameters` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
-  `type` enum('numeric','text','choice') NOT NULL,
+  `type` enum('numeric','text','choice') NOT NULL DEFAULT 'numeric',
   `unit` varchar(50) DEFAULT NULL,
   `options` text DEFAULT NULL,
-  `category` varchar(100) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `category` enum('vital_sign','lab_result','clinical_measurement','symptom','assessment') NOT NULL DEFAULT 'vital_sign',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ----------------------------
--- Table structure for assessments
--- ----------------------------
-DROP TABLE IF EXISTS `assessments`;
+-- 5. Clinical Assessments
 CREATE TABLE `assessments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `patient_id` int(11) NOT NULL,
@@ -112,124 +100,160 @@ CREATE TABLE `assessments` (
   `value` varchar(255) NOT NULL,
   `notes` text DEFAULT NULL,
   `is_normal` tinyint(1) DEFAULT NULL,
-  `measured_at` timestamp NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `measured_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `patient_id` (`patient_id`),
-  KEY `clinical_parameter_id` (`clinical_parameter_id`),
-  CONSTRAINT `assessments_ibfk_1` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `assessments_ibfk_2` FOREIGN KEY (`clinical_parameter_id`) REFERENCES `clinical_parameters` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CONSTRAINT `fk_assessment_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_assessment_param` FOREIGN KEY (`clinical_parameter_id`) REFERENCES `clinical_parameters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ----------------------------
--- Table structure for goals
--- ----------------------------
-DROP TABLE IF EXISTS `goals`;
+-- 6. Health Goals
 CREATE TABLE `goals` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `patient_id` int(11) NOT NULL,
   `clinical_parameter_id` int(11) NOT NULL,
   `target_value` varchar(255) NOT NULL,
-  `target_operator` enum('<','<=','=','>=','>') NOT NULL,
-  `status` enum('active','completed','cancelled') DEFAULT 'active',
+  `target_operator` enum('<','<=','=','>=','>') NOT NULL DEFAULT '<=',
+  `status` enum('active','completed','cancelled') NOT NULL DEFAULT 'active',
   `notes` text DEFAULT NULL,
-  `deadline` date DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `deadline` date NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `patient_id` (`patient_id`),
-  CONSTRAINT `goals_ibfk_1` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CONSTRAINT `fk_goal_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_goal_param` FOREIGN KEY (`clinical_parameter_id`) REFERENCES `clinical_parameters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ----------------------------
--- Table structure for messages
--- ----------------------------
-DROP TABLE IF EXISTS `messages`;
+-- 7. Medications & Prescriptions
+CREATE TABLE `medications` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `dosage` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `prescriptions` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `patient_id` int(11) NOT NULL,
+  `medication_id` int(11) NOT NULL,
+  `dosage` varchar(255) NOT NULL,
+  `frequency` varchar(255) NOT NULL,
+  `start_date` date NOT NULL,
+  `expiry_date` date DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `status` enum('active','completed','discontinued') NOT NULL DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_presc_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_presc_med` FOREIGN KEY (`medication_id`) REFERENCES `medications` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 8. Messaging
 CREATE TABLE `messages` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `sender_id` int(11) NOT NULL,
   `receiver_id` int(11) NOT NULL,
   `content` text NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `sender_id` (`sender_id`),
-  KEY `receiver_id` (`receiver_id`),
-  CONSTRAINT `messages_ibfk_1` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `messages_ibfk_2` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CONSTRAINT `fk_msg_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_msg_receiver` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ----------------------------
--- Initial Data
--- ----------------------------
+-- 9. Clinical Reviews
+CREATE TABLE `reviews` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `patient_id` int(11) NOT NULL,
+  `reviewed_by_id` int(11) NOT NULL,
+  `review_date` date NOT NULL,
+  `subjective_findings` text DEFAULT NULL,
+  `objective_findings` text DEFAULT NULL,
+  `assessment` text NOT NULL,
+  `plan` text NOT NULL,
+  `recommendations` text DEFAULT NULL,
+  `follow_up_date` date DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_rev_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_rev_user` FOREIGN KEY (`reviewed_by_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Add default Admin and Navigator
+-- 10. Appointments
+CREATE TABLE `appointments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `patient_id` int(11) NOT NULL,
+  `clinician_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `appointment_date` timestamp NOT NULL,
+  `end_date` timestamp NULL DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `status` enum('scheduled','confirmed','cancelled','completed','no_show','rescheduled') NOT NULL DEFAULT 'scheduled',
+  `cancellation_reason` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_appt_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_appt_clinician` FOREIGN KEY (`clinician_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- SEED DATA
+INSERT INTO `partners` (`name`) VALUES ('Aetna Insurance'), ('Blue Cross'), ('Self-Pay');
+
 INSERT INTO `users` (`name`, `email`, `password`, `role`) VALUES 
-('System Admin', 'admin@taria.com', '$2a$10$K7Z.X.Z7X.X.Z7X.X.Z7X.X.Z7X.X.Z7X.X.Z7X.X.Z7X.X.', 'admin'),
-('John Navigator', 'navigator@taria.com', '$2a$10$K7Z.X.Z7X.X.Z7X.X.Z7X.X.Z7X.X.Z7X.X.Z7X.X.Z7X.X.', 'navigator');
+('System Admin', 'admin@taria.com', '$2a$10$K7L1OJq5Z6y.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.', 'admin'),
+('Navigator One', 'nav@taria.com', '$2a$10$K7L1OJq5Z6y.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.', 'navigator');
 
--- Add Partners
-INSERT INTO `partners` (`name`) VALUES ('Aetna'), ('Cigna'), ('UnitedHealthcare');
-
--- Add Clinical Parameters
 INSERT INTO `clinical_parameters` (`name`, `type`, `unit`, `options`, `category`) VALUES 
-('Blood Pressure (Systolic)', 'numeric', 'mmHg', NULL, 'vital_sign'),
-('Blood Pressure (Diastolic)', 'numeric', 'mmHg', NULL, 'vital_sign'),
+('Systolic BP', 'numeric', 'mmHg', NULL, 'vital_sign'),
+('Diastolic BP', 'numeric', 'mmHg', NULL, 'vital_sign'),
 ('Weight', 'numeric', 'kg', NULL, 'clinical_measurement'),
+('KCB Status', 'choice', NULL, '["Good", "Average", "Bad"]', 'assessment'),
 ('Mood', 'choice', NULL, '["Happy", "Anxious", "Sad", "Calm"]', 'assessment'),
-('KCB Status', 'choice', NULL, '["Good", "Better", "Worst"]', 'assessment'),
-('Qualitative Progress', 'text', NULL, NULL, 'assessment');
+('Clinic Notes', 'text', NULL, NULL, 'assessment');
 
--- Add 5 Sample Patients (3 Male, 2 Female)
+-- SEED 5 PATIENTS (3 Male, 2 Female)
 INSERT INTO `patients` (`first_name`, `surname`, `dob`, `gender`, `email`, `phone`, `status`, `primary_diagnosis`, `date_of_onboarding`) VALUES 
-('Michael', 'Ondieki', '1985-05-15', 'Male', 'michael@example.com', '0711223344', 'Active', 'Hypertension', '2024-01-10'),
-('Sarah', 'Wambui', '1992-08-22', 'Female', 'sarah@example.com', '0722334455', 'Active', 'Diabetes', '2024-01-15'),
-('David', 'Kariuki', '1970-11-03', 'Male', 'david@example.com', '0733445566', 'Critical', 'Hypertension and Diabetes', '2024-01-20'),
-('Emily', 'Atieno', '1965-02-28', 'Female', 'emily@example.com', '0744556677', 'Active', 'Hypertension', '2024-02-01'),
-('Joseph', 'Oloo', '1998-12-12', 'Male', 'joseph@example.com', '0755667788', 'Pending', NULL, NULL);
+('James', 'Smith', '1985-05-15', 'Male', 'james@example.com', '0711000001', 'Active', 'Hypertension', CURDATE()),
+('Robert', 'Johnson', '1972-11-20', 'Male', 'robert@example.com', '0711000002', 'Active', 'Diabetes', CURDATE()),
+('Michael', 'Brown', '1960-03-10', 'Male', 'michael@example.com', '0711000003', 'Active', 'Hypertension and Diabetes', CURDATE()),
+('Maria', 'Garcia', '1990-08-22', 'Female', 'maria@example.com', '0711000004', 'Active', 'Hypertension', CURDATE()),
+('Sarah', 'Wilson', '1982-12-05', 'Female', 'sarah@example.com', '0711000005', 'Active', 'Diabetes', CURDATE());
 
--- Add Assessments for each Active/Critical Patient
--- Patient 1 (Michael)
-INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `notes`, `measured_at`) VALUES 
-(1, 1, '130', 'Post-exercise', NOW()),
-(1, 2, '85', NULL, NOW()),
-(1, 3, '82', 'Slightly over target', NOW()),
-(1, 4, 'Calm', 'Patient feels stable', NOW()),
-(1, 5, 'Better', 'Improving adherence', NOW()),
-(1, 6, 'Patient is responding well to Lisinopril.', NULL, NOW());
+-- SEED ASSESSMENTS FOR ALL 5 PATIENTS
+-- Patient 1
+INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `measured_at`) VALUES 
+(1, 1, '130', NOW()), (1, 2, '85', NOW()), (1, 3, '88', NOW()), -- Numeric
+(1, 4, 'Good', NOW()), (1, 5, 'Calm', NOW()), -- Choices
+(1, 6, 'Patient is adhering to low sodium diet.', NOW()); -- Text
 
--- Patient 2 (Sarah)
-INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `notes`, `measured_at`) VALUES 
-(2, 1, '120', 'Target met', NOW()),
-(2, 2, '80', NULL, NOW()),
-(2, 3, '65', 'Stable weight', NOW()),
-(2, 4, 'Happy', 'Excellent mood', NOW()),
-(2, 5, 'Good', 'Full adherence', NOW()),
-(2, 6, 'Blood sugar levels are within normal range this week.', NULL, NOW());
+-- Patient 2
+INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `measured_at`) VALUES 
+(2, 1, '145', NOW()), (2, 2, '95', NOW()), (2, 3, '102', NOW()), 
+(2, 4, 'Bad', NOW()), (2, 5, 'Anxious', NOW()), 
+(2, 6, 'Experiencing headaches in the mornings.', NOW());
 
--- Patient 3 (David)
-INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `notes`, `measured_at`) VALUES 
-(3, 1, '155', 'High - requires review', NOW()),
-(3, 2, '98', NULL, NOW()),
-(3, 3, '95', 'Significant gain', NOW()),
-(3, 4, 'Anxious', 'Worried about readings', NOW()),
-(3, 5, 'Worst', 'Missed doses reported', NOW()),
-(3, 6, 'Urgent follow-up required regarding medication adjustment.', NULL, NOW());
+-- Patient 3
+INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `measured_at`) VALUES 
+(3, 1, '120', NOW()), (3, 2, '80', NOW()), (3, 3, '75', NOW()), 
+(3, 4, 'Good', NOW()), (3, 5, 'Happy', NOW()), 
+(3, 6, 'Weight loss program yielding results.', NOW());
 
--- Patient 4 (Emily)
-INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `notes`, `measured_at`) VALUES 
-(4, 1, '135', 'Moderate', NOW()),
-(4, 2, '88', NULL, NOW()),
-(4, 3, '72', 'Stable', NOW()),
-(4, 4, 'Calm', 'Normal', NOW()),
-(4, 5, 'Better', 'Doing okay', NOW()),
-(4, 6, 'Stable overall, maintaining current regimen.', NULL, NOW());
+-- Patient 4
+INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `measured_at`) VALUES 
+(4, 1, '135', NOW()), (4, 2, '88', NOW()), (4, 3, '68', NOW()), 
+(4, 4, 'Average', NOW()), (4, 5, 'Calm', NOW()), 
+(4, 6, 'Mild allergic reaction noted.', NOW());
 
--- Add Goals
-INSERT INTO `goals` (`patient_id`, `clinical_parameter_id`, `target_value`, `target_operator`, `status`, `deadline`) VALUES 
-(1, 1, '120', '<=', 'active', '2024-12-31'),
-(2, 3, '64', '<=', 'completed', '2024-06-01'),
-(3, 1, '130', '<=', 'active', '2024-03-01');
+-- Patient 5
+INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `measured_at`) VALUES 
+(5, 1, '128', NOW()), (5, 2, '82', NOW()), (5, 3, '72', NOW()), 
+(5, 4, 'Good', NOW()), (5, 5, 'Happy', NOW()), 
+(5, 6, 'Consistent monitoring of glucose levels.', NOW());
 
-SET FOREIGN_KEY_CHECKS = 1;
+COMMIT;
