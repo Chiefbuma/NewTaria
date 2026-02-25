@@ -1,5 +1,4 @@
-
-'use client';
+"use client"
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Patient, User } from '@/lib/types';
@@ -22,7 +21,7 @@ export default function PatientList({ patients: initialPatients }: { patients: P
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const { toast } = useToast();
   
-  // Use ref to track internal state without triggering loops
+  // Use ref to track internal state without triggering recursive loops
   const lastSelectedIdsRef = useRef("");
 
   useEffect(() => {
@@ -38,7 +37,7 @@ export default function PatientList({ patients: initialPatients }: { patients: P
       const ids = selectedRows.map(r => r.id).sort();
       const idsString = ids.join(",");
       
-      // Only update state if IDs actually changed to prevent loop #185
+      // Only update state if IDs actually changed to prevent infinite loop #185
       if (lastSelectedIdsRef.current !== idsString) {
           lastSelectedIdsRef.current = idsString;
           setSelectedIds(ids);

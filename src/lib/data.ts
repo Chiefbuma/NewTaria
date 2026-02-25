@@ -1,4 +1,3 @@
-
 import { db } from './db';
 import type { 
     Patient, 
@@ -23,11 +22,18 @@ import { unstable_noStore as noStore } from 'next/cache';
 function serialize(obj: any): any {
     if (obj === null || obj === undefined) return obj;
     
+    // Handle BigInt
     if (typeof obj === 'bigint') return Number(obj);
-    if (obj instanceof Date) return obj.toISOString();
+    
+    // Handle Date objects safely
+    if (Object.prototype.toString.call(obj) === '[object Date]') {
+        return obj.toISOString();
+    }
 
+    // Handle Arrays
     if (Array.isArray(obj)) return obj.map(serialize);
     
+    // Handle complex Objects (including RowDataPacket)
     if (typeof obj === 'object') {
         if (typeof Buffer !== 'undefined' && Buffer.isBuffer(obj)) return obj.toString('base64');
         const result: any = {};
@@ -44,6 +50,7 @@ function serialize(obj: any): any {
 
 /**
  * Formats a date for MySQL DATETIME/TIMESTAMP: YYYY-MM-DD HH:mm:00
+ * Strictly truncates to minutes as requested.
  */
 function toSqlDateTime(date: string | Date | null | undefined): string | null {
     if (!date) return null;
@@ -97,7 +104,7 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
         `;
         let params: any[] = [];
 
-        if (requestingUser && (requestingUser.role === 'partner' || requestingUser.role === 'payer') && requestingUser.partner_id) {
+        if (requestingUser && requestingUser.role === 'partner' && requestingUser.partner_id) {
             query += ` AND p.partner_id = ? `;
             params.push(requestingUser.partner_id);
         }
@@ -431,8 +438,8 @@ export async function deletePrescription(id: number): Promise<void> {
 
 export async function updatePatientDetails(id: number, data: any): Promise<void> {
     await db.query(
-        'UPDATE patients SET first_name = ?, middle_name = ?, surname = ?, dob = ?, age = ?, gender = ?, email = ?, phone = ?, wellness_date = ?, corporate_id = ? WHERE id = ?',
-        [data.first_name, data.middle_name, data.surname, toSqlDate(data.dob), data.age, data.gender, data.email, data.phone, toSqlDate(data.wellness_date), data.corporate_id, id]
+        'UPDATE patients SET first_name = ?, middle_name = ?, surname = ?, dob = ?, age = ?, gender = ?, email = ?, phone = ?, wellness_date = ?, corporate_id = ?, partner_id = ? WHERE id = ?',
+        [data.first_name, data.middle_name, data.surname, toSqlDate(data.dob), data.age, data.gender, data.email, data.phone, toSqlDate(data.wellness_date), data.corporate_id, data.partner_id, id]
     );
 }
 

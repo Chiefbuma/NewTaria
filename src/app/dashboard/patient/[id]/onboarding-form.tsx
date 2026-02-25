@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -229,7 +228,7 @@ export default function OnboardingForm({ patient, initialPartners }: OnboardingF
                     </Card>
 
                     <div className="flex justify-end gap-4">
-                        <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90 shadow-lg px-8">
+                        <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90 shadow-lg px-8 font-bold">
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Complete Onboarding & Activate Patient
                         </Button>

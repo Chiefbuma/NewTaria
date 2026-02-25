@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -230,24 +229,29 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
     getSortedRowModel: getSortedRowModel(),
   })
 
-  // Ref Fix for Error #185 (Maximum update depth exceeded)
+  // Use refs to track values without causing re-renders
   const prevSelectionKeysRef = React.useRef("")
   const onSelectionChangeRef = React.useRef(onSelectionChange)
   const tableRef = React.useRef(table)
   
+  // Update the table ref when table changes, but don't trigger effects
   React.useEffect(() => {
     tableRef.current = table
   }, [table])
   
+  // Update the callback ref
   React.useEffect(() => {
     onSelectionChangeRef.current = onSelectionChange
   }, [onSelectionChange])
 
+  // Use a separate effect that only depends on rowSelection to prevent loop #185
   React.useEffect(() => {
     const selectionKeys = Object.keys(rowSelection).sort().join(",")
     
     if (prevSelectionKeysRef.current !== selectionKeys) {
       prevSelectionKeysRef.current = selectionKeys
+      
+      // Use tableRef.current instead of table to avoid dependency loop
       const selectedRows = tableRef.current.getSelectedRowModel().rows.map(r => r.original)
       onSelectionChangeRef.current?.(selectedRows)
     }

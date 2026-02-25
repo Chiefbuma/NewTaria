@@ -1,17 +1,26 @@
 -- Taria Health - Production Schema with Soft Delete Support
 
+-- Partners Table (Renamed from Payers)
+CREATE TABLE IF NOT EXISTS partners (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL
+);
+
 -- Users Table
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'navigator', 'clinician', 'user', 'payer') DEFAULT 'user',
+    role ENUM('admin', 'navigator', 'clinician', 'user', 'partner') DEFAULT 'user',
     avatarUrl VARCHAR(255),
-    payer_id INT,
+    partner_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (partner_id) REFERENCES partners(id) ON DELETE SET NULL
 );
 
 -- Corporates Table
@@ -19,14 +28,6 @@ CREATE TABLE IF NOT EXISTS corporates (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     wellness_date DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL
-);
-
--- Payers Table
-CREATE TABLE IF NOT EXISTS payers (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL
 );
@@ -47,7 +48,7 @@ CREATE TABLE IF NOT EXISTS patients (
     emr_number VARCHAR(100),
     date_of_onboarding DATE,
     navigator_id INT,
-    payer_id INT,
+    partner_id INT,
     corporate_id INT,
     wellness_date DATE,
     date_of_diagnosis DATE,
@@ -70,7 +71,10 @@ CREATE TABLE IF NOT EXISTS patients (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (partner_id) REFERENCES partners(id) ON DELETE SET NULL,
+    FOREIGN KEY (corporate_id) REFERENCES corporates(id) ON DELETE SET NULL,
+    FOREIGN KEY (navigator_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Clinical Parameters

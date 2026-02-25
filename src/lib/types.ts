@@ -1,9 +1,8 @@
-
 export type User = {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'navigator' | 'clinician' | 'user' | 'payer' | 'partner';
+  role: 'admin' | 'navigator' | 'clinician' | 'user' | 'partner';
   avatarUrl?: string;
   partner_id?: number | null; 
   deleted_at?: string | null;
@@ -21,8 +20,6 @@ export type Partner = {
   name: string;
   deleted_at?: string | null;
 };
-
-export type Payer = Partner; // Alias for backward compatibility
 
 export type Message = {
     id: number;

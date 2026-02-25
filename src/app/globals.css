@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -65,12 +64,14 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
+  /* Aggressive contrast rules for Dark Mode labels and inputs */
   .dark label, 
   .dark .text-muted-foreground,
   .dark .text-gray-500,
   .dark .text-gray-600 {
     color: hsl(210 20% 98%) !important;
     opacity: 1;
+    font-weight: 600 !important;
   }
   
   .dark .border,
@@ -85,6 +86,7 @@
     border-color: hsla(173, 80%, 45%, 1) !important;
     background-color: hsla(224, 71.4%, 4.1%, 0.8) !important;
     color: white !important;
+    border-width: 2px !important;
   }
 
   .dark button:not(.bg-primary) {
