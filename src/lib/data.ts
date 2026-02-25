@@ -376,6 +376,7 @@ export async function fetchDashboardStats(requestingUser?: User) {
 
         // Distributions
         const [genderRows] = await db.query(`SELECT gender, COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${partnerFilter} GROUP BY gender`, partnerParam);
+        const [diagnosisRows] = await db.query(`SELECT primary_diagnosis as diagnosis, COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${partnerFilter} AND primary_diagnosis IS NOT NULL GROUP BY primary_diagnosis`, partnerParam);
 
         return serialize({
             totalPatients: (totalPatientsRows as any)[0]?.count || 0,
@@ -387,6 +388,10 @@ export async function fetchDashboardStats(requestingUser?: User) {
             totalInProgress: (totalInProgressRows as any)[0]?.count || 0,
             genderDistribution: (genderRows as any[]).map(row => ({
                 gender: row.gender || 'Not Specified',
+                count: Number(row.count)
+            })),
+            diagnosisDistribution: (diagnosisRows as any[]).map(row => ({
+                diagnosis: row.diagnosis,
                 count: Number(row.count)
             }))
         });

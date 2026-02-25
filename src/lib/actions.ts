@@ -1,4 +1,3 @@
-
 'use server';
 
 import bcrypt from 'bcryptjs';
@@ -36,7 +35,7 @@ export async function authenticateUser(email: string, password: string): Promise
  */
 export async function registerUser(formData: any): Promise<{ success: boolean; error?: string }> {
     try {
-        const { first_name, surname, email, password, age, gender, role, partner_id } = formData;
+        const { first_name, surname, email, password, role, partner_id } = formData;
         const existingUser = await getUserByEmail(email);
         if (existingUser) return { success: false, error: 'A user with this email already exists.' };
 
@@ -56,8 +55,6 @@ export async function registerUser(formData: any): Promise<{ success: boolean; e
                 first_name,
                 surname,
                 email,
-                age: parseInt(age),
-                gender,
                 status: 'Pending',
                 partner_id: partner_id || null
             });
