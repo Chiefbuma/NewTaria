@@ -229,29 +229,22 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
     getSortedRowModel: getSortedRowModel(),
   })
 
-  // Use refs to track values without causing re-renders
+  /**
+   * Ref Fix for Next.js 15 / React 19 recursive loops.
+   * This decouples the onSelectionChange callback from the internal render cycle
+   * by using refs to track the latest state without triggering re-effects.
+   */
   const prevSelectionKeysRef = React.useRef("")
   const onSelectionChangeRef = React.useRef(onSelectionChange)
   const tableRef = React.useRef(table)
   
-  // Update the table ref when table changes, but don't trigger effects
-  React.useEffect(() => {
-    tableRef.current = table
-  }, [table])
-  
-  // Update the callback ref
-  React.useEffect(() => {
-    onSelectionChangeRef.current = onSelectionChange
-  }, [onSelectionChange])
+  React.useEffect(() => { tableRef.current = table }, [table])
+  React.useEffect(() => { onSelectionChangeRef.current = onSelectionChange }, [onSelectionChange])
 
-  // Use a separate effect that only depends on rowSelection to prevent loop #185
   React.useEffect(() => {
     const selectionKeys = Object.keys(rowSelection).sort().join(",")
-    
     if (prevSelectionKeysRef.current !== selectionKeys) {
       prevSelectionKeysRef.current = selectionKeys
-      
-      // Use tableRef.current instead of table to avoid dependency loop
       const selectedRows = tableRef.current.getSelectedRowModel().rows.map(r => r.original)
       onSelectionChangeRef.current?.(selectedRows)
     }
@@ -265,48 +258,27 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
             <TableHeader className="bg-muted/50">
                 {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                    return (
+                    {headerGroup.headers.map((header) => (
                         <TableHead key={header.id} colSpan={header.colSpan} className="text-foreground font-bold h-12">
-                        {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                            )}
+                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                         </TableHead>
-                    )
-                    })}
+                    ))}
                 </TableRow>
                 ))}
             </TableHeader>
             <TableBody>
                 {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                    <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                    className="hover:bg-primary/5 data-[state=selected]:bg-primary/10 transition-colors"
-                    >
+                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="hover:bg-primary/5 data-[state=selected]:bg-primary/10 transition-colors">
                     {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id} className="py-3 px-4">
-                        {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                        )}
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                     ))}
                     </TableRow>
                 ))
                 ) : (
-                <TableRow>
-                    <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center text-muted-foreground"
-                    >
-                    No matching records found.
-                    </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">No matching records found.</TableCell></TableRow>
                 )}
             </TableBody>
             </Table>

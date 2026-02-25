@@ -24,7 +24,6 @@
     --input: 220 13% 91%;
     --ring: 173 80% 30%;
     --radius: 0.5rem;
-
     --chart-1: 173 70% 40%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -56,49 +55,35 @@
 }
  
 @layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; font-feature-settings: "rlig" 1, "calt" 1; }
   
-  /* Aggressive contrast rules for Dark Mode labels and inputs */
+  /* Robust Dark Mode Contrast Fixes */
   .dark label, 
   .dark .text-muted-foreground,
-  .dark .text-gray-500,
-  .dark .text-gray-600 {
-    color: hsl(210 20% 98%) !important;
-    opacity: 1;
-    font-weight: 600 !important;
+  .dark p.text-sm { 
+    color: hsl(210 20% 98%) !important; 
+    opacity: 1; 
+    font-weight: 600 !important; 
   }
   
   .dark .border,
-  .dark .border-t,
-  .dark .border-b,
-  .dark .border-l,
-  .dark .border-r {
-    border-color: hsla(173, 80%, 45%, 0.8) !important;
+  .dark .border-primary\/10,
+  .dark .border-primary\/20 { 
+    border-color: hsla(173, 80%, 45%, 0.8) !important; 
+  }
+  
+  .dark input, 
+  .dark textarea, 
+  .dark select,
+  .dark .bg-background { 
+    border-color: hsla(173, 80%, 45%, 1) !important; 
+    background-color: hsla(224, 71.4%, 4.1%, 0.95) !important; 
+    color: white !important; 
+    border-width: 2px !important; 
   }
 
-  .dark input, .dark textarea, .dark select {
-    border-color: hsla(173, 80%, 45%, 1) !important;
-    background-color: hsla(224, 71.4%, 4.1%, 0.8) !important;
-    color: white !important;
-    border-width: 2px !important;
-  }
-
-  .dark button:not(.bg-primary) {
-    border-color: hsla(173, 80%, 45%, 0.5) !important;
-  }
-
-  .dark .bg-muted {
+  .dark .bg-muted\/50 {
     background-color: hsla(173, 80%, 45%, 0.1) !important;
-  }
-
-  .dark [role="combobox"], 
-  .dark [role="listbox"] {
-    border-color: hsla(173, 80%, 45%, 1) !important;
   }
 }

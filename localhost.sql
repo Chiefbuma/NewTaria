@@ -1,6 +1,6 @@
 -- Taria Health - Production Schema with Soft Delete Support
 
--- Partners Table
+-- Partners Table (Renamed from payers)
 CREATE TABLE IF NOT EXISTS partners (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
-    FOREIGN KEY (partner_id) REFERENCES partners(id)
+    FOREIGN KEY (partner_id) REFERENCES partners(id) ON DELETE SET NULL
 );
 
 -- Corporates Table
@@ -72,9 +72,8 @@ CREATE TABLE IF NOT EXISTS patients (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-    FOREIGN KEY (partner_id) REFERENCES partners(id),
-    FOREIGN KEY (corporate_id) REFERENCES corporates(id),
-    FOREIGN KEY (navigator_id) REFERENCES users(id)
+    FOREIGN KEY (partner_id) REFERENCES partners(id) ON DELETE SET NULL,
+    FOREIGN KEY (corporate_id) REFERENCES corporates(id) ON DELETE SET NULL
 );
 
 -- Clinical Parameters
