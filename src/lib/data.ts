@@ -179,6 +179,16 @@ export async function fetchPartners(): Promise<Partner[]> {
     }
 }
 
+export async function fetchCorporates(): Promise<Corporate[]> {
+    noStore();
+    try {
+        const [rows] = await db.query('SELECT * FROM corporates WHERE deleted_at IS NULL ORDER BY name ASC');
+        return serialize(rows as Corporate[]);
+    } catch (error) {
+        throw new Error('Failed to fetch corporates.');
+    }
+}
+
 export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
     noStore();
     try {

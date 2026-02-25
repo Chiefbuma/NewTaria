@@ -45,6 +45,7 @@ export async function registerUser(formData: any): Promise<{ success: boolean; e
             email,
             password: hashedPassword,
             role: 'user',
+            partner_id: formData.partner_id || null
         });
 
         await createPatient({

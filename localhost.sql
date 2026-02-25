@@ -1,6 +1,6 @@
 -- Taria Health - Production Schema with Soft Delete Support
 
--- Partners Table (Renamed from payers)
+-- Partners Table
 CREATE TABLE IF NOT EXISTS partners (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -73,7 +73,8 @@ CREATE TABLE IF NOT EXISTS patients (
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (partner_id) REFERENCES partners(id) ON DELETE SET NULL,
-    FOREIGN KEY (corporate_id) REFERENCES corporates(id) ON DELETE SET NULL
+    FOREIGN KEY (corporate_id) REFERENCES corporates(id) ON DELETE SET NULL,
+    FOREIGN KEY (navigator_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Clinical Parameters
@@ -99,8 +100,8 @@ CREATE TABLE IF NOT EXISTS assessments (
     measured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
-    FOREIGN KEY (patient_id) REFERENCES patients(id),
-    FOREIGN KEY (clinical_parameter_id) REFERENCES clinical_parameters(id)
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    FOREIGN KEY (clinical_parameter_id) REFERENCES clinical_parameters(id) ON DELETE CASCADE
 );
 
 -- Goals Table
@@ -115,8 +116,8 @@ CREATE TABLE IF NOT EXISTS goals (
     deadline DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
-    FOREIGN KEY (patient_id) REFERENCES patients(id),
-    FOREIGN KEY (clinical_parameter_id) REFERENCES clinical_parameters(id)
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    FOREIGN KEY (clinical_parameter_id) REFERENCES clinical_parameters(id) ON DELETE CASCADE
 );
 
 -- Medications Table
@@ -141,8 +142,8 @@ CREATE TABLE IF NOT EXISTS prescriptions (
     status ENUM('active', 'completed', 'discontinued') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
-    FOREIGN KEY (patient_id) REFERENCES patients(id),
-    FOREIGN KEY (medication_id) REFERENCES medications(id)
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    FOREIGN KEY (medication_id) REFERENCES medications(id) ON DELETE CASCADE
 );
 
 -- Appointments Table
@@ -158,8 +159,8 @@ CREATE TABLE IF NOT EXISTS appointments (
     cancellation_reason TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
-    FOREIGN KEY (patient_id) REFERENCES patients(id),
-    FOREIGN KEY (clinician_id) REFERENCES users(id)
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    FOREIGN KEY (clinician_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Reviews Table
@@ -176,8 +177,8 @@ CREATE TABLE IF NOT EXISTS reviews (
     follow_up_date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
-    FOREIGN KEY (patient_id) REFERENCES patients(id),
-    FOREIGN KEY (reviewed_by_id) REFERENCES users(id)
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewed_by_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Messages Table
@@ -188,8 +189,8 @@ CREATE TABLE IF NOT EXISTS messages (
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
-    FOREIGN KEY (sender_id) REFERENCES users(id),
-    FOREIGN KEY (receiver_id) REFERENCES users(id)
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- SEED DATA (Passwords are 'password')
