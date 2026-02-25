@@ -375,8 +375,24 @@ export async function fetchDashboardStats(requestingUser?: User) {
         const [totalInProgressRows] = await db.query(`SELECT COUNT(DISTINCT patient_id) as count FROM goals WHERE status = 'active' AND deadline >= NOW() AND deleted_at IS NULL ${isPartner ? 'AND patient_id IN (SELECT id FROM patients WHERE partner_id = ?)' : ''}`, partnerParam);
 
         // Distributions
-        const [genderRows] = await db.query(`SELECT gender, COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${partnerFilter} GROUP BY gender`, partnerParam);
-        const [diagnosisRows] = await db.query(`SELECT primary_diagnosis as diagnosis, COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${partnerFilter} AND primary_diagnosis IS NOT NULL GROUP BY primary_diagnosis`, partnerParam);
+        const [genderRows] = await db.query(`SELECT IFNULL(gender, 'Not Specified') as gender, COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${partnerFilter} GROUP BY gender`, partnerParam);
+        const [diagnosisRows] = await db.query(`SELECT IFNULL(primary_diagnosis, 'Not Specified') as diagnosis, COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${partnerFilter} GROUP BY primary_diagnosis`, partnerParam);
+        
+        // Age Distribution
+        const [ageRows] = await db.query(`
+            SELECT 
+                CASE 
+                    WHEN dob IS NULL THEN 'Not Specified'
+                    WHEN TIMESTAMPDIFF(YEAR, dob, CURDATE()) BETWEEN 18 AND 35 THEN '18-35'
+                    WHEN TIMESTAMPDIFF(YEAR, dob, CURDATE()) BETWEEN 36 AND 50 THEN '36-50'
+                    WHEN TIMESTAMPDIFF(YEAR, dob, CURDATE()) > 50 THEN 'Above 50'
+                    ELSE 'Below 18'
+                END as age_group,
+                COUNT(*) as count
+            FROM patients 
+            WHERE deleted_at IS NULL ${partnerFilter}
+            GROUP BY age_group
+        `, partnerParam);
 
         return serialize({
             totalPatients: (totalPatientsRows as any)[0]?.count || 0,
@@ -387,11 +403,15 @@ export async function fetchDashboardStats(requestingUser?: User) {
             totalCritical: (totalCriticalRows as any)[0]?.count || 0,
             totalInProgress: (totalInProgressRows as any)[0]?.count || 0,
             genderDistribution: (genderRows as any[]).map(row => ({
-                gender: row.gender || 'Not Specified',
+                gender: row.gender,
                 count: Number(row.count)
             })),
             diagnosisDistribution: (diagnosisRows as any[]).map(row => ({
                 diagnosis: row.diagnosis,
+                count: Number(row.count)
+            })),
+            ageDistribution: (ageRows as any[]).map(row => ({
+                age_group: row.age_group,
                 count: Number(row.count)
             }))
         });

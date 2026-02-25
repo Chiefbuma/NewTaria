@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BarChart3, Users, Building2, ClipboardCheck, Target, Activity } from 'lucide-react';
+import { BarChart3, Users, Building2, ClipboardCheck, Target, Activity, Calendar } from 'lucide-react';
 
 interface VisualSectionProps {
     title: string;
@@ -17,7 +17,8 @@ interface VisualSectionProps {
 }
 
 const VisualSection = ({ title, description, icon, chartData, tableData, total }: VisualSectionProps) => {
-    if (total === 0) return null;
+    // Return empty state for visual if total is 0 to match high-fidelity pattern
+    const hasData = total > 0;
 
     return (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -36,34 +37,40 @@ const VisualSection = ({ title, description, icon, chartData, tableData, total }
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* Left: Donut Chart */}
                 <Card className="lg:col-span-5 border-primary/10 shadow-sm flex flex-col items-center justify-center p-6">
-                    <div className="w-full aspect-square max-w-[220px] relative">
-                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-3xl font-black text-foreground">{total}</span>
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total</span>
+                    {hasData ? (
+                        <div className="w-full aspect-square max-w-[220px] relative">
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-3xl font-black text-foreground">{total}</span>
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total</span>
+                            </div>
+                            <ChartContainer config={{ value: { label: 'Count' } }} className="h-full w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={chartData}
+                                            dataKey="value"
+                                            nameKey="name"
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius="70%"
+                                            outerRadius="100%"
+                                            paddingAngle={5}
+                                            stroke="none"
+                                        >
+                                            {chartData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip content={<ChartTooltipContent hideLabel />} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </ChartContainer>
                         </div>
-                        <ChartContainer config={{ value: { label: 'Count' } }} className="h-full w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={chartData}
-                                        dataKey="value"
-                                        nameKey="name"
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius="70%"
-                                        outerRadius="100%"
-                                        paddingAngle={5}
-                                        stroke="none"
-                                    >
-                                        {chartData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip content={<ChartTooltipContent hideLabel />} />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </ChartContainer>
-                    </div>
+                    ) : (
+                        <div className="text-center py-12">
+                            <p className="text-muted-foreground text-sm">No distribution data available.</p>
+                        </div>
+                    )}
                 </Card>
 
                 {/* Right: Table */}
@@ -77,7 +84,7 @@ const VisualSection = ({ title, description, icon, chartData, tableData, total }
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {tableData.map((row, idx) => (
+                            {tableData.length > 0 ? tableData.map((row, idx) => (
                                 <TableRow key={idx} className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-2">
@@ -90,7 +97,11 @@ const VisualSection = ({ title, description, icon, chartData, tableData, total }
                                         {row.percentage || (total > 0 ? `${((Number(row.value) / total) * 100).toFixed(0)}%` : '0%')}
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            )) : (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">0 records found.</TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </Card>
@@ -109,7 +120,7 @@ export default function AdminOverview({ stats }: { stats: any }) {
                 <div>
                     <h3 className="text-xl font-bold text-foreground">No Data Available</h3>
                     <p className="text-muted-foreground max-w-xs mx-auto">
-                        Stats will appear here once patients are registered and onboarded into the program.
+                        Stats will appear here once patients are registered and assessed.
                     </p>
                 </div>
             </div>
@@ -130,45 +141,57 @@ export default function AdminOverview({ stats }: { stats: any }) {
         color: COLORS[i % COLORS.length]
     }));
 
-    // 2. GOAL COMPLETION
-    const totalWithGoals = stats.totalCompleted + stats.totalInProgress + stats.totalCritical;
+    // 2. AGE DISTRIBUTION
+    const ageChart = (stats.ageDistribution || []).map((a: any, i: number) => ({
+        name: a.age_group,
+        value: a.count,
+        fill: COLORS[(i + 1) % COLORS.length]
+    }));
+    const ageTable = (stats.ageDistribution || []).map((a: any, i: number) => ({
+        label: a.age_group,
+        value: a.count,
+        color: COLORS[(i + 1) % COLORS.length]
+    }));
+
+    // 3. GOAL COMPLETION
+    const totalWithGoals = (stats.totalCompleted || 0) + (stats.totalInProgress || 0) + (stats.totalCritical || 0);
     const completionChart = [
-        { name: 'Completed', value: stats.totalCompleted, fill: 'hsl(var(--chart-2))' },
-        { name: 'Remaining', value: stats.totalInProgress + stats.totalCritical, fill: 'hsl(var(--muted))' }
+        { name: 'Completed', value: stats.totalCompleted || 0, fill: 'hsl(var(--chart-2))' },
+        { name: 'Remaining', value: (stats.totalInProgress || 0) + (stats.totalCritical || 0), fill: 'hsl(var(--muted))' }
     ];
     const completionTable = [
-        { label: 'Achieved Targets', value: stats.totalCompleted, color: 'hsl(var(--chart-2))' },
-        { label: 'In Progress / Overdue', value: stats.totalInProgress + stats.totalCritical, color: 'hsl(var(--muted))' }
+        { label: 'Achieved Targets', value: stats.totalCompleted || 0, color: 'hsl(var(--chart-2))' },
+        { label: 'In Progress / Overdue', value: (stats.totalInProgress || 0) + (stats.totalCritical || 0), color: 'hsl(var(--muted))' }
     ];
 
-    // 3. PATIENT PROGRESS STATUS
+    // 4. PATIENT PROGRESS STATUS
     const progressChart = [
-        { name: 'Active', value: stats.totalOnboarded, fill: 'hsl(var(--chart-1))' },
-        { name: 'In Progress', value: stats.totalInProgress, fill: 'hsl(var(--chart-3))' },
-        { name: 'Critical', value: stats.totalCritical, fill: 'hsl(var(--destructive))' },
-        { name: 'Inactive', value: stats.totalInactive, fill: 'hsl(var(--muted))' }
+        { name: 'Active', value: stats.totalOnboarded || 0, fill: 'hsl(var(--chart-1))' },
+        { name: 'In Progress', value: stats.totalInProgress || 0, fill: 'hsl(var(--chart-3))' },
+        { name: 'Critical', value: stats.totalCritical || 0, fill: 'hsl(var(--destructive))' },
+        { name: 'Inactive', value: stats.totalInactive || 0, fill: 'hsl(var(--muted))' }
     ];
     const progressTable = [
-        { label: 'Onboarded (Active)', value: stats.totalOnboarded, color: 'hsl(var(--chart-1))' },
-        { label: 'In Progress', value: stats.totalInProgress, color: 'hsl(var(--chart-3))' },
-        { label: 'Critical (Overdue)', value: stats.totalCritical, color: 'hsl(var(--destructive))' },
-        { label: 'Inactive (Pending)', value: stats.totalInactive, color: 'hsl(var(--muted))' }
+        { label: 'Onboarded (Active)', value: stats.totalOnboarded || 0, color: 'hsl(var(--chart-1))' },
+        { label: 'In Progress', value: stats.totalInProgress || 0, color: 'hsl(var(--chart-3))' },
+        { label: 'Critical (Overdue)', value: stats.totalCritical || 0, color: 'hsl(var(--destructive))' },
+        { label: 'Inactive (Pending)', value: stats.totalInactive || 0, color: 'hsl(var(--muted))' }
     ];
 
-    // 4. DIAGNOSIS DISTRIBUTION
+    // 5. DIAGNOSIS DISTRIBUTION
     const diagnosisChart = (stats.diagnosisDistribution || []).map((d: any, i: number) => ({
-        name: d.diagnosis || 'Not Specified',
+        name: d.diagnosis,
         value: d.count,
         fill: COLORS[(i + 2) % COLORS.length]
     }));
     const diagnosisTable = (stats.diagnosisDistribution || []).map((d: any, i: number) => ({
-        label: d.diagnosis || 'Not Specified',
+        label: d.diagnosis,
         value: d.count,
         color: COLORS[(i + 2) % COLORS.length]
     }));
 
     return (
-        <div className="space-y-12 animate-in fade-in duration-700">
+        <div className="space-y-12 animate-in fade-in duration-700 pb-12">
             {/* 1st Visual: System Summary */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 border-b pb-2">
@@ -191,14 +214,14 @@ export default function AdminOverview({ stats }: { stats: any }) {
                                     <Users className="h-4 w-4 text-primary" />
                                     Total Registered Patients
                                 </TableCell>
-                                <TableCell className="text-right font-black text-lg">{stats.totalPatients}</TableCell>
+                                <TableCell className="text-right font-black text-lg">{stats.totalPatients || 0}</TableCell>
                             </TableRow>
                             <TableRow className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
                                 <TableCell className="font-medium flex items-center gap-2">
                                     <Building2 className="h-4 w-4 text-primary" />
                                     Total Active Partners
                                 </TableCell>
-                                <TableCell className="text-right font-black text-lg">{stats.totalPartners}</TableCell>
+                                <TableCell className="text-right font-black text-lg">{stats.totalPartners || 0}</TableCell>
                             </TableRow>
                         </TableBody>
                     </Table>
@@ -215,7 +238,17 @@ export default function AdminOverview({ stats }: { stats: any }) {
                 total={stats.totalPatients}
             />
 
-            {/* 3rd Visual: Goal Completion Rate */}
+            {/* 3rd Visual: Age Distribution */}
+            <VisualSection 
+                title="Age Distribution"
+                description="Patient breakdown by key age cohorts."
+                icon={<Calendar className="h-5 w-5" />}
+                chartData={ageChart}
+                tableData={ageTable}
+                total={stats.totalPatients}
+            />
+
+            {/* 4th Visual: Goal Completion Rate */}
             <VisualSection 
                 title="Goal Completion Rate"
                 description="Percentage of patients achieving their clinical targets."
@@ -225,7 +258,7 @@ export default function AdminOverview({ stats }: { stats: any }) {
                 total={totalWithGoals}
             />
 
-            {/* 4th Visual: Patient Progress Status */}
+            {/* 5th Visual: Patient Progress Status */}
             <VisualSection 
                 title="Patient Progress Status"
                 description="Granular breakdown of clinical engagement levels."
@@ -235,7 +268,7 @@ export default function AdminOverview({ stats }: { stats: any }) {
                 total={stats.totalPatients}
             />
 
-            {/* 5th Visual: Diagnosis Distribution */}
+            {/* 6th Visual: Diagnosis Distribution */}
             <VisualSection 
                 title="Diagnosis Distribution"
                 description="Breakdown by primary clinical diagnosis."
