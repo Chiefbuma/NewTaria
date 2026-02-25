@@ -18,13 +18,13 @@ import { activatePatient } from '@/lib/api-service';
 
 interface OnboardingFormProps {
     patient: Patient;
-    initialPayers: Partner[];
+    initialPartners: Partner[];
 }
 
-export default function OnboardingForm({ patient, initialPayers }: OnboardingFormProps) {
+export default function OnboardingForm({ patient, initialPartners }: OnboardingFormProps) {
     const router = useRouter();
     const { toast } = useToast();
-    const [partners, setPartners] = useState<Partner[]>(initialPayers);
+    const [partners, setPartners] = useState<Partner[]>(initialPartners);
     const [formData, setFormData] = useState<Partial<Patient>>({ 
         ...patient,
         date_of_onboarding: patient.date_of_onboarding ? new Date(patient.date_of_onboarding).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -182,8 +182,8 @@ export default function OnboardingForm({ patient, initialPayers }: OnboardingFor
                                 <Input id="navigator_name" value={currentUser?.name || ''} readOnly className="bg-muted" />
                             </div>
                              <div className="space-y-2">
-                                <Label htmlFor="payer_id">Assign Partner</Label>
-                                <Select value={String(formData.payer_id || 'null')} onValueChange={(value) => handleSelectChange('payer_id', value)}>
+                                <Label htmlFor="partner_id">Assign Partner</Label>
+                                <Select value={String(formData.partner_id || 'null')} onValueChange={(value) => handleSelectChange('partner_id', value)}>
                                     <SelectTrigger className="border-primary/20"><SelectValue placeholder="Select a partner" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="null">None</SelectItem>

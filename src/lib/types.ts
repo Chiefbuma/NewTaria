@@ -5,7 +5,7 @@ export type User = {
   email: string;
   role: 'admin' | 'navigator' | 'clinician' | 'user' | 'payer' | 'partner';
   avatarUrl?: string;
-  payer_id?: number | null; // Database column name retained, used for Partner association
+  partner_id?: number | null; 
   deleted_at?: string | null;
 };
 
@@ -22,7 +22,7 @@ export type Partner = {
   deleted_at?: string | null;
 };
 
-export type Payer = Partner; // Alias for backward compatibility if needed
+export type Payer = Partner; // Alias for backward compatibility
 
 export type Message = {
     id: number;
@@ -90,7 +90,7 @@ export type Prescription = {
   id: number;
   patient_id: number;
   medication_id: number;
-  medication?: Medication; // joined
+  medication?: Medication; 
   dosage: string;
   frequency: string;
   start_date: string;
@@ -104,7 +104,7 @@ export type Appointment = {
   id: number;
   patient_id: number;
   clinician_id: number;
-  clinician?: User; // joined
+  clinician?: User; 
   title: string;
   appointment_date: string;
   end_date: string | null;
@@ -118,7 +118,7 @@ export type Review = {
     id: number;
     patient_id: number;
     reviewed_by_id: number;
-    reviewed_by?: string; // joined name
+    reviewed_by?: string; 
     review_date: string;
     subjective_findings: string | null;
     objective_findings: string | null;
@@ -166,12 +166,11 @@ export type Patient = {
   middle_name?: string | null;
   wellness_date: string;
   corporate_id: number | null;
-  payer_id: number | null; // Database column name retained
+  partner_id: number | null; 
   date_of_diagnosis: string | null;
   deleted_at?: string | null;
   corporate_name?: string;
   navigator_name?: string;
-  payer_name?: string; // UI will label this Partner Name
   partner_name?: string;
   assessments: Assessment[];
   goals: Goal[];

@@ -17,8 +17,8 @@ import type {
 import { unstable_noStore as noStore } from 'next/cache';
 
 /**
- * Robust serialization helper to handle BigInt, Date, and Decimal types
- * returned by the MySQL driver, preventing "Internal Server Error" in Next.js 15.
+ * Enhanced serialization helper for Next.js 15 compatibility.
+ * Recursively converts BigInt, Date, and complex objects to JSON-safe types.
  */
 function serialize(obj: any): any {
     if (obj === null || obj === undefined) return obj;
@@ -29,7 +29,7 @@ function serialize(obj: any): any {
     if (Array.isArray(obj)) return obj.map(serialize);
     
     if (typeof obj === 'object') {
-        if (Buffer.isBuffer(obj)) return obj.toString('base64');
+        if (typeof Buffer !== 'undefined' && Buffer.isBuffer(obj)) return obj.toString('base64');
         const result: any = {};
         for (const key in obj) {
             if (Object.prototype.hasOwnProperty.call(obj, key)) {
@@ -85,7 +85,6 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
             SELECT p.*, 
                    u.name as navigator_name, 
                    c.name as corporate_name, 
-                   pay.name as payer_name,
                    pay.name as partner_name,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.deleted_at IS NULL) as total_goals,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.status = 'active' AND g.deleted_at IS NULL) as active_goals,
@@ -93,14 +92,14 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
             FROM patients p
             LEFT JOIN users u ON p.navigator_id = u.id
             LEFT JOIN corporates c ON p.corporate_id = c.id
-            LEFT JOIN payers pay ON p.payer_id = pay.id
+            LEFT JOIN partners pay ON p.partner_id = pay.id
             WHERE p.deleted_at IS NULL
         `;
         let params: any[] = [];
 
-        if (requestingUser && (requestingUser.role === 'payer' || requestingUser.role === 'partner') && requestingUser.payer_id) {
-            query += ` AND p.payer_id = ? `;
-            params.push(requestingUser.payer_id);
+        if (requestingUser && (requestingUser.role === 'partner' || requestingUser.role === 'payer') && requestingUser.partner_id) {
+            query += ` AND p.partner_id = ? `;
+            params.push(requestingUser.partner_id);
         }
 
         query += ` ORDER BY p.created_at DESC `;
@@ -133,7 +132,6 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
             SELECT p.*, 
                    u.name as navigator_name, 
                    c.name as corporate_name, 
-                   pay.name as payer_name,
                    pay.name as partner_name,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.deleted_at IS NULL) as total_goals,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.status = 'active' AND g.deleted_at IS NULL) as active_goals,
@@ -141,7 +139,7 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
             FROM patients p
             LEFT JOIN users u ON p.navigator_id = u.id
             LEFT JOIN corporates c ON p.corporate_id = c.id
-            LEFT JOIN payers pay ON p.payer_id = pay.id
+            LEFT JOIN partners pay ON p.partner_id = pay.id
             WHERE p.id = ? AND p.deleted_at IS NULL
         `, [id]);
         
@@ -209,7 +207,7 @@ export async function fetchPatientByUserId(userId: number): Promise<Patient | nu
 export async function fetchUsers(): Promise<User[]> {
     noStore();
     try {
-        const [rows] = await db.query('SELECT id, name, email, role, avatarUrl, payer_id FROM users WHERE deleted_at IS NULL ORDER BY name ASC');
+        const [rows] = await db.query('SELECT id, name, email, role, avatarUrl, partner_id FROM users WHERE deleted_at IS NULL ORDER BY name ASC');
         return serialize(rows as User[]);
     } catch (error) {
         console.error('Database Error [fetchUsers]:', error);
@@ -265,16 +263,12 @@ export async function fetchCorporates(): Promise<Corporate[]> {
 export async function fetchPartners(): Promise<Partner[]> {
     noStore();
     try {
-        const [rows] = await db.query('SELECT * FROM payers WHERE deleted_at IS NULL ORDER BY name ASC');
+        const [rows] = await db.query('SELECT * FROM partners WHERE deleted_at IS NULL ORDER BY name ASC');
         return serialize(rows as Partner[]);
     } catch (error) {
         console.error('Database Error [fetchPartners]:', error);
         throw new Error('Failed to fetch partners.');
     }
-}
-
-export async function fetchPayers(): Promise<Partner[]> {
-    return fetchPartners();
 }
 
 export async function fetchMedications(): Promise<Medication[]> {
@@ -312,8 +306,8 @@ export async function sendMessage(senderId: number, receiverId: number, content:
 
 export async function createUser(userData: any): Promise<number> {
     const [result] = await db.query(
-        'INSERT INTO users (name, email, password, role, avatarUrl, payer_id) VALUES (?, ?, ?, ?, ?, ?)',
-        [userData.name, userData.email, userData.password, userData.role || 'user', userData.avatarUrl || null, userData.payer_id || null]
+        'INSERT INTO users (name, email, password, role, avatarUrl, partner_id) VALUES (?, ?, ?, ?, ?, ?)',
+        [userData.name, userData.email, userData.password, userData.role || 'user', userData.avatarUrl || null, userData.partner_id || null]
     );
     return Number((result as any).insertId);
 }
@@ -444,9 +438,9 @@ export async function updatePatientDetails(id: number, data: any): Promise<void>
 
 export async function activatePatient(id: number, data: any): Promise<void> {
     await db.query(
-        'UPDATE patients SET status = "Active", date_of_onboarding = ?, emr_number = ?, navigator_id = ?, payer_id = ?, brief_medical_history = ?, years_since_diagnosis = ?, past_medical_interventions = ?, relevant_family_history = ?, dietary_restrictions = ?, allergies_intolerances = ?, lifestyle_factors = ?, physical_limitations = ?, psychosocial_factors = ?, emergency_contact_name = ?, emergency_contact_phone = ?, emergency_contact_relation = ?, has_weighing_scale = ?, has_glucometer = ?, has_bp_machine = ?, has_tape_measure = ? WHERE id = ?',
+        'UPDATE patients SET status = "Active", date_of_onboarding = ?, emr_number = ?, navigator_id = ?, partner_id = ?, brief_medical_history = ?, years_since_diagnosis = ?, past_medical_interventions = ?, relevant_family_history = ?, dietary_restrictions = ?, allergies_intolerances = ?, lifestyle_factors = ?, physical_limitations = ?, psychosocial_factors = ?, emergency_contact_name = ?, emergency_contact_phone = ?, emergency_contact_relation = ?, has_weighing_scale = ?, has_glucometer = ?, has_bp_machine = ?, has_tape_measure = ? WHERE id = ?',
         [
-            toSqlDate(data.date_of_onboarding), data.emr_number, data.navigator_id, data.payer_id, data.brief_medical_history, data.years_since_diagnosis, data.past_medical_interventions, data.relevant_family_history, data.dietary_restrictions, data.allergies_intolerances, data.lifestyle_factors, data.physical_limitations, data.psychosocial_factors, data.emergency_contact_name, data.emergency_contact_phone, data.emergency_contact_relation, 
+            toSqlDate(data.date_of_onboarding), data.emr_number, data.navigator_id, data.partner_id, data.brief_medical_history, data.years_since_diagnosis, data.past_medical_interventions, data.relevant_family_history, data.dietary_restrictions, data.allergies_intolerances, data.lifestyle_factors, data.physical_limitations, data.psychosocial_factors, data.emergency_contact_name, data.emergency_contact_phone, data.emergency_contact_relation, 
             data.has_weighing_scale, data.has_glucometer, data.has_bp_machine, data.has_tape_measure, id
         ]
     );
@@ -454,14 +448,14 @@ export async function activatePatient(id: number, data: any): Promise<void> {
 
 export async function upsertPartner(data: any): Promise<number> {
     if (data.id) {
-        await db.query('UPDATE payers SET name = ? WHERE id = ?', [data.name, data.id]);
+        await db.query('UPDATE partners SET name = ? WHERE id = ?', [data.name, data.id]);
         return Number(data.id);
     } else {
-        const [result] = await db.query('INSERT INTO payers (name) VALUES (?)', [data.name]);
+        const [result] = await db.query('INSERT INTO partners (name) VALUES (?)', [data.name]);
         return Number((result as any).insertId);
     }
 }
 
 export async function deletePartner(id: number): Promise<void> {
-    await db.query('UPDATE payers SET deleted_at = NOW() WHERE id = ?', [id]);
+    await db.query('UPDATE partners SET deleted_at = NOW() WHERE id = ?', [id]);
 }

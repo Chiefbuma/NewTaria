@@ -65,7 +65,6 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
-  /* HIGH CONTRAST RULES FOR DARK MODE */
   .dark label, 
   .dark .text-muted-foreground,
   .dark .text-gray-500,
