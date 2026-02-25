@@ -6,7 +6,7 @@ import type { User } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { Users, Building2, Activity, ClipboardCheck, Filter, BarChart3, TrendingUp, Target } from 'lucide-react';
+import { Users, Building2, Activity, ClipboardCheck, BarChart3, TrendingUp, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function AdminOverview({ stats, user }: { stats: any, user: User }) {

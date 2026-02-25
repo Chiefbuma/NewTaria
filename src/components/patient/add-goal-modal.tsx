@@ -33,6 +33,8 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
     const [deadline, setDeadline] = useState('');
     const [status, setStatus] = useState<'active' | 'completed' | 'cancelled'>('active');
 
+    const selectedParameter = clinicalParameters.find(p => p.id.toString() === clinicalParameterId);
+
     useEffect(() => {
         if (existingGoal) {
             setClinicalParameterId(existingGoal.clinical_parameter_id.toString());
@@ -66,6 +68,30 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
     });
   };
 
+  const renderTargetInput = () => {
+    if (!selectedParameter) return <Input disabled placeholder="Select parameter first" />;
+
+    switch (selectedParameter.type) {
+      case 'numeric':
+        return <Input type="number" step="any" value={targetValue} onChange={(e) => setTargetValue(e.target.value)} required className="border-primary/20" />;
+      case 'choice':
+        return (
+          <Select onValueChange={setTargetValue} value={targetValue} required>
+            <SelectTrigger className="border-primary/20">
+              <SelectValue placeholder="Select target" />
+            </SelectTrigger>
+            <SelectContent>
+              {selectedParameter.options?.map(option => (
+                <SelectItem key={option} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      default:
+        return <Input type="text" value={targetValue} onChange={(e) => setTargetValue(e.target.value)} required className="border-primary/20" />;
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="border-primary/20">
@@ -96,9 +122,9 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
+                            <SelectItem value="=">Equal to</SelectItem>
                             <SelectItem value="<=">At or below</SelectItem>
                             <SelectItem value="<">Below</SelectItem>
-                            <SelectItem value="=">Equal to</SelectItem>
                             <SelectItem value=">=">At or above</SelectItem>
                              <SelectItem value=">">Above</SelectItem>
                         </SelectContent>
@@ -106,7 +132,7 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
                 </div>
                  <div className="space-y-2">
                     <Label htmlFor="targetValue" className="font-bold">Target Value</Label>
-                    <Input id="targetValue" type="text" value={targetValue} onChange={(e) => setTargetValue(e.target.value)} required className="border-primary/20" />
+                    {renderTargetInput()}
                 </div>
             </div>
 
