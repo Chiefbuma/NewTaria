@@ -18,7 +18,7 @@ import { unstable_noStore as noStore } from 'next/cache';
 
 /**
  * Aggressive serialization helper for Next.js 15.
- * Recursively converts non-serializable MySQL types into plain JSON-safe types.
+ * Recursively converts non-serializable MySQL types (BigInt, Date) into plain JSON-safe types.
  */
 function serialize<T>(obj: T): T {
     if (obj === null || obj === undefined) return obj;
@@ -34,7 +34,7 @@ function toSqlDateTime(date: string | Date | null | undefined): string | null {
     const d = new Date(date);
     if (isNaN(d.getTime())) return null;
     const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 function toSqlDate(date: string | Date | null | undefined): string | null {
@@ -64,14 +64,12 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
         let query = `
             SELECT p.*, 
                    u.name as navigator_name, 
-                   c.name as corporate_name, 
                    pay.name as partner_name,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.deleted_at IS NULL) as total_goals,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.status = 'active' AND g.deleted_at IS NULL) as active_goals,
                    (SELECT COUNT(*) FROM assessments a WHERE a.patient_id = p.id AND a.deleted_at IS NULL) as total_assessments
             FROM patients p
             LEFT JOIN users u ON p.navigator_id = u.id
-            LEFT JOIN corporates c ON p.corporate_id = c.id
             LEFT JOIN partners pay ON p.partner_id = pay.id
             WHERE p.deleted_at IS NULL
         `;
@@ -105,14 +103,12 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
         const [patientRows] = await db.query(`
             SELECT p.*, 
                    u.name as navigator_name, 
-                   c.name as corporate_name, 
                    pay.name as partner_name,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.deleted_at IS NULL) as total_goals,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.status = 'active' AND g.deleted_at IS NULL) as active_goals,
                    (SELECT COUNT(*) FROM assessments a WHERE a.patient_id = p.id AND a.deleted_at IS NULL) as total_assessments
             FROM patients p
             LEFT JOIN users u ON p.navigator_id = u.id
-            LEFT JOIN corporates c ON p.corporate_id = c.id
             LEFT JOIN partners pay ON p.partner_id = pay.id
             WHERE p.id = ? AND p.deleted_at IS NULL
         `, [id]);
@@ -171,16 +167,6 @@ export async function fetchPartners(): Promise<Partner[]> {
         return serialize(rows as Partner[]);
     } catch (error) {
         throw new Error('Failed to fetch partners.');
-    }
-}
-
-export async function fetchCorporates(): Promise<Corporate[]> {
-    noStore();
-    try {
-        const [rows] = await db.query('SELECT * FROM corporates WHERE deleted_at IS NULL ORDER BY name ASC');
-        return serialize(rows as Corporate[]);
-    } catch (error) {
-        throw new Error('Failed to fetch corporates.');
     }
 }
 
@@ -298,8 +284,8 @@ export async function activatePatient(id: number, data: any): Promise<void> {
 
 export async function updatePatientDetails(id: number, data: any): Promise<void> {
     await db.query(
-        'UPDATE patients SET first_name = ?, middle_name = ?, surname = ?, dob = ?, age = ?, gender = ?, email = ?, phone = ?, wellness_date = ?, corporate_id = ?, partner_id = ? WHERE id = ?',
-        [data.first_name, data.middle_name, data.surname, toSqlDate(data.dob), data.age, data.gender, data.email, data.phone, toSqlDate(data.wellness_date), data.corporate_id, data.partner_id, id]
+        'UPDATE patients SET first_name = ?, middle_name = ?, surname = ?, dob = ?, age = ?, gender = ?, email = ?, phone = ?, wellness_date = ?, partner_id = ? WHERE id = ?',
+        [data.first_name, data.middle_name, data.surname, toSqlDate(data.dob), data.age, data.gender, data.email, data.phone, toSqlDate(data.wellness_date), data.partner_id, id]
     );
 }
 
@@ -367,6 +353,7 @@ export async function fetchDashboardStats(requestingUser?: User) {
         const isPartner = requestingUser?.role === 'partner' && requestingUser.partner_id;
         const partnerParam = isPartner ? [requestingUser.partner_id] : [];
 
+        // Simplified aggregate queries for robustness
         const [patientCounts] = await db.query(`
             SELECT status, COUNT(*) as count 
             FROM patients 
@@ -375,8 +362,14 @@ export async function fetchDashboardStats(requestingUser?: User) {
             GROUP BY status
         `, partnerParam);
 
-        const [registeredCountRows] = await db.query(`SELECT COUNT(*) as count FROM patients WHERE deleted_at IS NULL AND status = 'Pending' ${isPartner ? 'AND partner_id = ?' : ''}`, partnerParam);
-        const [activeCountRows] = await db.query(`SELECT COUNT(*) as count FROM patients WHERE deleted_at IS NULL AND status = 'Active' ${isPartner ? 'AND partner_id = ?' : ''}`, partnerParam);
+        const [summaryCounts] = await db.query(`
+            SELECT 
+                SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as registeredCount,
+                SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) as activeCount
+            FROM patients 
+            WHERE deleted_at IS NULL 
+            ${isPartner ? 'AND partner_id = ?' : ''}
+        `, partnerParam);
         
         const [goalStatus] = await db.query(`
             SELECT status, COUNT(*) as count 
@@ -389,7 +382,7 @@ export async function fetchDashboardStats(requestingUser?: User) {
         const [primaryDiagnosis] = await db.query(`
             SELECT diagnosis, COUNT(*) as count 
             FROM patients 
-            WHERE deleted_at IS NULL AND diagnosis IS NOT NULL 
+            WHERE deleted_at IS NULL AND diagnosis IS NOT NULL AND diagnosis != ''
             ${isPartner ? 'AND partner_id = ?' : ''}
             GROUP BY diagnosis
         `, partnerParam);
@@ -398,7 +391,7 @@ export async function fetchDashboardStats(requestingUser?: User) {
             SELECT 
                 CASE 
                     WHEN age BETWEEN 18 AND 35 THEN '18-35'
-                    WHEN age BETWEEN 36 AND 50 THEN '35-50'
+                    WHEN age BETWEEN 36 AND 50 THEN '36-50'
                     WHEN age > 50 THEN '50+'
                     ELSE 'Under 18'
                 END as age_group,
@@ -407,20 +400,24 @@ export async function fetchDashboardStats(requestingUser?: User) {
             WHERE deleted_at IS NULL 
             ${isPartner ? 'AND partner_id = ?' : ''}
             GROUP BY age_group
+            ORDER BY age_group ASC
         `, partnerParam);
 
-        const [totalPartnersRows] = await db.query('SELECT COUNT(*) as count FROM partners WHERE deleted_at IS NULL');
-        const [totalMetricsRows] = await db.query('SELECT COUNT(*) as count FROM clinical_parameters WHERE deleted_at IS NULL');
+        const [systemTotals] = await db.query(`
+            SELECT 
+                (SELECT COUNT(*) FROM partners WHERE deleted_at IS NULL) as totalPartners,
+                (SELECT COUNT(*) FROM clinical_parameters WHERE deleted_at IS NULL) as totalMetrics
+        `);
 
         return serialize({
             patientCounts: patientCounts as any[],
-            registeredCount: (registeredCountRows as any)[0]?.count || 0,
-            activeCount: (activeCountRows as any)[0]?.count || 0,
+            registeredCount: (summaryCounts as any)[0]?.registeredCount || 0,
+            activeCount: (summaryCounts as any)[0]?.activeCount || 0,
             goalStatus: goalStatus as any[],
             primaryDiagnosis: primaryDiagnosis as any[],
             ageDistribution: ageDistribution as any[],
-            totalPartners: (totalPartnersRows as any)[0]?.count || 0,
-            totalMetrics: (totalMetricsRows as any)[0]?.count || 0,
+            totalPartners: (systemTotals as any)[0]?.totalPartners || 0,
+            totalMetrics: (systemTotals as any)[0]?.totalMetrics || 0,
         });
     } catch (error) {
         console.error('fetchDashboardStats Error:', error);

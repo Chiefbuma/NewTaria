@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -53,18 +54,10 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
             return result;
         }
 
-        if (goal.status === 'completed') {
-            return [{ name: 'Completed', value: 1, fill: 'hsl(var(--chart-2))' }];
-        }
-
-        if (assessments.length === 0) {
-            return [];
-        }
-
         const checkTargetMet = (assessmentValue: string, goal: Goal) => {
             const current = parseFloat(assessmentValue);
             const target = parseFloat(goal.target_value);
-            if (isNaN(current) || isNaN(target)) return false;
+            if (isNaN(current) || isNaN(target)) return assessmentValue === goal.target_value;
 
             switch (goal.target_operator) {
                 case '<': return current < target;
@@ -80,14 +73,14 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
         const needsImprovementCount = assessments.length - onTrackCount;
         
         const result = [];
-        if (onTrackCount > 0) result.push({ name: 'On Track', value: onTrackCount, fill: 'hsl(var(--chart-2))' });
-        if (needsImprovementCount > 0) result.push({ name: 'Needs Improvement', value: needsImprovementCount, fill: 'hsl(var(--chart-5))' });
+        if (onTrackCount > 0) result.push({ name: 'Achieved/On Track', value: onTrackCount, fill: 'hsl(var(--chart-2))' });
+        if (needsImprovementCount > 0) result.push({ name: 'Off Track', value: needsImprovementCount, fill: 'hsl(var(--chart-5))' });
         
         return result;
 
     }, [assessments, goal, parameter]);
 
-    const title = parameter.type === 'choice' ? 'Distribution' : (goal ? 'Goal Status' : 'Overall Status');
+    const title = parameter.type === 'choice' ? 'Distribution' : (goal ? 'Goal Achievement' : 'Status Overview');
     const chartConfig = {
         value: { label: 'Assessments', color: 'hsl(var(--primary))' }
     };
@@ -152,7 +145,7 @@ const ParameterTextTable = ({ assessments }: { assessments: Assessment[] }) => {
     return (
         <Card className="h-full border-primary/20">
             <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground"><FileText className="h-4 w-4 text-primary"/>Recent History</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground"><FileText className="h-4 w-4 text-primary"/>Recent Entries</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="space-y-3">
@@ -164,6 +157,7 @@ const ParameterTextTable = ({ assessments }: { assessments: Assessment[] }) => {
                                 </span>
                             </div>
                             <p className="text-sm text-foreground leading-relaxed">{a.value}</p>
+                            {a.notes && <p className="text-[10px] text-muted-foreground mt-1 italic">"{a.notes}"</p>}
                         </div>
                     ))}
                 </div>
@@ -285,38 +279,47 @@ export default function ProgressDashboard({
 
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-12">
             {filteredAssessedParameters.length > 0 ? (
                 filteredAssessedParameters.map(({ parameter, assessments }) => {
-                    const goal = patient.goals.find(g => g.clinical_parameter_id === parameter.id);
+                    const goal = patient.goals.find(g => g.clinical_parameter_id === parameter.id && g.deleted_at === null);
 
                     return (
-                        <div key={parameter.id} className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-bold tracking-tight text-foreground">{parameter.name}</h2>
-                                {parameter.unit && <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">{parameter.unit}</span>}
+                        <div key={parameter.id} className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="flex items-center justify-between border-b pb-2">
+                                <div className="flex items-center gap-3">
+                                    <h2 className="text-xl font-bold tracking-tight text-foreground">{parameter.name}</h2>
+                                    {parameter.unit && (
+                                        <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20 uppercase">
+                                            {parameter.unit}
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest bg-muted px-2 py-0.5 rounded">
+                                    {parameter.type}
+                                </span>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                                 {parameter.type === 'numeric' ? (
                                     <>
-                                        <div className="md:col-span-4">
+                                        <div className="lg:col-span-4">
                                             <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
                                         </div>
-                                        <div className="md:col-span-8">
+                                        <div className="lg:col-span-8">
                                              <ParameterLineChart assessments={assessments} parameter={parameter} />
                                         </div>
                                     </>
                                 ) : parameter.type === 'choice' ? (
                                     <>
-                                        <div className="md:col-span-4">
+                                        <div className="lg:col-span-4">
                                             <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
                                         </div>
-                                        <div className="md:col-span-8">
+                                        <div className="lg:col-span-8">
                                              <ParameterTextTable assessments={assessments} />
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="md:col-span-12">
+                                    <div className="lg:col-span-12">
                                         <ParameterTextTable assessments={assessments} />
                                     </div>
                                 )}
@@ -325,12 +328,15 @@ export default function ProgressDashboard({
                     )
                 })
             ) : (
-                 <div className="text-center py-20 rounded-2xl bg-muted/30 border-2 border-dashed border-primary/20">
-                    <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
-                        <BarChart className="h-6 w-6 text-primary/40" />
+                 <div className="text-center py-24 rounded-2xl bg-muted/20 border-2 border-dashed border-primary/10">
+                    <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
+                        <BarChart className="h-8 w-8 text-primary/30" />
                     </div>
-                    <h3 className="text-lg font-semibold text-foreground">No Data for Selected Range</h3>
-                    <p className="text-muted-foreground mt-1 max-w-xs mx-auto">Try widening the date range or record new assessments to visualize progress.</p>
+                    <h3 className="text-xl font-bold text-foreground">No Assessment Data</h3>
+                    <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
+                        We couldn't find any assessments for this patient in the selected date range. 
+                        Try adjusting the filters above.
+                    </p>
                 </div>
             )}
         </div>

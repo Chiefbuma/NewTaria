@@ -231,9 +231,8 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
   })
 
   /**
-   * Ref Fix for Next.js 15 / React 19 recursive loops.
-   * This decouples the onSelectionChange callback from the internal render cycle
-   * by using refs to track the latest state without triggering re-effects.
+   * Next.js 15 / React 19 Selection Loop Fix.
+   * Uses refs to track selection state changes without triggering re-effects.
    */
   const prevSelectionKeysRef = React.useRef("")
   const onSelectionChangeRef = React.useRef(onSelectionChange)

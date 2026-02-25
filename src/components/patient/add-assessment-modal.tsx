@@ -72,13 +72,13 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
   };
 
   const renderInput = () => {
-    if (!selectedParameter) return null;
+    if (!selectedParameter) return <Input disabled placeholder="Select a parameter first" />;
 
     switch (selectedParameter.type) {
       case 'numeric':
         return <Input type="number" step="any" value={value} onChange={(e) => setValue(e.target.value)} required className="border-primary/20" />;
       case 'text':
-        return <Input type="text" value={value} onChange={(e) => setValue(e.target.value)} required className="border-primary/20" />;
+        return <Textarea value={value} onChange={(e) => setValue(e.target.value)} required className="border-primary/20 min-h-[100px]" placeholder="Type assessment findings..." />;
       case 'choice':
         return (
           <Select onValueChange={setValue} value={value} required>
@@ -99,22 +99,22 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="border-primary/20">
+      <DialogContent className="border-primary/20 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-primary font-bold">{existingAssessment ? 'Edit' : 'Add'} Assessment for {selectedParameter?.name || '...'}</DialogTitle>
+          <DialogTitle className="text-primary font-bold text-xl">{existingAssessment ? 'Edit' : 'Add'} Assessment</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
+          <div className="space-y-5 py-4">
              {!parameter && allParameters && (
                 <div className="space-y-2">
-                    <Label htmlFor="parameter">Parameter</Label>
+                    <Label htmlFor="parameter" className="font-bold">Clinical Parameter</Label>
                      <Select onValueChange={setSelectedParamId} value={selectedParamId}>
                         <SelectTrigger id="parameter" className="border-primary/20">
-                            <SelectValue placeholder="Select a clinical parameter" />
+                            <SelectValue placeholder="Select a health metric" />
                         </SelectTrigger>
                         <SelectContent>
                             {allParameters.map(p => (
-                                <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+                                <SelectItem key={p.id} value={p.id.toString()}>{p.name} {p.unit ? `(${p.unit})` : ''}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
@@ -123,12 +123,15 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
             {selectedParamId && (
                 <>
                     <div className="space-y-2">
-                        <Label htmlFor="value" className="font-bold text-foreground">Value {selectedParameter?.unit ? `(${selectedParameter.unit})` : ''}</Label>
+                        <div className="flex justify-between items-end">
+                            <Label htmlFor="value" className="font-bold text-foreground">Value {selectedParameter?.unit ? `(${selectedParameter.unit})` : ''}</Label>
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground bg-muted px-1.5 rounded">{selectedParameter?.type}</span>
+                        </div>
                         {renderInput()}
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="notes" className="font-bold text-foreground">Notes</Label>
-                        <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="border-primary/20" />
+                        <Label htmlFor="notes" className="font-bold text-foreground">Observations / Notes</Label>
+                        <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="border-primary/20" placeholder="Optional clinical observations..." />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="measuredAt" className="font-bold text-foreground">Date & Time of Assessment</Label>
@@ -137,11 +140,13 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
                 </>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <DialogClose asChild>
               <Button type="button" variant="outline" className="border-primary/20">Cancel</Button>
             </DialogClose>
-            <Button type="submit" className="bg-primary hover:bg-primary/90">Save Assessment</Button>
+            <Button type="submit" className="bg-primary hover:bg-primary/90">
+                {existingAssessment ? 'Update Record' : 'Save Assessment'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

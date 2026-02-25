@@ -94,17 +94,17 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="border-primary/20">
+      <DialogContent className="border-primary/20 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-primary font-bold">{existingGoal ? 'Edit' : 'Add'} Patient Goal</DialogTitle>
+          <DialogTitle className="text-primary font-bold text-xl">{existingGoal ? 'Edit' : 'Add'} Patient Goal</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
+          <div className="space-y-5 py-4">
             <div className="space-y-2">
-              <Label htmlFor="parameter" className="font-bold">Parameter</Label>
+              <Label htmlFor="parameter" className="font-bold">Metric to Track</Label>
               <Select onValueChange={setClinicalParameterId} value={clinicalParameterId} required>
                 <SelectTrigger id="parameter" className="border-primary/20">
-                  <SelectValue placeholder="Select from clinical parameters" />
+                  <SelectValue placeholder="Select a health parameter" />
                 </SelectTrigger>
                 <SelectContent>
                   {clinicalParameters.map(p => (
@@ -116,7 +116,7 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
             
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="operator" className="font-bold">Operator</Label>
+                    <Label htmlFor="operator" className="font-bold">Success Condition</Label>
                     <Select onValueChange={(v) => setTargetOperator(v as any)} value={targetOperator}>
                         <SelectTrigger id="operator" className="border-primary/20">
                             <SelectValue />
@@ -137,17 +137,17 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
             </div>
 
              <div className="space-y-2">
-                <Label htmlFor="deadline" className="font-bold">Deadline</Label>
+                <Label htmlFor="deadline" className="font-bold">Target Deadline</Label>
                 <Input id="deadline" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} required className="border-primary/20" />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes" className="font-bold">Notes</Label>
-              <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="border-primary/20" />
+              <Label htmlFor="notes" className="font-bold">Action Plan / Notes</Label>
+              <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="border-primary/20" placeholder="e.g., Focus on low-sodium diet..." />
             </div>
 
              <div className="space-y-2">
-                <Label htmlFor="status" className="font-bold">Status</Label>
+                <Label htmlFor="status" className="font-bold">Goal Status</Label>
                 <Select onValueChange={(v) => setStatus(v as any)} value={status}>
                     <SelectTrigger id="status" className="border-primary/20"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -159,11 +159,13 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
             </div>
 
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <DialogClose asChild>
               <Button type="button" variant="outline" className="border-primary/20">Cancel</Button>
             </DialogClose>
-            <Button type="submit" className="bg-primary hover:bg-primary/90">Save Goal</Button>
+            <Button type="submit" className="bg-primary hover:bg-primary/90">
+                {existingGoal ? 'Update Goal' : 'Create Goal'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
