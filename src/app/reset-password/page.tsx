@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,14 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 
 export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<ResetPasswordShell />}>
+      <ResetPasswordContent />
+    </Suspense>
+  );
+}
+
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -65,6 +73,42 @@ export default function ResetPasswordPage() {
   };
 
   return (
+    <ResetPasswordShell>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <InlineField label="New Password" htmlFor="newPassword">
+          <PasswordInput
+            id="newPassword"
+            required
+            value={formData.newPassword}
+            onChange={(e) => updateField('newPassword', e.target.value)}
+            disabled={loading}
+          />
+        </InlineField>
+        <InlineField label="Confirm" htmlFor="confirmPassword">
+          <PasswordInput
+            id="confirmPassword"
+            required
+            value={formData.confirmPassword}
+            onChange={(e) => updateField('confirmPassword', e.target.value)}
+            disabled={loading}
+          />
+        </InlineField>
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Reset Password'}
+        </Button>
+      </form>
+      <div className="mt-4 text-center text-sm">
+        <Link href="/" className="inline-flex items-center text-muted-foreground hover:text-primary">
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Back to Login
+        </Link>
+      </div>
+    </ResetPasswordShell>
+  );
+}
+
+function ResetPasswordShell({ children }: { children?: React.ReactNode }) {
+  return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-md">
         <Card>
@@ -74,37 +118,7 @@ export default function ResetPasswordPage() {
               Choose a new password for your account.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <InlineField label="New Password" htmlFor="newPassword">
-                <PasswordInput
-                  id="newPassword"
-                  required
-                  value={formData.newPassword}
-                  onChange={(e) => updateField('newPassword', e.target.value)}
-                  disabled={loading}
-                />
-              </InlineField>
-              <InlineField label="Confirm" htmlFor="confirmPassword">
-                <PasswordInput
-                  id="confirmPassword"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={(e) => updateField('confirmPassword', e.target.value)}
-                  disabled={loading}
-                />
-              </InlineField>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Reset Password'}
-              </Button>
-            </form>
-            <div className="mt-4 text-center text-sm">
-              <Link href="/" className="inline-flex items-center text-muted-foreground hover:text-primary">
-                <ArrowLeft className="mr-1 h-4 w-4" />
-                Back to Login
-              </Link>
-            </div>
-          </CardContent>
+          <CardContent>{children}</CardContent>
         </Card>
       </div>
     </div>
