@@ -300,15 +300,18 @@ CREATE TABLE `appointments` (
 INSERT INTO `clinics` (`name`, `location`) VALUES
 ('Nairobi Care Centre', 'Nairobi'),
 ('Mombasa Wellness Hub', 'Mombasa'),
-('Kisumu Outreach Clinic', 'Kisumu');
+('Kisumu Outreach Clinic', 'Kisumu'),
+('Radiant Hospital Group', 'Nairobi');
 
 INSERT INTO `partners` (`name`, `partner_type`, `clinic_id`) VALUES
 ('Aetna Insurance', 'insurance', NULL),
 ('Blue Cross', 'insurance', NULL),
 ('Self-Pay', 'insurance', NULL),
+('Radiant', 'insurance', NULL),
 ('Nairobi Care Centre', 'clinic', 1),
 ('Mombasa Wellness Hub', 'clinic', 2),
-('Kisumu Outreach Clinic', 'clinic', 3);
+('Kisumu Outreach Clinic', 'clinic', 3),
+('Radiant Hospital Group', 'clinic', 4);
 
 INSERT INTO `diagnoses` (`code`, `name`, `description`) VALUES
 ('E11.9', 'Type 2 diabetes mellitus without complications', 'General adult diabetes follow-up.'),
@@ -330,27 +333,45 @@ INSERT INTO `clinical_parameters` (`name`, `type`, `unit`, `options`, `category`
 ('Mood', 'choice', NULL, '["Happy", "Anxious", "Sad", "Calm"]', 'assessment'),
 ('Clinic Notes', 'text', NULL, NULL, 'assessment');
 
--- SEED 5 PATIENTS (3 Male, 2 Female)
+-- SEED PATIENTS
 INSERT INTO `patients` (`first_name`, `surname`, `dob`, `gender`, `email`, `phone`, `status`, `primary_diagnosis`, `date_of_onboarding`) VALUES 
 ('James', 'Smith', '1985-05-15', 'Male', 'james@example.com', '0711000001', 'Active', 'Hypertension', CURDATE()),
 ('Robert', 'Johnson', '1972-11-20', 'Male', 'robert@example.com', '0711000002', 'Active', 'Diabetes', CURDATE()),
 ('Michael', 'Brown', '1960-03-10', 'Male', 'michael@example.com', '0711000003', 'Active', 'Hypertension and Diabetes', CURDATE()),
 ('Maria', 'Garcia', '1990-08-22', 'Female', 'maria@example.com', '0711000004', 'Active', 'Hypertension', CURDATE()),
-('Sarah', 'Wilson', '1982-12-05', 'Female', 'sarah@example.com', '0711000005', 'Active', 'Diabetes', CURDATE());
+('Sarah', 'Wilson', '1982-12-05', 'Female', 'sarah@example.com', '0711000005', 'Active', 'Diabetes', CURDATE()),
+('Grace', 'Njeri', '1991-04-12', 'Female', 'grace.njeri@radiant.example.com', '0711000006', 'Active', 'Hypertension', CURDATE()),
+('Peter', 'Mwangi', '1988-09-03', 'Male', 'peter.mwangi@radiant.example.com', '0711000007', 'Active', 'Diabetes', CURDATE()),
+('Faith', 'Achieng', '1979-01-27', 'Female', 'faith.achieng@radiant.example.com', '0711000008', 'Active', 'Hypertension and Diabetes', CURDATE()),
+('Daniel', 'Kiptoo', '1994-06-18', 'Male', 'daniel.kiptoo@radiant.example.com', '0711000009', 'Pending', 'Hypertension', CURDATE());
 
 UPDATE `patients`
 SET
   `patient_identifier` = CONCAT('PT-', YEAR(CURDATE()), '-', LPAD(`id`, 5, '0')),
   `portal_username` = CONCAT(LOWER(`first_name`), '.', LPAD(`id`, 4, '0')),
   `clinic_id` = CASE
-    WHEN `id` IN (1, 4) THEN 1
-    WHEN `id` IN (2, 5) THEN 2
-    ELSE 3
+    WHEN `email` IN ('james@example.com', 'maria@example.com') THEN (SELECT `id` FROM `clinics` WHERE `name` = 'Nairobi Care Centre' LIMIT 1)
+    WHEN `email` IN ('robert@example.com', 'sarah@example.com') THEN (SELECT `id` FROM `clinics` WHERE `name` = 'Mombasa Wellness Hub' LIMIT 1)
+    WHEN `email` = 'michael@example.com' THEN (SELECT `id` FROM `clinics` WHERE `name` = 'Kisumu Outreach Clinic' LIMIT 1)
+    WHEN `email` IN (
+      'grace.njeri@radiant.example.com',
+      'peter.mwangi@radiant.example.com',
+      'faith.achieng@radiant.example.com',
+      'daniel.kiptoo@radiant.example.com'
+    ) THEN (SELECT `id` FROM `clinics` WHERE `name` = 'Radiant Hospital Group' LIMIT 1)
+    ELSE `clinic_id`
   END,
   `partner_id` = CASE
-    WHEN `id` IN (1, 4) THEN 1
-    WHEN `id` IN (2, 5) THEN 2
-    ELSE 3
+    WHEN `email` IN ('james@example.com', 'maria@example.com') THEN (SELECT `id` FROM `partners` WHERE `name` = 'Aetna Insurance' AND `partner_type` = 'insurance' LIMIT 1)
+    WHEN `email` IN ('robert@example.com', 'sarah@example.com') THEN (SELECT `id` FROM `partners` WHERE `name` = 'Blue Cross' AND `partner_type` = 'insurance' LIMIT 1)
+    WHEN `email` = 'michael@example.com' THEN (SELECT `id` FROM `partners` WHERE `name` = 'Self-Pay' AND `partner_type` = 'insurance' LIMIT 1)
+    WHEN `email` IN (
+      'grace.njeri@radiant.example.com',
+      'peter.mwangi@radiant.example.com',
+      'faith.achieng@radiant.example.com',
+      'daniel.kiptoo@radiant.example.com'
+    ) THEN (SELECT `id` FROM `partners` WHERE `name` = 'Radiant' AND `partner_type` = 'insurance' LIMIT 1)
+    ELSE `partner_id`
   END,
   `primary_diagnosis_id` = CASE
     WHEN `primary_diagnosis` = 'Diabetes' THEN 1
@@ -370,8 +391,10 @@ SET
   `family_history` = 'Family history captured at intake',
   `social_history` = 'Lives with family and has phone access',
   `comorbid_conditions` = CASE
-    WHEN `id` = 3 THEN 'Obesity'
-    WHEN `id` = 5 THEN 'Asthma'
+    WHEN `email` = 'michael@example.com' THEN 'Obesity'
+    WHEN `email` = 'sarah@example.com' THEN 'Asthma'
+    WHEN `email` = 'faith.achieng@radiant.example.com' THEN 'Type 2 diabetes, dyslipidemia'
+    WHEN `email` = 'daniel.kiptoo@radiant.example.com' THEN 'Obesity'
     ELSE ''
   END
 WHERE `patient_identifier` IS NULL;
