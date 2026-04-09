@@ -1,46 +1,42 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Patient, ClinicalParameter, User, Appointment } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MessageSquare, Calendar, Filter } from 'lucide-react';
+import { ArrowLeft, Calendar } from 'lucide-react';
 import PatientInfoCard from '@/components/patient/patient-info-card';
 import AllNotesCard from './all-notes-card';
 import ProgressDashboard from './progress-dashboard';
 import AppointmentsCard from '@/components/patient/appointments-card';
 import AddAppointmentModal from '@/components/patient/add-appointment-modal';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { isPatientRole } from '@/lib/role-utils';
 import { format, subMonths, startOfDay, endOfDay } from 'date-fns';
 
 export default function ProgressPageClient({ 
     patient: initialPatient, 
     clinicalParameters,
     clinicians,
+    currentUser,
 }: { 
     patient: Patient,
     clinicalParameters: ClinicalParameter[],
-    clinicians: User[]
+    clinicians: User[],
+    currentUser: User | null
 }) {
     const { toast } = useToast();
     const [patient, setPatient] = useState(initialPatient);
     const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
 
     // Default to last 6 months
     const [fromDate, setFromDate] = useState(format(subMonths(new Date(), 6), 'yyyy-MM-dd'));
     const [toDate, setToDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-    useEffect(() => {
-        const stored = localStorage.getItem('loggedInUser');
-        if (stored) setCurrentUser(JSON.parse(stored));
-    }, []);
-
-    const isPatientView = currentUser?.role === 'user';
+    const isPatientView = isPatientRole(currentUser?.role);
 
     const handleAppointmentsUpdate = (updatedAppointments: Appointment[]) => {
         setPatient(prev => ({ ...prev, appointments: updatedAppointments }));
@@ -70,20 +66,7 @@ export default function ProgressPageClient({
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
                 <div className="lg:col-span-1 space-y-6">
                     <PatientInfoCard patient={patient} />
-                    
-                    {isPatientView ? (
-                        <Card className="border-primary/20 bg-primary/5">
-                            <CardHeader className="p-4">
-                                <CardTitle className="text-sm flex items-center gap-2 text-foreground"><MessageSquare className="h-4 w-4 text-primary" />Provider Support</CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-4 pt-0">
-                                <p className="text-xs text-muted-foreground mb-4">Have questions about your progress? Chat with your health navigator.</p>
-                                <Button asChild className="w-full bg-primary hover:bg-primary/90 shadow-md text-primary-foreground">
-                                    <Link href="/dashboard/messages">Open Chat</Link>
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    ) : (
+                    {!isPatientView && (
                         <AppointmentsCard 
                             patient={patient}
                             onSchedule={() => handleOpenAppointmentModal()}

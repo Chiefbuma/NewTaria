@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BarChart3, Users, Building2, ClipboardCheck, Target, Activity, Calendar } from 'lucide-react';
+import { BarChart3, Users, ClipboardCheck, Target, Activity, Calendar } from 'lucide-react';
 
 interface VisualSectionProps {
     title: string;
@@ -188,42 +188,6 @@ export default function AdminOverview({ stats }: { stats: any }) {
 
     return (
         <div className="space-y-12 animate-in fade-in duration-700 pb-12">
-            {/* 1. System Summary */}
-            <div className="space-y-4">
-                <div className="flex items-center gap-3 border-b pb-2">
-                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                        <Building2 className="h-5 w-5" />
-                    </div>
-                    <h2 className="text-xl font-bold tracking-tight text-foreground">System Summary</h2>
-                </div>
-                <Card className="border-primary/10 shadow-sm overflow-hidden">
-                    <Table>
-                        <TableHeader className="bg-muted/50">
-                            <TableRow>
-                                <TableHead className="font-bold text-[10px] uppercase tracking-wider">Metric</TableHead>
-                                <TableHead className="text-right font-bold text-[10px] uppercase tracking-wider">Count</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            <TableRow className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
-                                <TableCell className="font-medium flex items-center gap-2">
-                                    <Users className="h-4 w-4 text-primary" />
-                                    Total Registered Patients
-                                </TableCell>
-                                <TableCell className="text-right font-black text-lg">{stats.totalPatients}</TableCell>
-                            </TableRow>
-                            <TableRow className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
-                                <TableCell className="font-medium flex items-center gap-2">
-                                    <Building2 className="h-4 w-4 text-primary" />
-                                    Total Active Partners
-                                </TableCell>
-                                <TableCell className="text-right font-black text-lg">{stats.totalPartners}</TableCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
-                </Card>
-            </div>
-
             <VisualSection title="Gender Distribution" icon={<Users className="h-5 w-5" />} chartData={genderChart} tableData={genderTable} total={stats.totalPatients} />
             <VisualSection title="Age Distribution" icon={<Calendar className="h-5 w-5" />} chartData={ageChart} tableData={ageTable} total={stats.totalPatients} />
             <VisualSection title="Goal Completion Rate" icon={<Target className="h-5 w-5" />} chartData={completionChart} tableData={completionTable} total={totalGoalsSet} />

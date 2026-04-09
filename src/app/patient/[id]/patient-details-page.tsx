@@ -571,7 +571,7 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
                     <div className="space-y-2">
                         <Label htmlFor="gender">Gender</Label>
                         <Select value={editFormData.gender || ''} onValueChange={(value) => handleEditSelectChange('gender', value)} required>
-                            <SelectTrigger id="gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
+                            <SelectTrigger id="gender"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Male">Male</SelectItem>
                                 <SelectItem value="Female">Female</SelectItem>
@@ -593,7 +593,7 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
                     <div className="space-y-2 md:col-span-2">
                         <Label htmlFor="corporate_id">Corporate</Label>
                         <Select value={String(editFormData.corporate_id || 'null')} onValueChange={(value) => handleEditSelectChange('corporate_id', value)}>
-                            <SelectTrigger id="corporate_id"><SelectValue placeholder="Select corporate" /></SelectTrigger>
+                            <SelectTrigger id="corporate_id"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="null">None</SelectItem>
                                 {corporates.map((corporate) => (

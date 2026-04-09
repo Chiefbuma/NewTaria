@@ -19,9 +19,10 @@ import { activatePatient } from '@/lib/api-service';
 interface OnboardingFormProps {
     patient: Patient;
     initialPartners: Partner[];
+    currentUser: User | null;
 }
 
-export default function OnboardingForm({ patient, initialPartners }: OnboardingFormProps) {
+export default function OnboardingForm({ patient, initialPartners, currentUser }: OnboardingFormProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [partners, setPartners] = useState<Partner[]>(initialPartners);
@@ -31,22 +32,18 @@ export default function OnboardingForm({ patient, initialPartners }: OnboardingF
         dob: patient.dob ? new Date(patient.dob).toISOString().split('T')[0] : '',
      });
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('loggedInUser');
-        if (storedUser) {
-            const user: User = JSON.parse(storedUser);
-            setCurrentUser(user);
+        if (currentUser) {
             setFormData(prev => ({
                 ...prev,
-                navigator_id: user.id,
+                navigator_id: currentUser.id,
                 emr_number: `EMR/TAR/${patient.id}`
             }));
         }
         // Fetch fresh partners
         fetch('/api/partners').then(res => res.json()).then(setPartners);
-    }, [patient.id]);
+    }, [currentUser, patient.id]);
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -104,7 +101,7 @@ export default function OnboardingForm({ patient, initialPartners }: OnboardingF
                             <div className="space-y-2">
                                 <Label htmlFor="gender">Gender</Label>
                                 <Select value={formData.gender || ''} onValueChange={(v) => handleSelectChange('gender', v)} required>
-                                    <SelectTrigger className="border-primary/20"><SelectValue placeholder="Select Gender" /></SelectTrigger>
+                                    <SelectTrigger className="border-primary/20"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Male">Male</SelectItem>
                                         <SelectItem value="Female">Female</SelectItem>
@@ -129,7 +126,7 @@ export default function OnboardingForm({ patient, initialPartners }: OnboardingF
                             <div className="space-y-2">
                                 <Label htmlFor="primary_diagnosis">Primary Diagnosis</Label>
                                 <Select value={formData.primary_diagnosis || ''} onValueChange={(v) => handleSelectChange('primary_diagnosis', v)} required>
-                                    <SelectTrigger className="border-primary/20 font-semibold"><SelectValue placeholder="Select Diagnosis" /></SelectTrigger>
+                                    <SelectTrigger className="border-primary/20 font-semibold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Hypertension">Hypertension</SelectItem>
                                         <SelectItem value="Diabetes">Diabetes</SelectItem>
@@ -207,7 +204,7 @@ export default function OnboardingForm({ patient, initialPartners }: OnboardingF
                             <div className="space-y-2">
                                 <Label htmlFor="emergency_contact_relation">Relation</Label>
                                 <Select value={formData.emergency_contact_relation || ''} onValueChange={(value) => handleSelectChange('emergency_contact_relation', value)}>
-                                    <SelectTrigger className="border-primary/20"><SelectValue placeholder="Select a relation" /></SelectTrigger>
+                                    <SelectTrigger className="border-primary/20"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="spouse">Spouse</SelectItem>
                                         <SelectItem value="sibling">Sibling</SelectItem>
@@ -228,7 +225,7 @@ export default function OnboardingForm({ patient, initialPartners }: OnboardingF
                              <div className="space-y-2">
                                 <Label htmlFor="partner_id">Assign Partner</Label>
                                 <Select value={String(formData.partner_id || 'null')} onValueChange={(value) => handleSelectChange('partner_id', value)}>
-                                    <SelectTrigger className="border-primary/20"><SelectValue placeholder="Select a partner" /></SelectTrigger>
+                                    <SelectTrigger className="border-primary/20"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="null">None</SelectItem>
                                         {partners.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}

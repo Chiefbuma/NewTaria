@@ -15,23 +15,16 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  ListFilter,
-  X,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -51,62 +44,24 @@ import {
 
 interface DataTableToolbarProps<TData> {
   table: ReturnType<typeof useReactTable<TData>>
+  actions?: React.ReactNode
 }
 
-export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>) {
-  const isFiltered = !!table.getState().globalFilter
-
+export function DataTableToolbar<TData>({
+  table,
+  actions,
+}: DataTableToolbarProps<TData>) {
   return (
-    <div className="flex items-center justify-between p-4">
-      <div className="flex flex-1 items-center space-x-2">
+    <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-1 flex-wrap items-center gap-2">
         <Input
-          placeholder="Search..."
           value={(table.getState().globalFilter as string) ?? ""}
           onChange={(event) => table.setGlobalFilter(event.target.value)}
           className="h-8 w-[150px] lg:w-[250px] border-primary/20 focus:border-primary"
         />
-        {isFiltered && (
-          <Button
-            variant="ghost"
-            onClick={() => table.setGlobalFilter("")}
-            className="h-8 px-2 lg:px-3"
-          >
-            Reset
-            <X className="ml-2 h-4 w-4" />
-          </Button>
-        )}
       </div>
-      <div className="flex items-center space-x-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="ml-auto hidden h-8 lg:flex border-primary/30">
-              <ListFilter className="mr-2 h-4 w-4" />
-              Columns
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[150px]">
-            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {table
-              .getAllColumns()
-              .filter(
-                (column) =>
-                  typeof column.accessorFn !== "undefined" && column.getCanHide()
-              )
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                  >
-                    {column.id.replace(/_/g, ' ')}
-                  </DropdownMenuCheckboxItem>
-                )
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {actions}
       </div>
     </div>
   )
@@ -132,7 +87,7 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
             }}
           >
             <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder={table.getState().pagination.pageSize} />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent side="top">
               {[5, 10, 20, 30, 40, 50].map((pageSize) => (
@@ -194,9 +149,17 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onSelectionChange?: (selectedRows: TData[]) => void
+  onRowClick?: (row: TData) => void
+  toolbarActions?: React.ReactNode
 }
 
-export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: DataTableProps<TData, TValue>) {
+export function DataTable<TData, TValue>({
+  columns,
+  data,
+  onSelectionChange,
+  onRowClick,
+  toolbarActions,
+}: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -208,7 +171,7 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
     columns,
     initialState: {
       pagination: {
-        pageSize: 10,
+        pageSize: 5,
       },
     },
     state: {
@@ -252,15 +215,34 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
 
   return (
     <div className="space-y-4">
-      <DataTableToolbar table={table} />
+      <DataTableToolbar table={table} actions={toolbarActions} />
         <div className="rounded-md border border-primary/10 overflow-hidden">
             <Table>
             <TableHeader className="bg-muted/50">
                 {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="border-b border-primary/10">
                     {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id} colSpan={header.colSpan} className="text-foreground font-bold h-12 uppercase text-[10px] tracking-wider">
-                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                        <TableHead key={header.id} colSpan={header.colSpan} className="h-8 text-foreground font-bold uppercase text-[10px] tracking-wider">
+                        {header.isPlaceholder ? null : header.column.getCanSort() ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto p-0 text-[10px] font-bold uppercase tracking-wider text-foreground hover:bg-transparent"
+                            onClick={() => header.column.toggleSorting(header.column.getIsSorted() === "asc")}
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {header.column.getIsSorted() === "asc" ? (
+                              <ArrowUp className="ml-1 h-3.5 w-3.5" />
+                            ) : header.column.getIsSorted() === "desc" ? (
+                              <ArrowDown className="ml-1 h-3.5 w-3.5" />
+                            ) : (
+                              <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-60" />
+                            )}
+                          </Button>
+                        ) : (
+                          flexRender(header.column.columnDef.header, header.getContext())
+                        )}
                         </TableHead>
                     ))}
                 </TableRow>
@@ -269,9 +251,14 @@ export function DataTable<TData, TValue>({ columns, data, onSelectionChange }: D
             <TableBody>
                 {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="hover:bg-primary/5 data-[state=selected]:bg-primary/10 transition-colors border-b border-primary/5">
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                      className={`hover:bg-primary/5 data-[state=selected]:bg-primary/10 transition-colors border-b border-primary/5 ${onRowClick ? 'cursor-pointer' : ''}`}
+                      onClick={() => onRowClick?.(row.original)}
+                    >
                     {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className="py-3 px-4">
+                        <TableCell key={cell.id} className="px-3 py-1.5">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                     ))}

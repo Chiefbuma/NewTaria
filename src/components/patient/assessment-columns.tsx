@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -75,17 +75,7 @@ export const getAssessmentColumns = ({ clinicalParameters, onEdit, onDelete }: G
   return [
     {
       accessorKey: "clinical_parameter_id",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            Parameter
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        )
-      },
+      header: "Parameter",
       cell: ({ row }) => {
         const parameterId = row.getValue("clinical_parameter_id") as number;
         const parameter = clinicalParameters.find(p => p.id === parameterId);
@@ -104,17 +94,7 @@ export const getAssessmentColumns = ({ clinicalParameters, onEdit, onDelete }: G
     },
     {
       accessorKey: "measured_at",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            Measured Date
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        )
-      },
+      header: "Measured Date",
       cell: ({ row }) => {
         const date = row.getValue("measured_at") as string;
         return <div>{new Date(date).toLocaleString()}</div>

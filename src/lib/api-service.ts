@@ -7,9 +7,11 @@ import type {
     Appointment, 
     Prescription, 
     Review,
-    Message,
     Medication,
-    ClinicalParameter
+    ClinicalParameter,
+    Clinic,
+    Diagnosis,
+    Partner
 } from '@/lib/types';
 
 async function getErrorFromResponse(res: Response): Promise<Error> {
@@ -121,6 +123,82 @@ export async function bulkDeletePatients(ids: number[]): Promise<void> {
     if (!res.ok) throw await getErrorFromResponse(res);
 }
 
+// --- Reference Data APIs ---
+export async function fetchPayers(): Promise<Partner[]> {
+    const res = await fetch('/api/partners?type=insurance');
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+export async function fetchPartners(type?: Partner['partner_type']): Promise<Partner[]> {
+    const query = type ? `?type=${type}` : '';
+    const res = await fetch(`/api/partners${query}`);
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+export async function fetchClinics(): Promise<Clinic[]> {
+    const res = await fetch('/api/clinics');
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+export async function upsertClinic(data: Partial<Clinic>): Promise<Clinic> {
+    const method = data.id ? 'PUT' : 'POST';
+    const res = await fetch('/api/clinics', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+export async function deleteClinic(id: number): Promise<void> {
+    const res = await fetch(`/api/clinics?id=${id}`, { method: 'DELETE' });
+    if (!res.ok) throw await getErrorFromResponse(res);
+}
+
+export async function bulkDeleteClinics(ids: number[]): Promise<void> {
+    const res = await fetch('/api/clinics/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+}
+
+export async function fetchDiagnoses(): Promise<Diagnosis[]> {
+    const res = await fetch('/api/diagnoses');
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+export async function upsertDiagnosis(data: Partial<Diagnosis>): Promise<Diagnosis> {
+    const method = data.id ? 'PUT' : 'POST';
+    const res = await fetch('/api/diagnoses', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+export async function deleteDiagnosis(id: number): Promise<void> {
+    const res = await fetch(`/api/diagnoses?id=${id}`, { method: 'DELETE' });
+    if (!res.ok) throw await getErrorFromResponse(res);
+}
+
+export async function bulkDeleteDiagnoses(ids: number[]): Promise<void> {
+    const res = await fetch('/api/diagnoses/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+}
+
 // --- Medication APIs ---
 export async function fetchMedications(): Promise<Medication[]> {
     const res = await fetch('/api/medications');
@@ -177,7 +255,7 @@ export async function deleteClinicalParameter(id: number): Promise<void> {
 }
 
 export async function bulkDeleteParameters(ids: number[]): Promise<void> {
-    const res = await fetch('/api/parameters/bulk-delete', { // Note: ensure this route matches or is implemented if needed
+    const res = await fetch('/api/clinical-parameters/bulk-delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids })
@@ -200,24 +278,6 @@ export async function createReview(data: Partial<Review>): Promise<Review> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
-    });
-    if (!res.ok) throw await getErrorFromResponse(res);
-    return res.json();
-}
-
-// --- Messaging APIs ---
-export async function fetchMessages(receiverId?: number): Promise<Message[]> {
-    const url = receiverId ? `/api/messages?otherId=${receiverId}` : '/api/messages';
-    const res = await fetch(url);
-    if (!res.ok) throw await getErrorFromResponse(res);
-    return res.json();
-}
-
-export async function sendMessage(receiverId: number, content: string): Promise<Message> {
-    const res = await fetch('/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ receiverId, content })
     });
     if (!res.ok) throw await getErrorFromResponse(res);
     return res.json();

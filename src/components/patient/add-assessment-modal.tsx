@@ -72,18 +72,18 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
   };
 
   const renderInput = () => {
-    if (!selectedParameter) return <Input disabled placeholder="Select a parameter first" />;
+    if (!selectedParameter) return <Input disabled readOnly value="" className="h-8 border-primary/20" />;
 
     switch (selectedParameter.type) {
       case 'numeric':
-        return <Input type="number" step="any" value={value} onChange={(e) => setValue(e.target.value)} required className="border-primary/20" />;
+        return <Input type="number" step="any" value={value} onChange={(e) => setValue(e.target.value)} required className="h-8 border-primary/20" />;
       case 'text':
-        return <Textarea value={value} onChange={(e) => setValue(e.target.value)} required className="border-primary/20 min-h-[100px]" placeholder="Type assessment findings..." />;
+        return <Textarea value={value} onChange={(e) => setValue(e.target.value)} required className="border-primary/20 min-h-20" />;
       case 'choice':
         return (
           <Select onValueChange={setValue} value={value} required>
-            <SelectTrigger className="border-primary/20">
-              <SelectValue placeholder="Select an option" />
+            <SelectTrigger className="h-8 border-primary/20">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {selectedParameter.options?.map(option => (
@@ -93,24 +93,23 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
           </Select>
         );
       default:
-        return <Input type="text" value={value} onChange={(e) => setValue(e.target.value)} required className="border-primary/20" />;
+        return <Input type="text" value={value} onChange={(e) => setValue(e.target.value)} required className="h-8 border-primary/20" />;
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="border-primary/20 sm:max-w-md">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="border-primary/20 sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-primary font-bold text-xl">{existingAssessment ? 'Edit' : 'Add'} Assessment</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="space-y-5 py-4">
+          <div className="space-y-3 py-4">
              {!parameter && allParameters && (
-                <div className="space-y-2">
-                    <Label htmlFor="parameter" className="font-bold">Clinical Parameter</Label>
+                <InlineField label="Clinical Parameter" htmlFor="parameter">
                      <Select onValueChange={setSelectedParamId} value={selectedParamId}>
-                        <SelectTrigger id="parameter" className="border-primary/20">
-                            <SelectValue placeholder="Select a health metric" />
+                        <SelectTrigger id="parameter" className="h-8 border-primary/20">
+                            <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                             {allParameters.map(p => (
@@ -118,25 +117,19 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
                             ))}
                         </SelectContent>
                     </Select>
-                </div>
+                </InlineField>
             )}
             {selectedParamId && (
                 <>
-                    <div className="space-y-2">
-                        <div className="flex justify-between items-end">
-                            <Label htmlFor="value" className="font-bold text-foreground">Value {selectedParameter?.unit ? `(${selectedParameter.unit})` : ''}</Label>
-                            <span className="text-[10px] uppercase font-bold text-muted-foreground bg-muted px-1.5 rounded">{selectedParameter?.type}</span>
-                        </div>
+                    <InlineField label={`Value${selectedParameter?.unit ? ` (${selectedParameter.unit})` : ''}`} htmlFor="value" alignStart={selectedParameter?.type === 'text'}>
                         {renderInput()}
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="notes" className="font-bold text-foreground">Observations / Notes</Label>
-                        <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="border-primary/20" placeholder="Optional clinical observations..." />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="measuredAt" className="font-bold text-foreground">Date & Time of Assessment</Label>
-                        <Input id="measuredAt" type="datetime-local" value={measuredAt} onChange={(e) => setMeasuredAt(e.target.value)} required className="border-primary/20" />
-                    </div>
+                    </InlineField>
+                    <InlineField label="Observations / Notes" htmlFor="notes" alignStart>
+                        <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="border-primary/20 min-h-20" />
+                    </InlineField>
+                    <InlineField label="Assessment Date" htmlFor="measuredAt">
+                        <Input id="measuredAt" type="datetime-local" value={measuredAt} onChange={(e) => setMeasuredAt(e.target.value)} required className="h-8 border-primary/20" />
+                    </InlineField>
                 </>
             )}
           </div>
@@ -151,5 +144,26 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function InlineField({
+  label,
+  htmlFor,
+  children,
+  alignStart = false,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+  alignStart?: boolean;
+}) {
+  return (
+    <div className={`grid grid-cols-[132px_minmax(0,1fr)] gap-3 ${alignStart ? 'items-start' : 'items-center'}`}>
+      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+        {label}
+      </Label>
+      <div>{children}</div>
+    </div>
   );
 }

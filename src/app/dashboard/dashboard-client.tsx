@@ -8,7 +8,6 @@ import { Users, SlidersHorizontal, LayoutDashboard } from 'lucide-react';
 import PatientList from '@/components/dashboard/patient-list';
 import SettingsView from '@/components/settings/settings-view';
 import CriticalPatients from '@/components/dashboard/critical-patients';
-import Notifications from '@/components/dashboard/notifications';
 import AdminOverview from '@/components/dashboard/admin-overview';
 
 type View = 'dashboard' | 'patients' | 'settings';
@@ -88,7 +87,6 @@ export default function DashboardClient({
                     <PatientList patients={patients} />
                 </div>
                 <div className="lg:col-span-1 space-y-8">
-                    <Notifications />
                     <CriticalPatients patients={patients} />
                 </div>
             </div>

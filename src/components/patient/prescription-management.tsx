@@ -10,6 +10,7 @@ import { getPrescriptionColumns } from './prescription-columns';
 import AddPrescriptionModal from './add-prescription-modal';
 import { useToast } from '@/hooks/use-toast';
 import { upsertPrescription as upsertPrescriptionApi, deletePrescription as deletePrescriptionApi } from '@/lib/api-service';
+import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
 
 interface PrescriptionManagementProps {
     patient: Patient;
@@ -24,6 +25,7 @@ export default function PrescriptionManagement({ patient, prescriptions, medicat
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingPrescription, setEditingPrescription] = useState<Prescription | null>(null);
+    const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
     
     const handleAddClick = () => {
         if (readOnly) return;
@@ -73,7 +75,7 @@ export default function PrescriptionManagement({ patient, prescriptions, medicat
             await deletePrescriptionApi(id);
             const updatedPrescriptions = prescriptions.filter(p => p.id !== id);
             onPrescriptionsUpdate(updatedPrescriptions);
-            toast({ title: 'Success', description: 'Prescription deleted from database.' });
+            toast({ title: 'Success', description: 'Prescription deactivated.' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete prescription.' });
         }
@@ -81,7 +83,7 @@ export default function PrescriptionManagement({ patient, prescriptions, medicat
 
     const columns = getPrescriptionColumns({
         onEdit: handleEditClick,
-        onDelete: handleDelete,
+        onDelete: (id) => setPendingDeleteId(id),
     });
 
     return (
@@ -118,6 +120,21 @@ export default function PrescriptionManagement({ patient, prescriptions, medicat
                     existingPrescription={editingPrescription}
                 />
             )}
+
+            <ConfirmActionDialog
+                open={pendingDeleteId !== null}
+                onOpenChange={(open) => {
+                    if (!open) setPendingDeleteId(null);
+                }}
+                title="Deactivate prescription?"
+                description="This will soft-delete the prescription and remove it from the active medication list."
+                confirmLabel="Deactivate"
+                onConfirm={async () => {
+                    if (pendingDeleteId !== null) {
+                        await handleDelete(pendingDeleteId);
+                    }
+                }}
+            />
         </>
     );
 }

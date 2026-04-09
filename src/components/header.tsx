@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { User } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,16 +13,23 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { LogOut, User as UserIcon, Settings } from 'lucide-react';
+import { KeyRound, LogOut, User as UserIcon, Settings } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
 import Link from 'next/link';
 
 export default function Header({ user }: { user: User }) {
   const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem('loggedInUser');
-    router.push('/');
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await fetch('/api/auth/session', { method: 'DELETE' });
+    } finally {
+      router.push('/');
+      router.refresh();
+      setLoggingOut(false);
+    }
   };
 
   return (
@@ -44,7 +52,7 @@ export default function Header({ user }: { user: User }) {
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">{user.name}</p>
               <p className="text-xs leading-none text-muted-foreground">
-                {user.email}
+                {user.phone || user.email}
               </p>
             </div>
           </DropdownMenuLabel>
@@ -55,18 +63,24 @@ export default function Header({ user }: { user: User }) {
                 <span>My Profile</span>
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuItem asChild className="cursor-pointer">
+            <Link href="/change-password">
+              <KeyRound className="mr-2 h-4 w-4" />
+              <span>Change Password</span>
+            </Link>
+          </DropdownMenuItem>
           {user.role === 'admin' && (
             <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/settings">
+                <Link href="/dashboard/admin?section=users">
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                 </Link>
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer" disabled={loggingOut}>
             <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
+            <span>{loggingOut ? 'Logging out...' : 'Log out'}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

@@ -1,21 +1,21 @@
-
-import { fetchPatients, fetchClinicalParameters, fetchUsers, fetchDashboardStats } from '@/lib/data';
-import DashboardClient from './dashboard-client';
+import { redirect } from 'next/navigation';
+import { getCurrentSessionUser } from '@/lib/auth';
+import { canAccessAdminCenter, isPatientRole } from '@/lib/role-utils';
 
 export default async function DashboardPage() {
-  const [patients, clinicalParameters, users, stats] = await Promise.all([
-      fetchPatients(),
-      fetchClinicalParameters(),
-      fetchUsers(),
-      fetchDashboardStats()
-  ]);
-  
-  return (
-    <DashboardClient 
-      initialPatients={patients} 
-      initialClinicalParameters={clinicalParameters}
-      initialUsers={users}
-      initialStats={stats}
-    />
-  );
+  const user = await getCurrentSessionUser();
+
+  if (!user) {
+    redirect('/');
+  }
+
+  if (isPatientRole(user.role) && user.patientId) {
+    redirect(`/dashboard/patient/${user.patientId}/progress`);
+  }
+
+  if (canAccessAdminCenter(user.role)) {
+    redirect('/dashboard/admin?section=dashboard');
+  }
+
+  redirect('/dashboard/registry');
 }

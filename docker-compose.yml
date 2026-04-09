@@ -2,18 +2,14 @@ version: '3.8'
 
 services:
   app:
-    build:
-      context: .
-      args:
-      
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-      
-    container_name: whiskedelights-app
+    image: node:18-alpine
+    container_name: newtaria-app-local
+    command: sh -lc "npm run dev"
     ports:
-      - "3000:3000"
+      - "3002:3000"
     volumes:
       - .:/app
-      - /app/node_modules
+      - ../RadiantAfya/node_modules:/app/node_modules:ro
     working_dir: /app
     env_file:
       - .env
@@ -21,46 +17,47 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - whiskedelights-network
+      - newtaria-network
 
   mysql:
     image: mysql:8.0
-    container_name: whiskedelights-mysql
+    container_name: newtaria-mysql-local
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: WhiskeDelightsDB
+      MYSQL_DATABASE: NewTariaDB
       MYSQL_ROOT_PASSWORD: secret
-      MYSQL_USER: whiskedelight_user
+      MYSQL_USER: newtaria_user
       MYSQL_PASSWORD: secret
     ports:
-      - "3308:3306"
+      - "3311:3306"
     volumes:
-      - dbdata:/var/lib/mysql
+      - newtaria-dbdata:/var/lib/mysql
+      - ./localhost.sql:/docker-entrypoint-initdb.d/localhost.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 5s
       timeout: 10s
       retries: 10
     networks:
-      - whiskedelights-network
+      - newtaria-network
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
-    container_name: whiskedelights-phpmyadmin
+    container_name: newtaria-phpmyadmin-local
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "8084:80"
     environment:
       PMA_HOST: mysql
       MYSQL_ROOT_PASSWORD: secret
     depends_on:
       - mysql
     networks:
-      - whiskedelights-network
+      - newtaria-network
 
 networks:
-  whiskedelights-network:
+  newtaria-network:
     driver: bridge
 
 volumes:
-  dbdata:
+  newtaria-dbdata:

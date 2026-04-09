@@ -38,8 +38,10 @@ export default function SettingsView({
   const [activeSection, setActiveSection] = useState<SettingsSection>('parameters');
 
   React.useEffect(() => {
-      const stored = localStorage.getItem('loggedInUser');
-      if (stored) setCurrentUser(JSON.parse(stored));
+      fetch('/api/auth/session')
+        .then((res) => (res.ok ? res.json() : { user: null }))
+        .then((data) => setCurrentUser(data.user ?? null))
+        .catch(() => setCurrentUser(null));
       fetch('/api/partners').then(res => res.json()).then(setPartners);
   }, []);
 

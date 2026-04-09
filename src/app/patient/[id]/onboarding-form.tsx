@@ -72,7 +72,7 @@ export default function OnboardingForm({ patient, initialNavigators, initialCorp
                         <CardContent className="space-y-6">
                             <div className="space-y-2">
                                 <Label htmlFor="brief_medical_history">Brief Medical History</Label>
-                                <Textarea id="brief_medical_history" value={formData.brief_medical_history || ''} onChange={handleInputChange} placeholder="e.g. Diagnosed with Type 2 Diabetes in 2020..."/>
+                                <Textarea id="brief_medical_history" value={formData.brief_medical_history || ''} onChange={handleInputChange} />
                             </div>
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
@@ -86,7 +86,7 @@ export default function OnboardingForm({ patient, initialNavigators, initialCorp
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="relevant_family_history">Relevant Family History</Label>
-                                <Textarea id="relevant_family_history" value={formData.relevant_family_history || ''} onChange={handleInputChange} placeholder="e.g. Father has history of heart disease..."/>
+                                <Textarea id="relevant_family_history" value={formData.relevant_family_history || ''} onChange={handleInputChange} />
                             </div>
                         </CardContent>
                     </Card>
@@ -107,7 +107,7 @@ export default function OnboardingForm({ patient, initialNavigators, initialCorp
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="lifestyle_factors">Lifestyle Factors</Label>
-                                <Textarea id="lifestyle_factors" value={formData.lifestyle_factors || ''} onChange={handleInputChange} placeholder="e.g. Smoker, exercises 3x/week, stressful job..." />
+                                <Textarea id="lifestyle_factors" value={formData.lifestyle_factors || ''} onChange={handleInputChange} />
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="physical_limitations">Physical Limitations</Label>
@@ -115,7 +115,7 @@ export default function OnboardingForm({ patient, initialNavigators, initialCorp
                             </div>
                              <div className="space-y-2 md:col-span-2">
                                 <Label htmlFor="psychosocial_factors">Psychosocial Factors</Label>
-                                <Textarea id="psychosocial_factors" value={formData.psychosocial_factors || ''} onChange={handleInputChange} placeholder="e.g. Lives alone, strong family support..."/>
+                                <Textarea id="psychosocial_factors" value={formData.psychosocial_factors || ''} onChange={handleInputChange} />
                             </div>
                         </CardContent>
                     </Card>
@@ -144,7 +144,7 @@ export default function OnboardingForm({ patient, initialNavigators, initialCorp
                             <div className="space-y-2">
                                 <Label htmlFor="navigator_id">Assign Navigator</Label>
                                 <Select value={String(formData.navigator_id || '')} onValueChange={(value) => handleSelectChange('navigator_id', value)}>
-                                    <SelectTrigger><SelectValue placeholder="Select a navigator" /></SelectTrigger>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="null">Unassigned</SelectItem>
                                         {initialNavigators.map(n => <SelectItem key={n.id} value={String(n.id)}>{n.name}</SelectItem>)}
@@ -154,7 +154,7 @@ export default function OnboardingForm({ patient, initialNavigators, initialCorp
                             <div className="space-y-2">
                                 <Label htmlFor="corporate_id">Assign Corporate</Label>
                                 <Select value={String(formData.corporate_id || 'null')} onValueChange={(value) => handleSelectChange('corporate_id', value)}>
-                                    <SelectTrigger><SelectValue placeholder="Select a corporate" /></SelectTrigger>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="null">None</SelectItem>
                                         {initialCorporates.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
@@ -164,7 +164,7 @@ export default function OnboardingForm({ patient, initialNavigators, initialCorp
                              <div className="space-y-2">
                                 <Label htmlFor="partner_id">Assign Partner</Label>
                                 <Select value={String(formData.partner_id || 'null')} onValueChange={(value) => handleSelectChange('partner_id', value)}>
-                                    <SelectTrigger><SelectValue placeholder="Select a partner" /></SelectTrigger>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="null">None</SelectItem>
                                         {initialPartners.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}

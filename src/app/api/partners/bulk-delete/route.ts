@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
+import { authorizeAdminApiRequest } from '@/lib/auth';
 import { bulkDeletePartners } from '@/lib/data';
 
 export async function POST(req: Request) {
     try {
+        const authResult = await authorizeAdminApiRequest();
+        if (authResult instanceof NextResponse) return authResult;
         const { ids } = await req.json();
         if (!Array.isArray(ids)) {
             return NextResponse.json({ error: 'IDs must be an array' }, { status: 400 });

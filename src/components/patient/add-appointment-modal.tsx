@@ -95,38 +95,33 @@ export default function AddAppointmentModal({ isOpen, onClose, onSave, patient, 
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{existingAppointment ? 'Edit' : 'Schedule'} Appointment for {patient.first_name}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="title">Title</Label>
-              <Input id="title" value={formData.title} onChange={handleInputChange} placeholder="e.g., Follow-up Consultation" required />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="appointment_date">Start Time</Label>
-                <Input id="appointment_date" type="datetime-local" value={formData.appointment_date} onChange={handleInputChange} required />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="end_date">End Time</Label>
-                <Input id="end_date" type="datetime-local" value={formData.end_date} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="clinician_id">Clinician</Label>
+          <div className="space-y-3 py-4">
+            <InlineField label="Title" htmlFor="title">
+              <Input id="title" className="h-8" value={formData.title} onChange={handleInputChange} required />
+            </InlineField>
+            <InlineField label="Start Time" htmlFor="appointment_date">
+                <Input id="appointment_date" type="datetime-local" className="h-8" value={formData.appointment_date} onChange={handleInputChange} required />
+            </InlineField>
+            <InlineField label="End Time" htmlFor="end_date">
+                <Input id="end_date" type="datetime-local" className="h-8" value={formData.end_date} onChange={handleInputChange} />
+            </InlineField>
+            <InlineField label="Clinician" htmlFor="clinician_id">
                 <Select value={String(formData.clinician_id)} onValueChange={(value) => handleSelectChange('clinician_id', value)} required>
-                    <SelectTrigger><SelectValue placeholder="Select Clinician" /></SelectTrigger>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                     <SelectContent>
                     {clinicians.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
-            </div>
-             <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
+            </InlineField>
+            <InlineField label="Status" htmlFor="status">
                 <Select value={formData.status} onValueChange={(value) => handleSelectChange('status', value)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="scheduled">Scheduled</SelectItem>
                         <SelectItem value="confirmed">Confirmed</SelectItem>
@@ -134,11 +129,10 @@ export default function AddAppointmentModal({ isOpen, onClose, onSave, patient, 
                         <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                 </Select>
-            </div>
-             <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="description">Notes / Description</Label>
-                <Textarea id="description" value={formData.description} onChange={handleInputChange} placeholder="e.g., Review recent blood sugar levels." />
-            </div>
+            </InlineField>
+            <InlineField label="Notes / Description" htmlFor="description" alignStart>
+                <Textarea id="description" value={formData.description} onChange={handleInputChange} className="min-h-20" />
+            </InlineField>
           </div>
           <DialogFooter>
             <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
@@ -147,5 +141,26 @@ export default function AddAppointmentModal({ isOpen, onClose, onSave, patient, 
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function InlineField({
+  label,
+  htmlFor,
+  children,
+  alignStart = false,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+  alignStart?: boolean;
+}) {
+  return (
+    <div className={`grid grid-cols-[132px_minmax(0,1fr)] gap-3 ${alignStart ? 'items-start' : 'items-center'}`}>
+      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+        {label}
+      </Label>
+      <div>{children}</div>
+    </div>
   );
 }

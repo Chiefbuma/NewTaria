@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -13,17 +14,18 @@ import Logo from '@/components/logo';
 import { authenticateUser } from '@/lib/actions';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@taria.com');
-  const [password, setPassword] = useState('password');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const result = await authenticateUser(email, password);
+    const result = await authenticateUser(phone, password);
 
     if (!result.success || !result.user) {
       toast({
@@ -35,14 +37,13 @@ export default function LoginPage() {
       return;
     }
 
-    localStorage.setItem('loggedInUser', JSON.stringify(result.user));
-    
     toast({
       title: 'Success!',
       description: 'Logged in successfully. Redirecting...',
     });
 
-    router.push('/dashboard');
+    router.push(result.user.must_change_password ? '/change-password' : searchParams.get('redirect') || '/dashboard');
+    router.refresh();
   };
   
   return (
@@ -60,22 +61,23 @@ export default function LoginPage() {
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit}>
-                        <div className="grid gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="email">Email</Label>
+                        <div className="space-y-3">
+                        <InlineField label="Phone Number" htmlFor="phone">
                             <Input
-                            id="email"
-                            type="email"
-                            placeholder="name@example.com"
+                            id="phone"
+                            type="tel"
                             required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
                             disabled={loading}
                             />
-                        </div>
-                        <div className="grid gap-2">
+                        </InlineField>
+                        <div className="grid grid-cols-[120px_minmax(0,1fr)] items-center gap-3">
                             <div className="flex items-center">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">Password</Label>
+                            </div>
+                            <div className="space-y-2">
+                            <div className="flex items-center justify-between">
                             <Link
                                 href="/forgot-password"
                                 className="ml-auto inline-block text-sm underline"
@@ -83,29 +85,42 @@ export default function LoginPage() {
                                 Forgot password?
                             </Link>
                             </div>
-                            <Input 
-                            id="password" 
-                            type="password" 
-                            required 
+                            <PasswordInput
+                            id="password"
+                            required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             disabled={loading}
                             />
+                            </div>
                         </div>
                         <Button type="submit" className="w-full" disabled={loading}>
                             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Login'}
                         </Button>
                         </div>
                     </form>
-                    <div className="mt-4 text-center text-sm">
-                        Don&apos;t have an account?{' '}
-                        <Link href="/register" className="underline">
-                            Sign up
-                        </Link>
-                    </div>
                 </CardContent>
             </Card>
         </div>
+    </div>
+  );
+}
+
+function InlineField({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-center gap-3">
+      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+        {label}
+      </Label>
+      <div>{children}</div>
     </div>
   );
 }

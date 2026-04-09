@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { 
     Patient, 
@@ -29,16 +29,6 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
@@ -76,6 +66,8 @@ import ReviewHistoryCard from '@/components/patient/review-history-card';
 import AppointmentsCard from '@/components/patient/appointments-card';
 import PatientInfoCard from '@/components/patient/patient-info-card';
 import AddAppointmentModal from '@/components/patient/add-appointment-modal';
+import AddGoalModal from '@/components/patient/add-goal-modal';
+import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
 import { 
     createAssessment, 
     deleteAssessment, 
@@ -85,6 +77,13 @@ import {
     upsertAppointment,
     updatePatient,
 } from '@/lib/api-service';
+import {
+  canManageAppointments as canRoleManageAppointments,
+  canManageAssessments as canRoleManageAssessments,
+  canManagePrescriptions as canRoleManagePrescriptions,
+  canManageReviews as canRoleManageReviews,
+  isPartnerRole,
+} from '@/lib/role-utils';
 
 const DetailItem = ({
   label,
@@ -110,12 +109,23 @@ const DetailItem = ({
   </div>
 );
 
-export default function PatientDetailsPage({ initialPatient, clinicalParameters, clinicians, initialMedications }: { initialPatient: Patient, clinicalParameters: ClinicalParameter[], clinicians: User[], initialMedications: Medication[] }) {
+export default function PatientDetailsPage({
+  initialPatient,
+  clinicalParameters,
+  clinicians,
+  initialMedications,
+  currentUser,
+}: {
+  initialPatient: Patient;
+  clinicalParameters: ClinicalParameter[];
+  clinicians: User[];
+  initialMedications: Medication[];
+  currentUser: User | null;
+}) {
   const router = useRouter();
   const { toast } = useToast();
 
   const [patient, setPatient] = useState<Patient>(initialPatient);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -127,22 +137,20 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
 
   const [isAddAssessmentModalOpen, setAddAssessmentModalOpen] = useState(false);
   const [selectedGoalParameter, setSelectedGoalParameter] = useState<ClinicalParameter | null>(null);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('loggedInUser');
-    if (storedUser) setCurrentUser(JSON.parse(storedUser));
-  }, []);
+  const [isAddGoalModalOpen, setAddGoalModalOpen] = useState(false);
+  const [pendingGoalDeleteId, setPendingGoalDeleteId] = useState<number | null>(null);
+  const [pendingAssessmentDeleteId, setPendingAssessmentDeleteId] = useState<number | null>(null);
 
   // ROLE PERMISSIONS
   const isAdmin = currentUser?.role === 'admin';
   const isNavigator = currentUser?.role === 'navigator';
-  const isClinician = currentUser?.role === 'clinician';
-  const isPartner = currentUser?.role === 'partner';
+  const isPartner = isPartnerRole(currentUser?.role);
 
   const canEditPatient = isAdmin || isNavigator;
-  const canManageAssessments = (isAdmin || isNavigator) && !isPartner;
-  const canManageReviews = (isAdmin || isNavigator || isClinician) && !isPartner;
-  const canManageAppointments = (isAdmin || isNavigator) && !isPartner;
+  const canManageAssessments = canRoleManageAssessments(currentUser?.role) && !isPartner;
+  const canManageReviews = canRoleManageReviews(currentUser?.role) && !isPartner;
+  const canManageAppointments = canRoleManageAppointments(currentUser?.role) && !isPartner;
+  const canManagePrescriptions = canRoleManagePrescriptions(currentUser?.role) && !isPartner;
 
   const handleOpenEditModal = () => {
     setEditFormData({
@@ -177,34 +185,24 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     setEditFormData({ ...editFormData, [name]: value });
   };
 
-  const [newGoal, setNewGoal] = useState({
-    clinical_parameter_id: '',
-    target_value: '',
-    target_operator: '<=',
-    deadline: '',
-    notes: ''
-  });
-
-  const selectedParameterForGoal = clinicalParameters.find(p => p.id.toString() === newGoal.clinical_parameter_id);
-
-  const handleAddGoal = async () => {
+  const handleAddGoal = async (goalData: Omit<Goal, 'id' | 'patient_id' | 'created_at'> & { id?: number }) => {
     if (!canManageAssessments) return;
-    if (!newGoal.clinical_parameter_id || !newGoal.target_value || !newGoal.deadline) {
+    if (!goalData.clinical_parameter_id || !goalData.target_value || !goalData.deadline) {
       toast({variant: 'destructive', title: 'Error', description: 'Please fill in all required fields.'});
       return;
     }
     try {
         const goal = await createGoal({
             patient_id: patient.id,
-            clinical_parameter_id: parseInt(newGoal.clinical_parameter_id),
-            target_value: newGoal.target_value,
-            target_operator: newGoal.target_operator as any,
-            deadline: newGoal.deadline,
-            notes: newGoal.notes,
+            clinical_parameter_id: Number(goalData.clinical_parameter_id),
+            target_value: goalData.target_value,
+            target_operator: goalData.target_operator as any,
+            deadline: goalData.deadline,
+            notes: goalData.notes,
             status: 'active'
         });
         setPatient(prev => ({...prev, goals: [goal, ...prev.goals]}));
-        setNewGoal({ clinical_parameter_id: '', target_value: '', target_operator: '<=', deadline: '', notes: '' });
+        setAddGoalModalOpen(false);
         toast({title: 'Success', description: 'Goal added successfully!'});
     } catch (error: any) {
         toast({variant: 'destructive', title: 'Error', description: error.message});
@@ -216,7 +214,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
     try {
         await deleteGoal(goalId);
         setPatient(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== goalId) }));
-        toast({title: 'Success', description: 'Goal deleted.'});
+        toast({title: 'Success', description: 'Goal deactivated.'});
     } catch (error: any) {
         toast({variant: 'destructive', title: 'Error', description: error.message});
     }
@@ -288,7 +286,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
               ...prev,
               assessments: prev.assessments.filter(a => a.id !== assessmentId)
           }));
-          toast({title: 'Success', description: 'Assessment deleted.'});
+          toast({title: 'Success', description: 'Assessment deactivated.'});
       } catch (error: any) {
           toast({variant: 'destructive', title: 'Error', description: error.message});
       }
@@ -318,19 +316,14 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
   };
 
   const [reviewData, setReviewData] = useState({
-    subjective_findings: '',
-    objective_findings: '',
-    assessment: '',
-    plan: '',
-    recommendations: '',
-    follow_up_date: '',
+    clinical_review: '',
     review_date: new Date().toISOString().split('T')[0]
   });
 
   const submitReview = async () => {
     if (!canManageReviews) return;
-    if (!reviewData.subjective_findings.trim() || !reviewData.objective_findings.trim()) {
-        toast({variant: 'destructive', title: 'Error', description: 'Please fill in required findings'});
+    if (!reviewData.clinical_review.trim()) {
+        toast({variant: 'destructive', title: 'Error', description: 'Please enter the clinical review.'});
         return;
     }
 
@@ -338,17 +331,18 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
         const saved = await createReview({
             patient_id: patient.id,
             reviewed_by_id: currentUser!.id,
-            ...reviewData
+            review_date: reviewData.review_date,
+            subjective_findings: reviewData.clinical_review,
+            objective_findings: '',
+            assessment: reviewData.clinical_review,
+            plan: 'Clinical review recorded.',
+            recommendations: '',
+            follow_up_date: null,
         });
         const fullReview = { ...saved, reviewed_by: currentUser!.name };
         setPatient(prev => ({...prev, reviews: [fullReview, ...prev.reviews]}));
         setReviewData({
-          subjective_findings: '',
-          objective_findings: '',
-          assessment: '',
-          plan: '',
-          recommendations: '',
-          follow_up_date: '',
+          clinical_review: '',
           review_date: new Date().toISOString().split('T')[0]
         });
         toast({title: 'Success', description: 'Review submitted.'});
@@ -455,7 +449,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                 prescriptions={patient.prescriptions}
                 medications={initialMedications}
                 onPrescriptionsUpdate={handlePrescriptionsUpdate}
-                readOnly={isPartner || isClinician}
+                readOnly={!canManagePrescriptions}
             />
             <Card className="border-primary/10 shadow-sm overflow-hidden">
               <CardHeader className="bg-muted/30">
@@ -463,60 +457,16 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                 <CardDescription>Set and track patient health goals</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                  {canManageAssessments && (
-                    <div className="bg-primary/5 rounded-xl p-4 border border-primary/10 mb-6">
-                        <h3 className="text-lg font-bold text-primary mb-4 flex items-center gap-2"><PlusCircle className="h-5 w-5"/>Add New Goal</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                    <Label className="mb-2 block font-semibold">Parameter</Label>
-                                    <Select value={newGoal.clinical_parameter_id} onValueChange={(value) => setNewGoal(prev => ({...prev, clinical_parameter_id: value, target_value: ''}))}>
-                                        <SelectTrigger className="bg-background border-primary/20"><SelectValue placeholder="Select Parameter" /></SelectTrigger>
-                                        <SelectContent>
-                                            {clinicalParameters.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name} ({p.unit || 'No unit'})</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                            </div>
-                            <div>
-                                    <Label className="mb-2 block font-semibold">Target Value</Label>
-                                    {selectedParameterForGoal?.type === 'choice' ? (
-                                        <Select value={newGoal.target_value} onValueChange={(value) => setNewGoal(prev => ({...prev, target_value: value}))}>
-                                            <SelectTrigger className="bg-background border-primary/20"><SelectValue placeholder="Select Target" /></SelectTrigger>
-                                            <SelectContent>
-                                                {selectedParameterForGoal.options?.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    ) : (
-                                        <Input type="text" placeholder="Value" className="bg-background border-primary/20" value={newGoal.target_value} onChange={(e) => setNewGoal(prev => ({...prev, target_value: e.target.value}))}/>
-                                    )}
-                            </div>
-                                <div>
-                                    <Label className="mb-2 block font-semibold">Operator</Label>
-                                    <Select value={newGoal.target_operator} onValueChange={(value) => setNewGoal(prev => ({...prev, target_operator: value as any}))}>
-                                        <SelectTrigger className="bg-background border-primary/20"><SelectValue/></SelectTrigger>
-                                        <SelectContent>
-                                        <SelectItem value="<">Below</SelectItem>
-                                        <SelectItem value="<=">At or below</SelectItem>
-                                        <SelectItem value="=">Equal to</SelectItem>
-                                        <SelectItem value=">=">At or above</SelectItem>
-                                        <SelectItem value=">">Above</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                            </div>
-                            <div>
-                                    <Label className="mb-2 block font-semibold">Deadline</Label>
-                                    <Input id="deadline" type="date" className="bg-background border-primary/20" value={newGoal.deadline} onChange={(e) => setNewGoal(prev => ({...prev, deadline: e.target.value}))}/>
-                            </div>
-                            <div className="md:col-span-2">
-                                    <Label className="mb-2 block font-semibold">Notes</Label>
-                                    <Textarea placeholder="Additional notes..." className="bg-background border-primary/20" value={newGoal.notes} onChange={(e) => setNewGoal(prev => ({...prev, notes: e.target.value}))}/>
-                            </div>
-                        </div>
-                        <Button onClick={handleAddGoal} className="bg-primary hover:bg-primary/90 shadow-md">Add Goal</Button>
-                    </div>
-                  )}
-                  
                   <div className="space-y-6">
-                      <h3 className="text-lg font-bold text-foreground">Current Goals ({patient.goals.length})</h3>
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="text-lg font-bold text-foreground">Current Goals ({patient.goals.length})</h3>
+                        {canManageAssessments && (
+                          <Button onClick={() => setAddGoalModalOpen(true)} size="sm" className="bg-primary hover:bg-primary/90 shadow-sm">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Goal
+                          </Button>
+                        )}
+                      </div>
                       {patient.goals.map(goal => {
                           const parameter = clinicalParameters.find(p => p.id === goal.clinical_parameter_id);
                           const history = patient.assessments
@@ -538,7 +488,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                                                 <Button variant="ghost" size="icon" onClick={() => { setSelectedGoalParameter(parameter!); setAddAssessmentModalOpen(true); }} className="text-green-600 hover:bg-green-50">
                                                     <PlusCircle className="h-5 w-5" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteGoalItem(goal.id)} className="text-red-500 hover:bg-red-50">
+                                                <Button variant="ghost" size="icon" onClick={() => setPendingGoalDeleteId(goal.id)} className="text-red-500 hover:bg-red-50">
                                                     <Trash2 className="h-5 w-5"/>
                                                 </Button>
                                               </>
@@ -577,7 +527,7 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                                                                 </td>
                                                                 {canManageAssessments && (
                                                                     <td className="py-2 px-3">
-                                                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteAssessmentItem(assessment.id)} className="h-7 w-7 text-red-500 hover:bg-red-50">
+                                                                        <Button variant="ghost" size="icon" onClick={() => setPendingAssessmentDeleteId(assessment.id)} className="h-7 w-7 text-red-500 hover:bg-red-50">
                                                                             <Trash2 className="h-3.5 w-3.5"/>
                                                                         </Button>
                                                                     </td>
@@ -598,6 +548,12 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                   </div>
               </CardContent>
             </Card>
+            <AddGoalModal
+              isOpen={isAddGoalModalOpen}
+              onClose={() => setAddGoalModalOpen(false)}
+              onSave={handleAddGoal}
+              clinicalParameters={clinicalParameters}
+            />
 
             {canManageReviews && (
                 <Card className="border-primary/10 shadow-sm overflow-hidden">
@@ -607,27 +563,10 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                     </CardHeader>
                     <CardContent className="pt-6">
                         <div className="space-y-4">
-                            <h4 className="text-lg font-bold text-foreground mb-2">Submit New Review</h4>
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="font-semibold">Subjective Findings</Label>
-                                    <Textarea placeholder="How is the patient feeling? Any complaints?..." className="bg-background border-primary/20" value={reviewData.subjective_findings} onChange={(e) => setReviewData(p => ({...p, subjective_findings: e.target.value}))}/>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="font-semibold">Objective Findings</Label>
-                                    <Textarea placeholder="Physical exam findings, lab observations?..." className="bg-background border-primary/20" value={reviewData.objective_findings} onChange={(e) => setReviewData(p => ({...p, objective_findings: e.target.value}))}/>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="font-semibold">Assessment & Diagnosis</Label>
-                                    <Textarea placeholder="Clinical impression and primary diagnosis..." className="bg-background border-primary/20" value={reviewData.assessment} onChange={(e) => setReviewData(p => ({...p, assessment: e.target.value}))}/>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="font-semibold">Treatment Plan</Label>
-                                    <Textarea placeholder="Next steps, changes to medication, follow-ups..." className="bg-background border-primary/20" value={reviewData.plan} onChange={(e) => setReviewData(p => ({...p, plan: e.target.value}))}/>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="font-semibold">Follow-up Date</Label>
-                                    <Input id="follow_up_date" type="date" className="bg-background border-primary/20 w-full md:w-fit" value={reviewData.follow_up_date} onChange={(e) => setReviewData(p => ({...p, follow_up_date: e.target.value}))}/>
+                                    <Label className="font-semibold">Clinical Review</Label>
+                                    <Textarea className="bg-background border-primary/20 min-h-28" value={reviewData.clinical_review} onChange={(e) => setReviewData(p => ({...p, clinical_review: e.target.value}))}/>
                                 </div>
                                 <Button onClick={submitReview} className="bg-primary hover:bg-primary/90 shadow-md px-8"><Save className="mr-2 h-4 w-4"/> Save Review</Button>
                             </div>
@@ -664,49 +603,40 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
                 <CardDescription>Update the patient's registration information below.</CardDescription>
             </DialogHeader>
             <form onSubmit={handleUpdatePatient}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="first_name" className="font-bold">First Name</Label>
+                <div className="space-y-3 py-4">
+                    <InlineField label="First Name" htmlFor="first_name">
                         <Input id="first_name" className="border-primary/20" value={editFormData.first_name || ''} onChange={handleEditFormChange} required />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="middle_name" className="font-bold">Middle Name</Label>
+                    </InlineField>
+                    <InlineField label="Middle Name" htmlFor="middle_name">
                         <Input id="middle_name" className="border-primary/20" value={editFormData.middle_name || ''} onChange={handleEditFormChange} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="surname" className="font-bold">Surname</Label>
+                    </InlineField>
+                    <InlineField label="Surname" htmlFor="surname">
                         <Input id="surname" className="border-primary/20" value={editFormData.surname || ''} onChange={handleEditFormChange} required />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="dob" className="font-bold">Date of Birth</Label>
+                    </InlineField>
+                    <InlineField label="Date of Birth" htmlFor="dob">
                         <Input id="dob" type="date" className="border-primary/20" value={editFormData.dob || ''} onChange={handleEditFormChange} />
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="age" className="font-bold">Age</Label>
+                    </InlineField>
+                    <InlineField label="Age" htmlFor="age">
                         <Input id="age" type="number" className="border-primary/20" value={editFormData.age || ''} onChange={handleEditFormChange} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="gender" className="font-bold">Gender</Label>
+                    </InlineField>
+                    <InlineField label="Gender" htmlFor="gender">
                         <Select value={editFormData.gender || ''} onValueChange={(value) => handleEditSelectChange('gender', value)} required>
-                            <SelectTrigger className="border-primary/20"><SelectValue placeholder="Select gender" /></SelectTrigger>
+                            <SelectTrigger className="border-primary/20"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Male">Male</SelectItem>
                                 <SelectItem value="Female">Female</SelectItem>
                             </SelectContent>
                         </Select>
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="email" className="font-bold">Email</Label>
+                    </InlineField>
+                    <InlineField label="Email" htmlFor="email">
                         <Input id="email" type="email" className="border-primary/20" value={editFormData.email || ''} onChange={handleEditFormChange} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="phone" className="font-bold">Phone</Label>
+                    </InlineField>
+                    <InlineField label="Phone" htmlFor="phone">
                         <Input id="phone" type="tel" className="border-primary/20" value={editFormData.phone || ''} onChange={handleEditFormChange} />
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="wellness_date" className="font-bold">Wellness Date</Label>
+                    </InlineField>
+                    <InlineField label="Wellness Date" htmlFor="wellness_date">
                         <Input id="wellness_date" type="date" className="border-primary/20" value={editFormData.wellness_date || ''} onChange={handleEditFormChange} required />
-                    </div>
+                    </InlineField>
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
@@ -757,6 +687,53 @@ export default function PatientDetailsPage({ initialPatient, clinicalParameters,
             existingAppointment={editingAppointment}
         />
       )}
+      <ConfirmActionDialog
+        open={pendingGoalDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingGoalDeleteId(null);
+        }}
+        title="Deactivate goal?"
+        description="This will soft-delete the goal and remove it from the active goals list for this patient."
+        confirmLabel="Deactivate"
+        onConfirm={async () => {
+          if (pendingGoalDeleteId !== null) {
+            await handleDeleteGoalItem(pendingGoalDeleteId);
+          }
+        }}
+      />
+      <ConfirmActionDialog
+        open={pendingAssessmentDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingAssessmentDeleteId(null);
+        }}
+        title="Deactivate assessment?"
+        description="This will soft-delete the assessment and remove it from the patient's active assessment history."
+        confirmLabel="Deactivate"
+        onConfirm={async () => {
+          if (pendingAssessmentDeleteId !== null) {
+            await handleDeleteAssessmentItem(pendingAssessmentDeleteId);
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+function InlineField({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[132px_minmax(0,1fr)] items-center gap-3">
+      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+        {label}
+      </Label>
+      <div>{children}</div>
     </div>
   );
 }

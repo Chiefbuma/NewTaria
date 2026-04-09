@@ -4,7 +4,7 @@ import type { Patient } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { User as UserIcon, Cake, Phone, Mail, Binary, CalendarDays } from 'lucide-react';
+import { User as UserIcon, Cake, Phone, Mail, Binary } from 'lucide-react';
 import { placeholderImages } from '@/lib/placeholder-images';
 
 const DetailItem = ({
@@ -43,7 +43,7 @@ export default function PatientInfoCard({ patient }: { patient: Patient }) {
         </Avatar>
         <div className="grid gap-1">
           <CardTitle className="text-2xl text-foreground">{`${patient.first_name} ${patient.surname || ''}`}</CardTitle>
-          <CardDescription className="text-muted-foreground">Patient ID: {patient.id}</CardDescription>
+          <CardDescription className="text-muted-foreground">Patient ID: {patient.patient_identifier || `PT-${patient.id}`}</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="space-y-4 pt-4">
@@ -55,7 +55,6 @@ export default function PatientInfoCard({ patient }: { patient: Patient }) {
             value={`${patient.first_name} ${patient.middle_name || ''} ${patient.surname || ''}`}
           />
           <DetailItem icon={Cake} label="Date of Birth" value={patient.dob ? new Date(patient.dob).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'} />
-          <DetailItem icon={CalendarDays} label="Wellness Date" value={patient.wellness_date ? new Date(patient.wellness_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'} />
           <DetailItem icon={Binary} label="Age / Gender" value={`${patient.age || 'N/A'} / ${patient.gender || 'N/A'}`} />
           <DetailItem icon={Phone} label="Phone" value={patient.phone} />
           <DetailItem icon={Mail} label="Email" value={patient.email} />

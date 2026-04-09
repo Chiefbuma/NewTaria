@@ -148,19 +148,25 @@ const ParameterTextTable = ({ assessments }: { assessments: Assessment[] }) => {
                 <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground"><FileText className="h-4 w-4 text-primary"/>Recent Entries</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="space-y-3">
-                    {latestAssessments.map((a) => (
-                        <div key={a.id} className="p-3 bg-muted/50 rounded-lg border border-primary/5">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                                    {format(new Date(a.measured_at), 'MMM dd, yyyy')}
-                                </span>
+                {latestAssessments.length > 0 ? (
+                    <div className="space-y-3">
+                        {latestAssessments.map((a) => (
+                            <div key={a.id} className="p-3 bg-muted/50 rounded-lg border border-primary/5">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                        {format(new Date(a.measured_at), 'MMM dd, yyyy')}
+                                    </span>
+                                </div>
+                                <p className="text-sm text-foreground leading-relaxed">{a.value}</p>
+                                {a.notes && <p className="text-[10px] text-muted-foreground mt-1 italic">"{a.notes}"</p>}
                             </div>
-                            <p className="text-sm text-foreground leading-relaxed">{a.value}</p>
-                            {a.notes && <p className="text-[10px] text-muted-foreground mt-1 italic">"{a.notes}"</p>}
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex min-h-[200px] items-center justify-center">
+                        <p className="text-xs text-muted-foreground">No entries in the selected date range.</p>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
@@ -256,34 +262,43 @@ export default function ProgressDashboard({
     toDate: Date
 }) {
     
-    const filteredAssessedParameters = useMemo(() => {
-        const assessmentsByParam = new Map<number, Assessment[]>();
-        
-        patient.assessments.forEach(a => {
-            const date = new Date(a.measured_at);
-            const matchesFilter = date >= fromDate && date <= toDate;
+    const trackedParameters = useMemo(() => {
+        const latestGoalByParameter = new Map<number, Goal>();
 
-            if (matchesFilter) {
-                const current = assessmentsByParam.get(a.clinical_parameter_id) || [];
-                assessmentsByParam.set(a.clinical_parameter_id, [...current, a]);
-            }
-        });
+        patient.goals
+            .filter((goal) => goal.deleted_at === null || goal.deleted_at === undefined)
+            .forEach((goal) => {
+                if (!latestGoalByParameter.has(goal.clinical_parameter_id)) {
+                    latestGoalByParameter.set(goal.clinical_parameter_id, goal);
+                }
+            });
 
-        return Array.from(assessmentsByParam.entries())
-            .map(([id, assessments]) => ({
-                parameter: clinicalParameters.find(p => p.id === id),
-                assessments: assessments.sort((a, b) => new Date(a.measured_at).getTime() - new Date(a.measured_at).getTime())
-            }))
-            .filter((item): item is { parameter: ClinicalParameter, assessments: Assessment[] } => !!item.parameter);
-    }, [patient.assessments, clinicalParameters, fromDate, toDate]);
+        return Array.from(latestGoalByParameter.entries())
+            .map(([parameterId, goal]) => {
+                const parameter = clinicalParameters.find((item) => item.id === parameterId);
+                if (!parameter) return null;
+
+                const assessments = patient.assessments
+                    .filter((assessment) => {
+                        const measuredAt = new Date(assessment.measured_at);
+                        return (
+                            assessment.clinical_parameter_id === parameterId &&
+                            measuredAt >= fromDate &&
+                            measuredAt <= toDate
+                        );
+                    })
+                    .sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
+
+                return { parameter, goal, assessments };
+            })
+            .filter((item): item is { parameter: ClinicalParameter; goal: Goal; assessments: Assessment[] } => !!item);
+    }, [patient.goals, patient.assessments, clinicalParameters, fromDate, toDate]);
 
 
     return (
         <div className="space-y-12">
-            {filteredAssessedParameters.length > 0 ? (
-                filteredAssessedParameters.map(({ parameter, assessments }) => {
-                    const goal = patient.goals.find(g => g.clinical_parameter_id === parameter.id && g.deleted_at === null);
-
+            {trackedParameters.length > 0 ? (
+                trackedParameters.map(({ parameter, assessments, goal }) => {
                     return (
                         <div key={parameter.id} className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <div className="flex items-center justify-between border-b pb-2">
@@ -332,10 +347,9 @@ export default function ProgressDashboard({
                     <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
                         <BarChart className="h-8 w-8 text-primary/30" />
                     </div>
-                    <h3 className="text-xl font-bold text-foreground">No Assessment Data</h3>
+                    <h3 className="text-xl font-bold text-foreground">No Tracked Goals</h3>
                     <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
-                        We couldn't find any assessments for this patient in the selected date range. 
-                        Try adjusting the filters above.
+                        This patient does not have any assigned goals yet, so there are no parameters to track on the progress dashboard.
                     </p>
                 </div>
             )}

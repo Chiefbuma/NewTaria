@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { User, Partner } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,15 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, CheckSquare, MoreVertical } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { placeholderImages } from '@/lib/placeholder-images';
 import { DataTable } from '../ui/data-table';
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { motion, AnimatePresence } from 'framer-motion';
+import { getRoleLabel, isPayerRole } from '@/lib/role-utils';
+import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
 
 interface UserManagementProps {
   initialUsers: User[];
@@ -37,11 +38,19 @@ interface UserManagementProps {
 
 const emptyUser: Omit<User, 'id'> = {
   name: '',
+  phone: '',
   email: '',
   role: 'navigator',
   avatarUrl: '',
   partner_id: null
 };
+
+function normalizeRoleValue(role: User['role'] | undefined) {
+  if (role === 'clinician') return 'physician';
+  if (role === 'payer') return 'partner';
+  if (role === 'patient') return 'user';
+  return role || 'navigator';
+}
 
 export default function UserManagement({ initialUsers, onUsersUpdate }: UserManagementProps) {
   const [users, setUsers] = useState<User[]>(initialUsers);
@@ -49,32 +58,30 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentUser, setCurrentUser] = useState<Partial<User> | null>(null);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [initialPassword, setInitialPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [confirmAction, setConfirmAction] = useState<null | (() => Promise<void>)>(null);
+  const [confirmTitle, setConfirmTitle] = useState('');
+  const [confirmDescription, setConfirmDescription] = useState('');
   const { toast } = useToast();
   const userAvatar = placeholderImages.find(p => p.id === 'user-avatar');
-  const lastSelectedIdsRef = useRef("");
 
   useEffect(() => {
       fetch('/api/partners').then(res => res.json()).then(setPartners);
   }, []);
 
-  const handleSelectionChange = useCallback((selectedRows: User[]) => {
-      const ids = selectedRows.map(r => r.id).sort();
-      const idsString = ids.join(",");
-      if (lastSelectedIdsRef.current !== idsString) {
-          lastSelectedIdsRef.current = idsString;
-          setSelectedIds(ids);
-      }
-  }, []);
-
   const handleOpenModal = (user?: User) => {
     setCurrentUser(user || { ...emptyUser });
+    setInitialPassword('');
+    setConfirmPassword('');
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setCurrentUser(null);
+    setInitialPassword('');
+    setConfirmPassword('');
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,47 +97,92 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || !currentUser.name || !currentUser.email) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Name and email are required.' });
+    if (!currentUser || !currentUser.name || !currentUser.phone || !currentUser.email) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Name, phone number, and email are required.' });
       return;
     }
-    
+
+    if (!currentUser.id) {
+      if (!initialPassword || !confirmPassword) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Initial password and confirmation are required.' });
+        return;
+      }
+
+      if (initialPassword.length < 8) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Initial password must be at least 8 characters.' });
+        return;
+      }
+
+      if (initialPassword !== confirmPassword) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Password confirmation does not match.' });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
-    setTimeout(() => {
+    const payload = currentUser.id
+      ? currentUser
+      : { ...currentUser, password: initialPassword };
+
+    fetch('/api/users', {
+      method: currentUser.id ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(async (res) => {
+        const payload = await res.json();
+        if (!res.ok) {
+          throw new Error(payload.error || 'Unable to save user.');
+        }
+
         let updatedUsers;
         if (currentUser.id) {
-            updatedUsers = users.map(u => u.id === currentUser!.id ? (currentUser as User) : u);
+          updatedUsers = users.map((user) => (user.id === payload.id ? payload : user));
         } else {
-            const newUser: User = { id: Date.now(), ...emptyUser, ...currentUser };
-            updatedUsers = [...users, newUser];
+          updatedUsers = [payload, ...users];
+          toast({
+            title: 'User created',
+            description: 'Initial password saved. User will be required to change it on first login.',
+          });
         }
-        
+
         setUsers(updatedUsers);
         onUsersUpdate(updatedUsers);
-        toast({ title: 'Success', description: `User ${currentUser.id ? 'updated' : 'created'} successfully.` });
-        setIsSubmitting(false);
+
+        if (currentUser.id) {
+          toast({ title: 'Success', description: 'User updated successfully.' });
+        }
+
         handleCloseModal();
-    }, 500);
+      })
+      .catch((error: any) => {
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
   };
   
-  const handleDelete = (id: number) => {
-      const updatedUsers = users.filter(u => u.id !== id);
-      setUsers(updatedUsers);
-      onUsersUpdate(updatedUsers);
-      toast({ title: 'Success', description: 'User deleted successfully.' });
+  const executeDelete = async (id: number) => {
+      try {
+        const res = await fetch(`/api/users?id=${id}`, { method: 'DELETE' });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.error || 'Unable to deactivate user.');
+
+        const updatedUsers = users.filter(u => u.id !== id);
+        setUsers(updatedUsers);
+        onUsersUpdate(updatedUsers);
+        toast({ title: 'Success', description: 'User deactivated successfully.' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
+      }
   }
 
-  const handleBulkDelete = () => {
-      if (selectedIds.length === 0) return;
-      if (!confirm(`Delete ${selectedIds.length} users?`)) return;
-      
-      const updatedUsers = users.filter(u => !selectedIds.includes(u.id));
-      setUsers(updatedUsers);
-      onUsersUpdate(updatedUsers);
-      setSelectedIds([]);
-      lastSelectedIdsRef.current = "";
-      toast({ title: 'Success', description: 'Selected users removed.' });
-  }
+  const handleDelete = (id: number) => {
+    setConfirmTitle('Deactivate user?');
+    setConfirmDescription('This will soft-delete the account and remove it from active user access.');
+    setConfirmAction(() => () => executeDelete(id));
+  };
 
   const columns: ColumnDef<User>[] = [
     {
@@ -163,7 +215,7 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
                 </Avatar>
                 <div>
                     <p className="font-bold text-sm">{row.original.name}</p>
-                    <p className="text-xs text-muted-foreground">{row.original.email}</p>
+                    <p className="text-xs text-muted-foreground">{row.original.phone || row.original.email}</p>
                 </div>
             </div>
         )
@@ -171,7 +223,7 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
     {
         accessorKey: "role",
         header: "Role",
-        cell: ({ row }) => <span className="capitalize text-xs font-semibold px-2 py-1 bg-primary/10 text-primary rounded-full">{row.original.role}</span>
+        cell: ({ row }) => <span className="text-xs font-semibold px-2 py-1 bg-primary/10 text-primary rounded-full">{getRoleLabel(row.original.role)}</span>
     },
     {
         id: "actions",
@@ -184,78 +236,88 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
     }
   ];
 
+  const toolbarActions = (
+    <Button onClick={() => handleOpenModal()} className="bg-primary hover:bg-primary/90 shadow-sm">
+      <PlusCircle className="mr-2 h-4 w-4" /> Add User
+    </Button>
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <AnimatePresence>
-            {selectedIds.length > 0 && (
-                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="border-primary text-primary">
-                                <CheckSquare className="mr-2 h-4 w-4" />
-                                {selectedIds.length} Selected
-                                <MoreVertical className="ml-2 h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                            <DropdownMenuLabel>Bulk Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={handleBulkDelete} className="text-destructive focus:text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </motion.div>
-            )}
-        </AnimatePresence>
-        <div className="flex-1" />
-        <Button onClick={() => handleOpenModal()} className="bg-primary hover:bg-primary/90 shadow-sm">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add User
-        </Button>
-      </div>
+      <DataTable columns={columns} data={users} toolbarActions={toolbarActions} />
 
-      <div className="rounded-md border border-primary/10">
-        <DataTable columns={columns} data={users} onSelectionChange={handleSelectionChange} />
-      </div>
-
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setIsModalOpen(true);
+            return;
+          }
+          handleCloseModal();
+        }}
+      >
         <DialogContent>
           <DialogHeader><DialogTitle>{currentUser?.id ? 'Edit' : 'Add'} User</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
+            <div className="space-y-3 py-4">
+              <InlineField label="Full Name" htmlFor="name">
                 <Input id="name" name="name" value={currentUser?.name || ''} onChange={handleChange} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+              </InlineField>
+              <InlineField label="Email" htmlFor="email">
                 <Input id="email" name="email" type="email" value={currentUser?.email || ''} onChange={handleChange} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select name="role" value={currentUser?.role || ''} onValueChange={(value) => handleSelectChange('role', value)}>
-                    <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+              </InlineField>
+              <InlineField label="Phone Number" htmlFor="phone">
+                <Input id="phone" name="phone" type="tel" value={currentUser?.phone || ''} onChange={handleChange} required />
+              </InlineField>
+              {!currentUser?.id && (
+                <>
+                  <InlineField label="Initial Password" htmlFor="password">
+                    <PasswordInput
+                      id="password"
+                      name="password"
+                      value={initialPassword}
+                      onChange={(e) => setInitialPassword(e.target.value)}
+                      minLength={8}
+                      required
+                    />
+                  </InlineField>
+                  <InlineField label="Confirm Password" htmlFor="confirmPassword">
+                    <PasswordInput
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      minLength={8}
+                      required
+                    />
+                  </InlineField>
+                </>
+              )}
+              <InlineField label="Role" htmlFor="role">
+                <Select name="role" value={normalizeRoleValue(currentUser?.role as User['role'] | undefined)} onValueChange={(value) => handleSelectChange('role', value)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="navigator">Navigator</SelectItem>
-                        <SelectItem value="physician">Physician</SelectItem>
-                        <SelectItem value="staff">Staff</SelectItem>
+                        <SelectItem value="physician">Clinician</SelectItem>
                         <SelectItem value="partner">Partner</SelectItem>
+                        <SelectItem value="staff">Staff</SelectItem>
+                        <SelectItem value="user">Patient</SelectItem>
                     </SelectContent>
                 </Select>
-              </div>
+              </InlineField>
               
-              {currentUser?.role === 'partner' && (
-                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <Label htmlFor="partner_id">Assign to Partner</Label>
+              {isPayerRole(currentUser?.role as User['role']) && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    <InlineField label="Assign to Partner" htmlFor="partner_id">
                     <Select name="partner_id" value={String(currentUser?.partner_id || 'null')} onValueChange={(value) => handleSelectChange('partner_id', value)}>
-                        <SelectTrigger><SelectValue placeholder="Select partner organization" /></SelectTrigger>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="null">None</SelectItem>
                             {partners.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
+                    </InlineField>
                   </div>
               )}
             </div>
@@ -269,6 +331,42 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmActionDialog
+        open={Boolean(confirmAction)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmAction(null);
+            setConfirmTitle('');
+            setConfirmDescription('');
+          }
+        }}
+        title={confirmTitle}
+        description={confirmDescription}
+        confirmLabel="Deactivate"
+        onConfirm={async () => {
+          await confirmAction?.();
+        }}
+      />
+    </div>
+  );
+}
+
+function InlineField({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[132px_minmax(0,1fr)] items-center gap-3">
+      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+        {label}
+      </Label>
+      <div>{children}</div>
     </div>
   );
 }

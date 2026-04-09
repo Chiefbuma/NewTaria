@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState } from 'react';
 import type { Partner } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,12 +14,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, CheckSquare, MoreVertical } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { DataTable } from '../ui/data-table';
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
 
 interface PartnerManagementProps {
   initialPartners: Partner[];
@@ -31,18 +30,10 @@ export default function PartnerManagement({ initialPartners, onPartnersUpdate }:
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPartner, setCurrentPartner] = useState<Partial<Partner> | null>(null);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [confirmAction, setConfirmAction] = useState<null | (() => Promise<void>)>(null);
+  const [confirmTitle, setConfirmTitle] = useState('');
+  const [confirmDescription, setConfirmDescription] = useState('');
   const { toast } = useToast();
-  const lastSelectedIdsRef = useRef("");
-
-  const handleSelectionChange = useCallback((selectedRows: Partner[]) => {
-      const ids = selectedRows.map(r => r.id).sort();
-      const idsString = ids.join(",");
-      if (lastSelectedIdsRef.current !== idsString) {
-          lastSelectedIdsRef.current = idsString;
-          setSelectedIds(ids);
-      }
-  }, []);
 
   const handleOpenModal = (partner?: Partner) => {
     setCurrentPartner(partner || { name: '' });
@@ -74,7 +65,7 @@ export default function PartnerManagement({ initialPartners, onPartnersUpdate }:
         
         setPartners(updated);
         onPartnersUpdate(updated);
-        toast({ title: 'Success', description: 'Partner saved successfully.' });
+        toast({ title: 'Success', description: 'Payer saved successfully.' });
         setIsModalOpen(false);
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Error', description: e.message });
@@ -83,39 +74,23 @@ export default function PartnerManagement({ initialPartners, onPartnersUpdate }:
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const executeDelete = async (id: number) => {
       try {
           const res = await fetch(`/api/partners?id=${id}`, { method: 'DELETE' });
           if (!res.ok) throw new Error('Failed to delete partner');
           const updated = partners.filter(p => p.id !== id);
           setPartners(updated);
           onPartnersUpdate(updated);
-          toast({ title: 'Success', description: 'Partner removed.' });
+          toast({ title: 'Success', description: 'Payer deactivated.' });
       } catch (e: any) {
           toast({ variant: 'destructive', title: 'Error', description: e.message });
       }
   };
 
-  const handleBulkDelete = async () => {
-      if (selectedIds.length === 0) return;
-      if (!confirm(`Delete ${selectedIds.length} partners?`)) return;
-
-      try {
-          const res = await fetch('/api/partners/bulk-delete', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ids: selectedIds })
-          });
-          if (!res.ok) throw new Error('Bulk delete failed');
-          const updated = partners.filter(p => !selectedIds.includes(p.id));
-          setPartners(updated);
-          onPartnersUpdate(updated);
-          setSelectedIds([]);
-          lastSelectedIdsRef.current = "";
-          toast({ title: 'Success', description: 'Selected partners removed.' });
-      } catch (e: any) {
-          toast({ variant: 'destructive', title: 'Error', description: e.message });
-      }
+  const handleDelete = (id: number) => {
+      setConfirmTitle('Deactivate payer?');
+      setConfirmDescription('This will soft-delete the payer and remove it from active partner lists.');
+      setConfirmAction(() => () => executeDelete(id));
   };
 
   const columns: ColumnDef<Partner>[] = [
@@ -138,7 +113,7 @@ export default function PartnerManagement({ initialPartners, onPartnersUpdate }:
         enableSorting: false,
         enableHiding: false,
     },
-    { accessorKey: "name", header: "Partner Name" },
+    { accessorKey: "name", header: "Payer Name" },
     {
         id: "actions",
         cell: ({ row }) => (
@@ -150,61 +125,71 @@ export default function PartnerManagement({ initialPartners, onPartnersUpdate }:
     }
   ];
 
+  const toolbarActions = (
+    <Button onClick={() => handleOpenModal()} className="bg-primary hover:bg-primary/90 shadow-sm">
+      <PlusCircle className="mr-2 h-4 w-4" /> Add Payer
+    </Button>
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <AnimatePresence>
-            {selectedIds.length > 0 && (
-                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="border-primary text-primary">
-                                <CheckSquare className="mr-2 h-4 w-4" />
-                                {selectedIds.length} Selected
-                                <MoreVertical className="ml-2 h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                            <DropdownMenuLabel>Bulk Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={handleBulkDelete} className="text-destructive focus:text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </motion.div>
-            )}
-        </AnimatePresence>
-        <div className="flex-1" />
-        <Button onClick={() => handleOpenModal()} className="bg-primary hover:bg-primary/90 shadow-sm">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Partner
-        </Button>
-      </div>
-
-      <div className="rounded-md border border-primary/10">
-        <DataTable columns={columns} data={partners} onSelectionChange={handleSelectionChange} />
-      </div>
+      <DataTable columns={columns} data={partners} toolbarActions={toolbarActions} />
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{currentPartner?.id ? 'Edit' : 'Add'} Partner</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{currentPartner?.id ? 'Edit' : 'Add'} Payer</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Partner Name</Label>
+            <div className="space-y-3 py-4">
+              <InlineField label="Payer Name" htmlFor="name">
                 <Input id="name" value={currentPartner?.name || ''} onChange={(e) => setCurrentPartner(p => ({...p!, name: e.target.value}))} required />
-              </div>
+              </InlineField>
             </div>
             <DialogFooter>
               <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Partner
+                Save Payer
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmActionDialog
+        open={Boolean(confirmAction)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmAction(null);
+            setConfirmTitle('');
+            setConfirmDescription('');
+          }
+        }}
+        title={confirmTitle}
+        description={confirmDescription}
+        confirmLabel="Deactivate"
+        onConfirm={async () => {
+          await confirmAction?.();
+        }}
+      />
+    </div>
+  );
+}
+
+function InlineField({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[132px_minmax(0,1fr)] items-center gap-3">
+      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+        {label}
+      </Label>
+      <div>{children}</div>
     </div>
   );
 }

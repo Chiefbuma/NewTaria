@@ -1,11 +1,39 @@
+export type PartnerType = 'insurance' | 'clinic' | 'hospital' | 'specialist' | 'corporate';
+
+export type UserRole =
+  | 'admin'
+  | 'staff'
+  | 'physician'
+  | 'clinician'
+  | 'navigator'
+  | 'payer'
+  | 'partner'
+  | 'user'
+  | 'patient';
+
 export type User = {
   id: number;
   name: string;
+  phone?: string | null;
   email: string;
-  role: 'admin' | 'navigator' | 'clinician' | 'user' | 'partner';
+  role: UserRole;
   avatarUrl?: string;
-  partner_id?: number | null; 
+  partner_id?: number | null;
+  partner_name?: string | null;
+  partner_type?: PartnerType | null;
+  partner_clinic_id?: number | null;
+  must_change_password?: boolean;
+  password_changed_at?: string | null;
   deleted_at?: string | null;
+};
+
+export type PasswordResetToken = {
+  id: number;
+  user_id: number;
+  token_hash: string;
+  expires_at: string;
+  used_at?: string | null;
+  created_at: string;
 };
 
 export type Corporate = {
@@ -18,6 +46,16 @@ export type Corporate = {
 export type Partner = {
   id: number;
   name: string;
+  partner_type?: PartnerType | null;
+  clinic_id?: number | null;
+  clinic_name?: string | null;
+  deleted_at?: string | null;
+};
+
+export type Clinic = {
+  id: number;
+  name: string;
+  location: string | null;
   deleted_at?: string | null;
 };
 
@@ -131,13 +169,21 @@ export type Review = {
 export type Patient = {
   id: number;
   user_id: number | null;
+  patient_identifier?: string | null;
+  portal_username?: string | null;
   first_name: string;
+  last_name?: string | null;
   surname: string | null;
   age: number | null;
-  gender: 'Male' | 'Female' | null;
+  gender: 'Male' | 'Female' | 'Other' | null;
   email: string | null;
   diagnosis: string | null;
   primary_diagnosis: 'Hypertension' | 'Diabetes' | 'Hypertension and Diabetes' | null;
+  primary_diagnosis_id?: number | null;
+  primary_diagnosis_name?: string | null;
+  primary_diagnosis_code?: string | null;
+  comorbid_conditions?: string | null;
+  current_medications_summary?: string | null;
   created_at: string;
   status: 'Active' | 'Pending' | 'Critical' | 'Discharged' | 'In Review';
   emr_number: string | null;
@@ -154,18 +200,31 @@ export type Patient = {
   has_tape_measure: boolean;
   dietary_restrictions: string | null;
   allergies_intolerances: string | null;
+  address?: string | null;
   lifestyle_factors: string | null;
+  social_history?: string | null;
   physical_limitations: string | null;
   psychosocial_factors: string | null;
+  past_medical_history?: string | null;
+  surgical_history?: string | null;
+  family_history?: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
   emergency_contact_relation: string | null;
+  emergency_contact_email?: string | null;
   phone: string | null;
   dob: string | null;
   middle_name?: string | null;
   wellness_date: string;
   corporate_id: number | null;
   partner_id: number | null; 
+  payer_id?: number | null;
+  payer_name?: string | null;
+  clinic_id?: number | null;
+  clinic_name?: string | null;
+  policy_number?: string | null;
+  coverage_limits?: string | null;
+  pre_authorization_status?: 'Not Required' | 'Pending' | 'Approved' | 'Denied' | null;
   date_of_diagnosis: string | null;
   deleted_at?: string | null;
   corporate_name?: string;
@@ -186,4 +245,35 @@ export type Patient = {
     assessmentCoverage: number;
     needsAttention: boolean;
   };
+};
+
+export type PatientOnboardingPayload = {
+  first_name: string;
+  middle_name?: string;
+  surname: string;
+  email: string;
+  phone: string;
+  dob: string;
+  gender: 'Male' | 'Female' | 'Other';
+  address?: string;
+  emergency_contact_name: string;
+  emergency_contact_phone: string;
+  emergency_contact_relation: string;
+  emergency_contact_email?: string;
+  partner_id?: number | null;
+  clinic_id?: number | null;
+  primary_diagnosis_id?: number | null;
+  comorbid_conditions?: string;
+  current_medications_summary?: string;
+  allergies_intolerances?: string;
+  past_medical_history?: string;
+  surgical_history?: string;
+  family_history?: string;
+  social_history?: string;
+  payer_id?: number | null;
+  policy_number?: string;
+  coverage_limits?: string;
+  pre_authorization_status?: 'Not Required' | 'Pending' | 'Approved' | 'Denied';
+  portal_username?: string;
+  role?: UserRole;
 };

@@ -52,7 +52,7 @@ export default function ClinicalAssessments({ patient, onUpdate }: { patient: Pa
                         {parametersForTab.map(param => (
                             <div key={param.id} className="grid grid-cols-2 gap-4 items-center">
                                 <label className="text-sm font-medium text-gray-700">{param.name} {param.unit && `(${param.unit})`}</label>
-                                <input type="text" placeholder="Enter value" className="w-full px-3 py-2 border border-gray-300 rounded-lg"/>
+                                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg"/>
                             </div>
                         ))}
                     </div>

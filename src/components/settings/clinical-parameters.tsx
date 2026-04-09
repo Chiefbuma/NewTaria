@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { ClinicalParameter } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,12 +22,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, CheckSquare, MoreVertical } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { DataTable } from '../ui/data-table';
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
 import { fetchClinicalParameters, upsertClinicalParameter, deleteClinicalParameter } from '@/lib/api-service';
 
 interface ClinicalParametersProps {
@@ -49,9 +48,10 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentParameter, setCurrentParameter] = useState<Partial<ClinicalParameter> | null>(null);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [confirmAction, setConfirmAction] = useState<null | (() => Promise<void>)>(null);
+  const [confirmTitle, setConfirmTitle] = useState('');
+  const [confirmDescription, setConfirmDescription] = useState('');
   const { toast } = useToast();
-  const lastSelectedIdsRef = useRef("");
 
   const refreshParameters = async () => {
       setIsLoading(true);
@@ -65,16 +65,6 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
           setIsLoading(false);
       }
   };
-
-  const handleSelectionChange = useCallback((selectedRows: ClinicalParameter[]) => {
-      const ids = selectedRows.map(r => r.id).sort();
-      const idsString = ids.join(",");
-      if (lastSelectedIdsRef.current !== idsString) {
-          lastSelectedIdsRef.current = idsString;
-          setSelectedIds(ids);
-      }
-  }, []);
-
   const handleOpenModal = (parameter?: ClinicalParameter) => {
     setCurrentParameter(parameter || { ...emptyParameter });
     setIsModalOpen(true);
@@ -117,19 +107,20 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
     }
   };
   
-  const handleDelete = async (id: number) => {
+  const executeDelete = async (id: number) => {
       try {
           await deleteClinicalParameter(id);
-          toast({ title: 'Success', description: 'Parameter removed from database.' });
+          toast({ title: 'Success', description: 'Parameter deactivated.' });
           await refreshParameters();
       } catch (e: any) {
           toast({ variant: 'destructive', title: 'Error', description: e.message });
       }
   }
 
-  const handleBulkDelete = () => {
-      // For now we use individual delete in loop or implement a bulk route
-      toast({ title: 'Feature Pending', description: 'Bulk delete for parameters is being optimized.' });
+  const handleDelete = (id: number) => {
+      setConfirmTitle('Deactivate clinical parameter?');
+      setConfirmDescription('This will soft-delete the parameter and hide it from active clinical setup lists.');
+      setConfirmAction(() => () => executeDelete(id));
   }
 
   const columns: ColumnDef<ClinicalParameter>[] = [
@@ -166,90 +157,58 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
     }
   ];
 
+  const toolbarActions = (
+    <Button onClick={() => handleOpenModal()} className="bg-primary hover:bg-primary/90 shadow-sm">
+      <PlusCircle className="mr-2 h-4 w-4" /> Add Clinical Parameter
+    </Button>
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <AnimatePresence>
-            {selectedIds.length > 0 && (
-                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="border-primary text-primary">
-                                <CheckSquare className="mr-2 h-4 w-4" />
-                                {selectedIds.length} Selected
-                                <MoreVertical className="ml-2 h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                            <DropdownMenuLabel>Bulk Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={handleBulkDelete} className="text-destructive focus:text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </motion.div>
-            )}
-        </AnimatePresence>
-        <div className="flex-1" />
-        <Button onClick={() => handleOpenModal()} className="bg-primary hover:bg-primary/90 shadow-sm">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Parameter
-        </Button>
-      </div>
-
-      <div className="rounded-md border border-primary/10">
-        {isLoading ? (
-            <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-        ) : (
-            <DataTable columns={columns} data={parameters} onSelectionChange={handleSelectionChange} />
-        )}
-      </div>
+      {isLoading ? (
+          <div className="flex justify-center rounded-md border border-primary/10 p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+      ) : (
+          <DataTable columns={columns} data={parameters} toolbarActions={toolbarActions} />
+      )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{currentParameter?.id ? 'Edit' : 'Add'} Clinical Parameter</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Parameter Name</Label>
+            <div className="space-y-3 py-4">
+              <InlineField label="Parameter Name" htmlFor="name">
                 <Input id="name" name="name" value={currentParameter?.name || ''} onChange={handleChange} required />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="type">Type</Label>
-                    <Select name="type" value={currentParameter?.type || ''} onValueChange={(value) => handleSelectChange('type', value)}>
-                        <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="numeric">Numeric</SelectItem>
-                            <SelectItem value="text">Text</SelectItem>
-                            <SelectItem value="choice">Choice</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
-                    <Select name="category" value={currentParameter?.category || ''} onValueChange={(v) => handleSelectChange('category', v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="vital_sign">Vital Sign</SelectItem>
-                            <SelectItem value="lab_result">Lab Result</SelectItem>
-                            <SelectItem value="clinical_measurement">Clinical Measurement</SelectItem>
-                            <SelectItem value="assessment">Assessment</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-              </div>
+              </InlineField>
+              <InlineField label="Type" htmlFor="type">
+                <Select name="type" value={currentParameter?.type || 'numeric'} onValueChange={(value) => handleSelectChange('type', value)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="numeric">Numeric</SelectItem>
+                        <SelectItem value="text">Text</SelectItem>
+                        <SelectItem value="choice">Choice</SelectItem>
+                    </SelectContent>
+                </Select>
+              </InlineField>
+              <InlineField label="Category" htmlFor="category">
+                <Select name="category" value={currentParameter?.category || 'vital_sign'} onValueChange={(v) => handleSelectChange('category', v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="vital_sign">Vital Sign</SelectItem>
+                        <SelectItem value="lab_result">Lab Result</SelectItem>
+                        <SelectItem value="clinical_measurement">Clinical Measurement</SelectItem>
+                        <SelectItem value="assessment">Assessment</SelectItem>
+                    </SelectContent>
+                </Select>
+              </InlineField>
               {currentParameter?.type === 'numeric' && (
-                <div className="space-y-2">
-                    <Label htmlFor="unit">Unit</Label>
-                    <Input id="unit" name="unit" value={currentParameter?.unit || ''} onChange={handleChange} placeholder="e.g., kg, bpm, mg/dL" />
-                </div>
+                <InlineField label="Unit" htmlFor="unit">
+                    <Input id="unit" name="unit" value={currentParameter?.unit || ''} onChange={handleChange} />
+                </InlineField>
               )}
-               {currentParameter?.type === 'choice' && (
-                <div className="space-y-2">
-                    <Label htmlFor="options">Options (comma-separated)</Label>
-                    <Input id="options" name="options" value={Array.isArray(currentParameter?.options) ? currentParameter.options.join(', ') : ''} onChange={handleOptionsChange} placeholder="Option 1, Option 2" />
-                </div>
+              {currentParameter?.type === 'choice' && (
+                <InlineField label="Options" htmlFor="options">
+                    <Input id="options" name="options" value={Array.isArray(currentParameter?.options) ? currentParameter.options.join(', ') : ''} onChange={handleOptionsChange} />
+                </InlineField>
               )}
             </div>
             <DialogFooter>
@@ -262,6 +221,42 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmActionDialog
+        open={Boolean(confirmAction)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmAction(null);
+            setConfirmTitle('');
+            setConfirmDescription('');
+          }
+        }}
+        title={confirmTitle}
+        description={confirmDescription}
+        confirmLabel="Deactivate"
+        onConfirm={async () => {
+          await confirmAction?.();
+        }}
+      />
+    </div>
+  );
+}
+
+function InlineField({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[132px_minmax(0,1fr)] items-center gap-3">
+      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+        {label}
+      </Label>
+      <div>{children}</div>
     </div>
   );
 }

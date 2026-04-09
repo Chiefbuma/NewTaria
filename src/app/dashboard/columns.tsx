@@ -1,7 +1,7 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, User, Loader2, Eye, UserPlus } from "lucide-react"
+import { Loader2, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -12,14 +12,13 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
 
-const ViewPatientButton = ({ patient }: { patient: Patient }) => {
+const PatientActions = ({ patient }: { patient: Patient }) => {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
-    const isPending = patient.status === 'Pending';
 
     const handleClick = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -28,32 +27,25 @@ const ViewPatientButton = ({ patient }: { patient: Patient }) => {
         router.push(`/dashboard/patient/${patient.id}`);
     };
 
-    const actionLabel = isPending ? 'Onboard Patient' : 'View Patient';
-    const ActionIcon = isPending ? UserPlus : Eye;
-
     return (
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleClick}
-                        disabled={isLoading}
-                    >
-                        {isLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <ActionIcon className="h-4 w-4" />
-                        )}
-                        <span className="sr-only">{actionLabel}</span>
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                    <p>{actionLabel}</p>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(event) => event.stopPropagation()}
+              disabled={isLoading}
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+              <span className="sr-only">Open actions</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleClick}>
+              Open Patient Dashboard
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
     );
 };
 
@@ -75,6 +67,7 @@ export const columns: ColumnDef<Patient>[] = [
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
+        onClick={(event) => event.stopPropagation()}
         aria-label="Select row"
       />
     ),
@@ -83,17 +76,7 @@ export const columns: ColumnDef<Patient>[] = [
   },
   {
     accessorKey: "first_name",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      )
-    },
+    header: "Name",
     cell: ({ row }) => {
       const patient = row.original
       const name = `${patient.first_name || ''} ${patient.surname || ''}`.trim() || 'Unnamed Patient'
@@ -107,9 +90,21 @@ export const columns: ColumnDef<Patient>[] = [
             </Avatar>
             <div className="grid gap-1">
                 <Link href={`/dashboard/patient/${patient.id}`} className="font-medium leading-none hover:underline">{name}</Link>
-                <p className="text-sm text-muted-foreground">{patient.email || patient.phone}</p>
+                <p className="text-sm text-muted-foreground">{patient.patient_identifier || patient.email || patient.phone}</p>
             </div>
         </div>
+      )
+    },
+  },
+  {
+    id: "partner",
+    header: "Partner",
+    cell: ({ row }) => {
+      const patient = row.original
+      return (
+        <span className="text-sm text-foreground">
+          {patient.partner_name || patient.clinic_name || 'Unassigned'}
+        </span>
       )
     },
   },
@@ -128,7 +123,7 @@ export const columns: ColumnDef<Patient>[] = [
       const patient = row.original
       return (
         <div className="flex justify-end">
-          <ViewPatientButton patient={patient} />
+          <PatientActions patient={patient} />
         </div>
       )
     },

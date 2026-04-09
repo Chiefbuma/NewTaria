@@ -1,19 +1,29 @@
 import { fetchPatientById, fetchClinicalParameters, fetchUsers, fetchPartners, fetchMedications } from '@/lib/data';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import PatientDetailsPage from './patient-details-page';
 import OnboardingForm from './onboarding-form';
+import { canManageOnboarding, isClinicianRole } from '@/lib/role-utils';
+import { getCurrentSessionUser } from '@/lib/auth';
 
 export default async function PatientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const patient = await fetchPatientById(id);
+  const currentUser = await getCurrentSessionUser();
+  if (!currentUser) {
+    redirect('/');
+  }
+
+  const patient = await fetchPatientById(id, currentUser);
   
   if (!patient) {
     notFound();
   }
   
   if (patient.status === 'Pending') {
+      if (!canManageOnboarding(currentUser.role)) {
+        redirect('/dashboard/registry');
+      }
       const partners = await fetchPartners();
-      return <OnboardingForm patient={patient} initialPartners={partners} />;
+      return <OnboardingForm patient={patient} initialPartners={partners} currentUser={currentUser} />;
   }
 
   const [clinicalParameters, users, medications] = await Promise.all([
@@ -22,7 +32,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
       fetchMedications()
   ]);
   
-  const clinicians = users.filter(u => u.role === 'physician' || u.role === 'navigator' || u.role === 'admin');
+  const clinicians = users.filter(u => isClinicianRole(u.role) || u.role === 'navigator' || u.role === 'admin');
 
   return (
     <PatientDetailsPage 
@@ -30,6 +40,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
         clinicalParameters={clinicalParameters} 
         clinicians={clinicians} 
         initialMedications={medications}
+        currentUser={currentUser}
     />
   );
 }

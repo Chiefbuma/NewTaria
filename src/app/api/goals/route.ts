@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
+import { authorizeInternalApiRequest, isAllowedForPatientMutation } from '@/lib/auth';
 import { createGoal, updateGoal, deleteGoal } from '@/lib/data';
 
 export async function POST(req: Request) {
     try {
+        const authResult = await authorizeInternalApiRequest();
+        if (authResult instanceof NextResponse) return authResult;
+        if (!isAllowedForPatientMutation(authResult.role, 'goals')) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         const body = await req.json();
         const id = await createGoal(body);
         return NextResponse.json({ id, ...body });
@@ -13,6 +19,11 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
     try {
+        const authResult = await authorizeInternalApiRequest();
+        if (authResult instanceof NextResponse) return authResult;
+        if (!isAllowedForPatientMutation(authResult.role, 'goals')) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         const body = await req.json();
         const { id, ...data } = body;
         await updateGoal(id, data);
@@ -27,6 +38,11 @@ export async function DELETE(req: Request) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
     try {
+        const authResult = await authorizeInternalApiRequest();
+        if (authResult instanceof NextResponse) return authResult;
+        if (!isAllowedForPatientMutation(authResult.role, 'goals')) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         await deleteGoal(Number(id));
         return NextResponse.json({ success: true });
     } catch (error: any) {

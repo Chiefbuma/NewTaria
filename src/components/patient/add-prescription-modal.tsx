@@ -69,53 +69,46 @@ export default function AddPrescriptionModal({ isOpen, onClose, onSave, medicati
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{existingPrescription ? 'Edit' : 'Add'} Prescription</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="medication_id">Medication</Label>
+          <div className="space-y-3 py-4">
+            <InlineField label="Medication" htmlFor="medication_id">
               <Select value={String(formData.medication_id)} onValueChange={(value) => handleSelectChange('medication_id', value)} required>
-                <SelectTrigger><SelectValue placeholder="Select Medication" /></SelectTrigger>
+                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {medications.map(m => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="dosage">Dosage</Label>
-                <Input id="dosage" value={formData.dosage} onChange={handleInputChange} placeholder="e.g., 500mg" required />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="frequency">Frequency</Label>
-                <Input id="frequency" value={formData.frequency} onChange={handleInputChange} placeholder="e.g., Twice daily" required />
-            </div>
-             <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
+            </InlineField>
+            <InlineField label="Dosage" htmlFor="dosage">
+                <Input id="dosage" className="h-8" value={formData.dosage} onChange={handleInputChange} required />
+            </InlineField>
+            <InlineField label="Frequency" htmlFor="frequency">
+                <Input id="frequency" className="h-8" value={formData.frequency} onChange={handleInputChange} required />
+            </InlineField>
+            <InlineField label="Status" htmlFor="status">
                 <Select value={formData.status} onValueChange={(value) => handleSelectChange('status', value)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="active">Active</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>
                         <SelectItem value="discontinued">Discontinued</SelectItem>
                     </SelectContent>
                 </Select>
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="start_date">Start Date</Label>
-                <Input id="start_date" type="date" value={formData.start_date} onChange={handleInputChange} required />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="expiry_date">Expiry Date</Label>
-                <Input id="expiry_date" type="date" value={formData.expiry_date || ''} onChange={handleInputChange} />
-            </div>
-             <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea id="notes" value={formData.notes || ''} onChange={handleInputChange} placeholder="e.g., Take with food" />
-            </div>
+            </InlineField>
+            <InlineField label="Start Date" htmlFor="start_date">
+                <Input id="start_date" type="date" className="h-8" value={formData.start_date} onChange={handleInputChange} required />
+            </InlineField>
+            <InlineField label="Expiry Date" htmlFor="expiry_date">
+                <Input id="expiry_date" type="date" className="h-8" value={formData.expiry_date || ''} onChange={handleInputChange} />
+            </InlineField>
+            <InlineField label="Notes" htmlFor="notes" alignStart>
+                <Textarea id="notes" value={formData.notes || ''} onChange={handleInputChange} className="min-h-20" />
+            </InlineField>
           </div>
           <DialogFooter>
             <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
@@ -124,5 +117,26 @@ export default function AddPrescriptionModal({ isOpen, onClose, onSave, medicati
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function InlineField({
+  label,
+  htmlFor,
+  children,
+  alignStart = false,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+  alignStart?: boolean;
+}) {
+  return (
+    <div className={`grid grid-cols-[132px_minmax(0,1fr)] gap-3 ${alignStart ? 'items-start' : 'items-center'}`}>
+      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+        {label}
+      </Label>
+      <div>{children}</div>
+    </div>
   );
 }
