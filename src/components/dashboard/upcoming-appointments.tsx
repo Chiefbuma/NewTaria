@@ -5,6 +5,7 @@ import { Clock } from 'lucide-react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { placeholderImages } from "@/lib/placeholder-images";
+import { formatAppointmentDateTime } from '@/lib/date-format';
 
 export default function UpcomingAppointments({ patients }: { patients: Patient[] }) {
     const upcomingAppointments = patients
@@ -40,7 +41,7 @@ export default function UpcomingAppointments({ patients }: { patients: Patient[]
                                     </p>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                                         <Clock className="h-3 w-3" />
-                                        <span>{new Date(appt.appointment_date).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                                        <span>{formatAppointmentDateTime(appt.appointment_date)}</span>
                                     </div>
                                 </div>
                             </div>

@@ -221,18 +221,18 @@ export default function StaffRegisterPatientPage() {
     return (
       <div className="mx-auto w-full max-w-5xl space-y-6">
         <Card className="border-primary/20 shadow-sm">
-          <CardHeader className="border-b bg-primary/5">
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-primary/10 p-3 text-primary">
+          <CardHeader className="form-header-bar">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+              <div className="rounded-full bg-white/15 p-3 text-white">
                 <CheckCircle2 className="h-6 w-6" />
               </div>
               <div>
-                <CardTitle>Onboarding Completed</CardTitle>
-                <CardDescription>The patient account is active and ready for registry follow-up.</CardDescription>
+                <CardTitle className="text-foreground">Onboarding Completed</CardTitle>
+                <CardDescription className="text-muted-foreground">The patient account is active and ready for registry follow-up.</CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="grid gap-6 pt-6 md:grid-cols-2">
+          <CardContent className="grid gap-6 px-4 pt-6 sm:px-6 md:grid-cols-2">
             <div className="rounded-2xl border bg-muted/30 p-5">
               <p className="text-xs font-black uppercase tracking-[0.24em] text-primary/70">Generated Identity</p>
               <div className="mt-4 space-y-3">
@@ -247,11 +247,11 @@ export default function StaffRegisterPatientPage() {
                 <p>Share the temporary portal credentials with the patient or print them into your intake pack.</p>
                 <p>The record is already live in the patient registry and can be opened immediately for follow-up care.</p>
               </div>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button asChild>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <Button asChild className="w-full sm:w-auto">
                   <Link href="/dashboard/registry">Go to Registry</Link>
                 </Button>
-                <Button variant="outline" onClick={() => router.push(`/dashboard/patient/${successState.patientId}`)}>
+                <Button variant="outline" className="w-full sm:w-auto" onClick={() => router.push(`/dashboard/patient/${successState.patientId}`)}>
                   Open Patient Record
                 </Button>
               </div>
@@ -264,8 +264,8 @@ export default function StaffRegisterPatientPage() {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-5">
-      <div className="flex items-center justify-end">
-        <div className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm">
+      <div className="flex items-center justify-start sm:justify-end">
+        <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground shadow-sm">
           <UserCircle2 className="h-3 w-3" /> Step {step} of 5
         </div>
       </div>
@@ -276,14 +276,14 @@ export default function StaffRegisterPatientPage() {
         </div>
       </div>
 
-      <Card className="border-primary/10 shadow-sm overflow-hidden">
-        <div className="bg-muted/30 border-b border-border px-6 py-3 flex items-center justify-between">
+      <Card className="overflow-hidden border-primary/10 shadow-sm">
+        <div className="form-header-bar flex items-center justify-between px-4 py-3 sm:px-6">
           <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">
             {steps[step - 1].title}
           </span>
         </div>
 
-        <CardContent className="space-y-8 pt-6">
+        <CardContent className="space-y-8 px-4 pt-6 sm:px-6">
             {step === 1 && (
               <div className="space-y-4">
                 <div className="grid gap-3 md:grid-cols-2">
@@ -481,7 +481,7 @@ export default function StaffRegisterPatientPage() {
 
             {step === 5 && (
               <div className="space-y-6">
-                <div className="rounded-2xl border border-primary/10 bg-primary/5 p-5">
+                <div className="rounded-2xl border border-border bg-muted/30 p-5">
                   <p className="text-xs font-black uppercase tracking-[0.24em] text-primary/70">Review Before Activation</p>
                   <p className="mt-2 text-sm text-muted-foreground">
                     Confirm the onboarding summary below. Submitting will create the patient record, portal account, and generated credentials.
@@ -498,24 +498,24 @@ export default function StaffRegisterPatientPage() {
               </div>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-6">
-              <Button variant="outline" onClick={() => setStep((prev) => Math.max(1, prev - 1) as Step)} disabled={step === 1 || loading}>
+            <div className="flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
+              <Button className="w-full sm:w-auto" variant="outline" onClick={() => setStep((prev) => Math.max(1, prev - 1) as Step)} disabled={step === 1 || loading}>
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
 
-              <div className="flex gap-3">
-                <Button variant="outline" asChild>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button variant="outline" className="w-full sm:w-auto" asChild>
                   <Link href="/dashboard/registry">Cancel</Link>
                 </Button>
 
                 {step < 5 ? (
-                  <Button onClick={handleContinue}>
+                  <Button className="w-full sm:w-auto" onClick={handleContinue}>
                     Continue
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button onClick={handleSubmit} disabled={loading}>
+                  <Button className="w-full sm:w-auto" onClick={handleSubmit} disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {loading ? 'Creating patient...' : 'Complete onboarding'}
                   </Button>
@@ -541,7 +541,7 @@ function Field({
 }) {
   return (
     <div className={className}>
-      <div className="grid grid-cols-[132px_minmax(0,1fr)] items-center gap-3">
+      <div className="grid gap-2 sm:grid-cols-[132px_minmax(0,1fr)] sm:items-center sm:gap-3">
         <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
           {label}
         </Label>

@@ -52,15 +52,16 @@ export function DataTableToolbar<TData>({
   actions,
 }: DataTableToolbarProps<TData>) {
   return (
-    <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-3 p-3 sm:p-4 md:flex-row md:items-center md:justify-between">
       <div className="flex flex-1 flex-wrap items-center gap-2">
         <Input
           value={(table.getState().globalFilter as string) ?? ""}
           onChange={(event) => table.setGlobalFilter(event.target.value)}
-          className="h-8 w-[150px] lg:w-[250px] border-primary/20 focus:border-primary"
+          placeholder="Search records..."
+          className="h-9 w-full rounded-xl border-primary/15 bg-white/90 sm:max-w-[220px] lg:max-w-[250px]"
         />
       </div>
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-stretch gap-2 md:justify-end">
         {actions}
       </div>
     </div>
@@ -73,20 +74,20 @@ interface DataTablePaginationProps<TData> {
 
 export function DataTablePagination<TData>({ table }: DataTablePaginationProps<TData>) {
   return (
-    <div className="flex items-center justify-between px-2 py-4 border-t">
-      <div className="flex-1 text-sm text-muted-foreground pl-4">
+    <div className="flex flex-col gap-3 border-t px-3 py-3 sm:px-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="text-xs text-muted-foreground">
         {table.getFilteredSelectedRowModel().rows.length} row(s) selected.
       </div>
-      <div className="flex items-center space-x-6 lg:space-x-8 pr-4">
-        <div className="flex items-center space-x-2">
-          <p className="text-sm font-medium">Rows per page</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between lg:justify-end lg:gap-6">
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium">Rows per page</p>
           <Select
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => {
               table.setPageSize(Number(value))
             }}
           >
-            <SelectTrigger className="h-8 w-[70px]">
+            <SelectTrigger className="h-7 w-[64px] rounded-lg">
               <SelectValue />
             </SelectTrigger>
             <SelectContent side="top">
@@ -98,14 +99,14 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
             </SelectContent>
           </Select>
         </div>
-        <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+        <div className="text-xs font-medium sm:min-w-[90px] sm:text-center">
           Page {table.getState().pagination.pageIndex + 1} of{" "}
           {table.getPageCount()}
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            className="hidden h-8 w-8 p-0 lg:flex"
+            className="hidden h-7 w-7 rounded-lg p-0 lg:flex"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
           >
@@ -114,7 +115,7 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
           </Button>
           <Button
             variant="outline"
-            className="h-8 w-8 p-0"
+            className="h-7 w-7 rounded-lg p-0"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -123,7 +124,7 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
           </Button>
           <Button
             variant="outline"
-            className="h-8 w-8 p-0"
+            className="h-7 w-7 rounded-lg p-0"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
@@ -132,7 +133,7 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
           </Button>
           <Button
             variant="outline"
-            className="hidden h-8 w-8 p-0 lg:flex"
+            className="hidden h-7 w-7 rounded-lg p-0 lg:flex"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
           >
@@ -216,19 +217,22 @@ export function DataTable<TData, TValue>({
   return (
     <div className="space-y-4">
       <DataTableToolbar table={table} actions={toolbarActions} />
-        <div className="rounded-md border border-primary/10 overflow-hidden">
-            <Table>
-            <TableHeader className="bg-muted/50">
+        <div className="overflow-hidden rounded-2xl border border-primary/10 bg-background shadow-[0_22px_45px_-30px_rgba(15,23,42,0.24)]">
+            <div className="border-b border-primary/5 px-3 py-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground sm:hidden">
+              Swipe to view table details
+            </div>
+            <Table className="min-w-[720px]">
+            <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="border-b border-primary/10">
                     {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id} colSpan={header.colSpan} className="h-8 text-foreground font-bold uppercase text-[10px] tracking-wider">
+                        <TableHead key={header.id} colSpan={header.colSpan} className="h-7 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">
                         {header.isPlaceholder ? null : header.column.getCanSort() ? (
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-auto p-0 text-[10px] font-bold uppercase tracking-wider text-foreground hover:bg-transparent"
+                            className="h-auto p-0 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-transparent hover:text-foreground"
                             onClick={() => header.column.toggleSorting(header.column.getIsSorted() === "asc")}
                           >
                             {flexRender(header.column.columnDef.header, header.getContext())}
@@ -254,11 +258,11 @@ export function DataTable<TData, TValue>({
                     <TableRow
                       key={row.id}
                       data-state={row.getIsSelected() && "selected"}
-                      className={`hover:bg-primary/5 data-[state=selected]:bg-primary/10 transition-colors border-b border-primary/5 ${onRowClick ? 'cursor-pointer' : ''}`}
+                      className={`border-b border-primary/5 transition-colors hover:bg-primary/5 data-[state=selected]:bg-primary/10 ${onRowClick ? 'cursor-pointer' : ''}`}
                       onClick={() => onRowClick?.(row.original)}
                     >
                     {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className="px-3 py-1.5">
+                        <TableCell key={cell.id} className="px-2.5 py-1">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                     ))}

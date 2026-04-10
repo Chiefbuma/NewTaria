@@ -200,25 +200,37 @@ function AppSidebar({
   onToggleCollapse?: () => void;
 }) {
   return (
-    <div className="flex h-full flex-col">
-      <div className={cn('flex h-14 items-center justify-between border-b', collapsed ? 'px-2' : 'px-4')}>
+    <div className="flex h-full flex-col gap-3 p-3">
+      <div className={cn('glass-white flex h-14 items-center justify-between rounded-2xl shadow-[0_18px_35px_-28px_rgba(15,23,42,0.18)]', collapsed ? 'px-2' : 'px-4')}>
         <Link href="/dashboard" className="flex items-center">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
-            <div className="h-3.5 w-3.5 rounded-full bg-background" />
-          </div>
+          {collapsed ? (
+            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/20 bg-muted">
+              <div className="h-3.5 w-3.5 rounded-full bg-primary" />
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/20 bg-muted">
+                <div className="h-3.5 w-3.5 rounded-full bg-primary" />
+              </div>
+              <div className="leading-none text-foreground">
+                <p className="text-sm font-semibold tracking-wide">NewTaria</p>
+                <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Care Program</p>
+              </div>
+            </div>
+          )}
         </Link>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="hidden h-8 w-8 md:inline-flex"
+          className="hidden h-8 w-8 text-muted-foreground hover:bg-muted hover:text-foreground md:inline-flex"
           onClick={onToggleCollapse}
         >
           <ChevronRight className={cn('h-4 w-4 transition-transform', !collapsed && 'rotate-180')} />
           <span className="sr-only">{collapsed ? 'Expand sidebar' : 'Collapse sidebar'}</span>
         </Button>
       </div>
-      <div className="flex-1 overflow-y-auto pt-3">
+      <div className="flex-1 overflow-y-auto rounded-[1.5rem] border border-border/60 bg-background shadow-[0_20px_45px_-34px_rgba(15,23,42,0.18)]">
         <AppSidebarNav user={user} collapsed={collapsed} onNavigate={onNavigate} />
       </div>
     </div>
@@ -273,9 +285,9 @@ export default function DashboardShell({
   if (isProgressPage || isPatientRole(user.role)) {
     return (
       <div className="flex min-h-screen w-full flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
-          <Link href="/dashboard" className="flex items-center font-semibold md:hidden">
-            <Logo className="h-6 w-auto" />
+        <header className="glass-white flex h-14 shrink-0 items-center gap-4 border-b px-4 text-foreground shadow-sm lg:h-[60px] lg:px-6">
+          <Link href="/dashboard" className="flex items-center font-semibold text-foreground md:hidden">
+            <span className="text-sm font-black uppercase tracking-[0.3em]">NewTaria</span>
           </Link>
           <div className="w-full flex-1" />
           <Header user={user} />
@@ -287,18 +299,18 @@ export default function DashboardShell({
 
   return (
     <div className={cn('grid min-h-screen w-full bg-background transition-[grid-template-columns]', sidebarCollapsed ? 'md:grid-cols-[84px_1fr]' : 'md:grid-cols-[232px_1fr]')}>
-      <aside className="hidden border-r bg-muted/30 md:block">
+      <aside className="hidden bg-transparent md:block">
         <AppSidebar user={user} collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebar} />
       </aside>
 
       <div className="flex min-w-0 flex-col">
-        <header className="flex h-14 items-center gap-4 border-b bg-muted/30 px-4 lg:h-[60px] lg:px-6">
-          <Button variant="outline" size="icon" className="shrink-0 md:hidden" onClick={toggleSidebar}>
+        <header className="glass-white flex h-14 items-center gap-3 border-b px-3 text-foreground shadow-sm sm:px-4 lg:h-[60px] lg:px-6">
+          <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground md:hidden" onClick={toggleSidebar}>
             <Menu className="h-5 w-5" />
             <span className="sr-only">Toggle navigation menu</span>
           </Button>
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-            <SheetContent side="left" className="max-w-[232px] p-0">
+            <SheetContent side="left" className="w-[88vw] max-w-[232px] border-0 bg-transparent p-0 shadow-none">
               <SheetHeader className="sr-only">
                 <SheetTitle>Dashboard navigation</SheetTitle>
               </SheetHeader>
@@ -309,7 +321,7 @@ export default function DashboardShell({
             type="button"
             variant="ghost"
             size="icon"
-            className="hidden h-8 w-8 md:inline-flex"
+            className="hidden h-8 w-8 text-muted-foreground hover:bg-muted hover:text-foreground md:inline-flex"
             onClick={toggleSidebar}
           >
             <ChevronRight className={cn('h-4 w-4 transition-transform', !sidebarCollapsed && 'rotate-180')} />

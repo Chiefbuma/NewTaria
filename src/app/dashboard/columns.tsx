@@ -33,10 +33,11 @@ const PatientActions = ({ patient }: { patient: Patient }) => {
             <Button
               variant="ghost"
               size="icon"
+              className="h-7 w-7"
               onClick={(event) => event.stopPropagation()}
               disabled={isLoading}
             >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+              {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
               <span className="sr-only">Open actions</span>
             </Button>
           </DropdownMenuTrigger>
@@ -83,18 +84,27 @@ export const columns: ColumnDef<Patient>[] = [
       const fallback = `${patient.first_name?.[0] || 'P'}${patient.surname ? patient.surname[0] : ''}`
 
       return (
-        <div className="flex items-center gap-4">
-            <Avatar className="hidden h-10 w-10 sm:flex">
+        <div className="flex items-center gap-3">
+            <Avatar className="hidden h-8 w-8 sm:flex">
                 {patientAvatar && <AvatarImage src={patientAvatar.imageUrl} alt={name} />}
                 <AvatarFallback>{fallback}</AvatarFallback>
             </Avatar>
-            <div className="grid gap-1">
-                <Link href={`/dashboard/patient/${patient.id}`} className="font-medium leading-none hover:underline">{name}</Link>
-                <p className="text-sm text-muted-foreground">{patient.patient_identifier || patient.email || patient.phone}</p>
+            <div className="grid gap-0.5">
+                <Link href={`/dashboard/patient/${patient.id}`} className="text-sm font-medium leading-none hover:underline">{name}</Link>
+                <p className="text-xs text-muted-foreground">{patient.patient_identifier || patient.email || patient.phone}</p>
             </div>
         </div>
       )
     },
+  },
+  {
+    id: "diagnosis",
+    header: "Diagnosis",
+    cell: ({ row }) => (
+      <span className="text-xs text-foreground">
+        {row.original.primary_diagnosis || 'Not set'}
+      </span>
+    ),
   },
   {
     id: "partner",
@@ -102,7 +112,7 @@ export const columns: ColumnDef<Patient>[] = [
     cell: ({ row }) => {
       const patient = row.original
       return (
-        <span className="text-sm text-foreground">
+        <span className="text-xs text-foreground">
           {patient.partner_name || patient.clinic_name || 'Unassigned'}
         </span>
       )

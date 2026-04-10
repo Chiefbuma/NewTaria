@@ -125,7 +125,7 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="border-primary/20 sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-primary font-bold text-xl">{existingGoal ? 'Edit Goal' : 'Add New Goal'}</DialogTitle>
+          <DialogTitle className="text-xl font-bold">{existingGoal ? 'Edit Goal' : 'Add New Goal'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="space-y-3 py-4">

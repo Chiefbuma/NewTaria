@@ -208,22 +208,27 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
         accessorKey: "name",
         header: "User",
         cell: ({ row }) => (
-            <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8">
+            <div className="flex items-center gap-2.5">
+                <Avatar className="h-7 w-7">
                     <AvatarImage src={row.original.avatarUrl || userAvatar?.imageUrl} />
                     <AvatarFallback>{row.original.name[0]}</AvatarFallback>
                 </Avatar>
-                <div>
-                    <p className="font-bold text-sm">{row.original.name}</p>
-                    <p className="text-xs text-muted-foreground">{row.original.phone || row.original.email}</p>
+                <div className="grid gap-0.5">
+                    <p className="text-sm font-bold">{row.original.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{row.original.phone || '-'}</p>
                 </div>
             </div>
         )
     },
     {
+        accessorKey: "email",
+        header: "Email",
+        cell: ({ row }) => <span className="text-xs text-foreground">{row.original.email}</span>,
+    },
+    {
         accessorKey: "role",
         header: "Role",
-        cell: ({ row }) => <span className="text-xs font-semibold px-2 py-1 bg-primary/10 text-primary rounded-full">{getRoleLabel(row.original.role)}</span>
+        cell: ({ row }) => <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">{getRoleLabel(row.original.role)}</span>
     },
     {
         id: "actions",

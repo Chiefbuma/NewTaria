@@ -254,12 +254,14 @@ export default function ProgressDashboard({
     patient, 
     clinicalParameters,
     fromDate,
-    toDate
+    toDate,
+    patientView = false,
 }: { 
     patient: Patient, 
     clinicalParameters: ClinicalParameter[],
     fromDate: Date,
-    toDate: Date
+    toDate: Date,
+    patientView?: boolean,
 }) {
     
     const trackedParameters = useMemo(() => {
@@ -296,50 +298,57 @@ export default function ProgressDashboard({
 
 
     return (
-        <div className="space-y-12">
+        <div className={patientView ? "space-y-6" : "space-y-10"}>
             {trackedParameters.length > 0 ? (
                 trackedParameters.map(({ parameter, assessments, goal }) => {
                     return (
-                        <div key={parameter.id} className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="flex items-center justify-between border-b pb-2">
-                                <div className="flex items-center gap-3">
-                                    <h2 className="text-xl font-bold tracking-tight text-foreground">{parameter.name}</h2>
-                                    {parameter.unit && (
-                                        <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20 uppercase">
-                                            {parameter.unit}
-                                        </span>
+                        <Card key={parameter.id} className="overflow-hidden border-primary/10 shadow-[0_24px_50px_-34px_rgba(15,23,42,0.22)]">
+                            <CardHeader className="bg-muted/30">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-bold tracking-tight text-foreground">{parameter.name}</h2>
+                                        {parameter.unit && (
+                                            <span className="rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
+                                                {parameter.unit}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <span className="rounded bg-background px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                                        {parameter.type}
+                                    </span>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    {goal ? `Target: ${goal.target_operator} ${goal.target_value}` : 'Recent activity and progress summary'}
+                                </p>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                                    {parameter.type === 'numeric' ? (
+                                        <>
+                                            <div className="lg:col-span-4">
+                                                <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
+                                            </div>
+                                            <div className="lg:col-span-8">
+                                                <ParameterLineChart assessments={assessments} parameter={parameter} />
+                                            </div>
+                                        </>
+                                    ) : parameter.type === 'choice' ? (
+                                        <>
+                                            <div className="lg:col-span-4">
+                                                <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
+                                            </div>
+                                            <div className="lg:col-span-8">
+                                                <ParameterTextTable assessments={assessments} />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="lg:col-span-12">
+                                            <ParameterTextTable assessments={assessments} />
+                                        </div>
                                     )}
                                 </div>
-                                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest bg-muted px-2 py-0.5 rounded">
-                                    {parameter.type}
-                                </span>
-                            </div>
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                                {parameter.type === 'numeric' ? (
-                                    <>
-                                        <div className="lg:col-span-4">
-                                            <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
-                                        </div>
-                                        <div className="lg:col-span-8">
-                                             <ParameterLineChart assessments={assessments} parameter={parameter} />
-                                        </div>
-                                    </>
-                                ) : parameter.type === 'choice' ? (
-                                    <>
-                                        <div className="lg:col-span-4">
-                                            <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
-                                        </div>
-                                        <div className="lg:col-span-8">
-                                             <ParameterTextTable assessments={assessments} />
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="lg:col-span-12">
-                                        <ParameterTextTable assessments={assessments} />
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     )
                 })
             ) : (

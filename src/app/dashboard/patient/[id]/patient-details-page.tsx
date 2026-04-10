@@ -599,8 +599,8 @@ export default function PatientDetailsPage({
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="sm:max-w-2xl border-primary/20">
             <DialogHeader>
-                <DialogTitle className="text-2xl text-primary font-bold">Edit Patient Details</DialogTitle>
-                <CardDescription>Update the patient's registration information below.</CardDescription>
+                <DialogTitle className="text-2xl font-bold">Edit Patient Details</DialogTitle>
+                <CardDescription className="text-muted-foreground">Update the patient's registration information below.</CardDescription>
             </DialogHeader>
             <form onSubmit={handleUpdatePatient}>
                 <div className="space-y-3 py-4">

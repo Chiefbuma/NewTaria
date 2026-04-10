@@ -25,12 +25,12 @@ export default function AllNotesCard({ assessments, clinicalParameters }: { asse
     }, [assessments, clinicalParameters]);
 
     return (
-        <Card>
-            <CardHeader>
+        <Card className="overflow-hidden border-primary/10">
+            <CardHeader className="bg-muted/30">
                 <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5"/>Latest Notes</CardTitle>
                 <CardDescription>Recent notes from all assessments.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
                 {latestNotesByParameter.length > 0 ? (
                     <ScrollArea className="h-96">
                         <div className="space-y-4 pr-4">

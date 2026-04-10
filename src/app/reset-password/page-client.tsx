@@ -6,9 +6,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import AuthShell from '@/components/auth/auth-shell';
 
 export default function ResetPasswordPageClient() {
   const router = useRouter();
@@ -65,49 +65,40 @@ export default function ResetPasswordPageClient() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-md">
-        <Card>
-          <CardHeader>
-            <CardTitle>Reset Password</CardTitle>
-            <CardDescription>
-              Choose a new password for your account.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <InlineField label="New Password" htmlFor="newPassword">
-                <PasswordInput
-                  id="newPassword"
-                  required
-                  value={formData.newPassword}
-                  onChange={(e) => updateField('newPassword', e.target.value)}
-                  disabled={loading}
-                />
-              </InlineField>
-              <InlineField label="Confirm" htmlFor="confirmPassword">
-                <PasswordInput
-                  id="confirmPassword"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={(e) => updateField('confirmPassword', e.target.value)}
-                  disabled={loading}
-                />
-              </InlineField>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Reset Password'}
-              </Button>
-            </form>
-            <div className="mt-4 text-center text-sm">
-              <Link href="/" className="inline-flex items-center text-muted-foreground hover:text-primary">
-                <ArrowLeft className="mr-1 h-4 w-4" />
-                Back to Login
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    <AuthShell
+      title="Reset Password"
+      description="Choose a new password for your account."
+      footer={
+        <Link href="/" className="inline-flex items-center font-medium text-slate-600 hover:text-primary">
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Back to Login
+        </Link>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <InlineField label="New Password" htmlFor="newPassword">
+          <PasswordInput
+            id="newPassword"
+            required
+            value={formData.newPassword}
+            onChange={(e) => updateField('newPassword', e.target.value)}
+            disabled={loading}
+          />
+        </InlineField>
+        <InlineField label="Confirm" htmlFor="confirmPassword">
+          <PasswordInput
+            id="confirmPassword"
+            required
+            value={formData.confirmPassword}
+            onChange={(e) => updateField('confirmPassword', e.target.value)}
+            disabled={loading}
+          />
+        </InlineField>
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Reset Password'}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }
 
@@ -122,7 +113,7 @@ function InlineField({
 }) {
   return (
     <div className="grid grid-cols-[120px_minmax(0,1fr)] items-center gap-3">
-      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
         {label}
       </Label>
       <div>{children}</div>

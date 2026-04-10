@@ -81,19 +81,17 @@ export default function OnboardingForm({ patient, initialPartners, currentUser }
     };
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="mx-auto w-full max-w-4xl">
             <PatientHeader patient={patient} />
             <form onSubmit={handleSubmit}>
                 <div className="space-y-6">
                     {/* Patient Bio Section */}
                     <Card className="border-primary/10">
-                        <CardHeader className="items-center">
-                            <div className="bg-muted px-4 py-2 rounded-lg border border-primary/10">
-                                <CardTitle className="text-center text-primary">Patient Bio</CardTitle>
-                            </div>
-                            <CardDescription className="pt-2">Capture basic demographic information.</CardDescription>
+                        <CardHeader className="form-header-bar items-center">
+                            <CardTitle className="text-center text-foreground">Patient Bio</CardTitle>
+                            <CardDescription className="pt-2 text-muted-foreground">Capture basic demographic information.</CardDescription>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <CardContent className="grid grid-cols-1 gap-4 px-4 pt-6 sm:px-6 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label htmlFor="dob">Date of Birth</Label>
                                 <Input id="dob" type="date" value={formData.dob || ''} onChange={handleInputChange} required />
@@ -116,13 +114,11 @@ export default function OnboardingForm({ patient, initialPartners, currentUser }
                     </Card>
 
                     <Card className="border-primary/10">
-                        <CardHeader className="items-center">
-                            <div className="bg-muted px-4 py-2 rounded-lg border border-primary/10">
-                                <CardTitle className="text-center text-primary">Medical History</CardTitle>
-                            </div>
-                            <CardDescription className="pt-2">Capture clinical history and primary diagnosis.</CardDescription>
+                        <CardHeader className="form-header-bar items-center">
+                            <CardTitle className="text-center text-foreground">Medical History</CardTitle>
+                            <CardDescription className="pt-2 text-muted-foreground">Capture clinical history and primary diagnosis.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-4 px-4 pt-6 sm:px-6">
                             <div className="space-y-2">
                                 <Label htmlFor="primary_diagnosis">Primary Diagnosis</Label>
                                 <Select value={formData.primary_diagnosis || ''} onValueChange={(v) => handleSelectChange('primary_diagnosis', v)} required>
@@ -156,13 +152,11 @@ export default function OnboardingForm({ patient, initialPartners, currentUser }
                     </Card>
 
                     <Card className="border-primary/10">
-                        <CardHeader className="items-center">
-                             <div className="bg-muted px-4 py-2 rounded-lg border border-primary/10">
-                                <CardTitle className="text-center text-primary">Lifestyle & Environment</CardTitle>
-                            </div>
-                            <CardDescription className="pt-2">Understand the patient's daily life and environment.</CardDescription>
+                        <CardHeader className="form-header-bar items-center">
+                            <CardTitle className="text-center text-foreground">Lifestyle & Environment</CardTitle>
+                            <CardDescription className="pt-2 text-muted-foreground">Understand the patient's daily life and environment.</CardDescription>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 gap-4">
+                        <CardContent className="grid grid-cols-1 gap-4 px-4 pt-6 sm:px-6">
                             <div className="space-y-2">
                                 <Label htmlFor="dietary_restrictions">Dietary Restrictions or Preferences</Label>
                                 <Textarea id="dietary_restrictions" value={formData.dietary_restrictions || ''} onChange={handleInputChange} />
@@ -187,12 +181,10 @@ export default function OnboardingForm({ patient, initialPartners, currentUser }
                     </Card>
 
                     <Card className="border-primary/10">
-                        <CardHeader className="items-center">
-                             <div className="bg-muted px-4 py-2 rounded-lg border border-primary/10">
-                                <CardTitle className="text-center text-primary">Emergency Contact & Administrative</CardTitle>
-                            </div>
+                        <CardHeader className="form-header-bar items-center">
+                            <CardTitle className="text-center text-foreground">Emergency Contact & Administrative</CardTitle>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 gap-4">
+                        <CardContent className="grid grid-cols-1 gap-4 px-4 pt-6 sm:px-6">
                             <div className="space-y-2">
                                 <Label htmlFor="emergency_contact_name">Emergency Contact Name</Label>
                                 <Input id="emergency_contact_name" value={formData.emergency_contact_name || ''} onChange={handleInputChange} />
@@ -236,12 +228,10 @@ export default function OnboardingForm({ patient, initialPartners, currentUser }
                     </Card>
                     
                     <Card className="border-primary/10">
-                        <CardHeader className="items-center">
-                            <div className="bg-muted px-4 py-2 rounded-lg border border-primary/10">
-                                <CardTitle className="text-center text-primary">Equipment & Consent</CardTitle>
-                            </div>
+                        <CardHeader className="form-header-bar items-center">
+                            <CardTitle className="text-center text-foreground">Equipment & Consent</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-4 px-4 pt-6 sm:px-6">
                             <div className="flex flex-col space-y-4 items-start">
                                 <div className="flex items-center space-x-2">
                                     <Switch id="has_weighing_scale" checked={formData.has_weighing_scale || false} onCheckedChange={(checked) => handleSwitchChange('has_weighing_scale', checked)} />
@@ -269,8 +259,8 @@ export default function OnboardingForm({ patient, initialPartners, currentUser }
                         </CardContent>
                     </Card>
 
-                    <div className="flex justify-end gap-4">
-                        <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90 shadow-lg px-8 font-bold">
+                    <div className="flex justify-stretch sm:justify-end">
+                        <Button type="submit" disabled={isSubmitting} className="w-full bg-primary px-8 font-bold shadow-lg hover:bg-primary/90 sm:w-auto">
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Complete Onboarding & Activate Patient
                         </Button>

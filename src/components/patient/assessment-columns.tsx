@@ -42,9 +42,9 @@ export const getAssessmentColumns = ({ clinicalParameters, onEdit, onDelete }: G
       <>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
+            <Button variant="ghost" className="h-7 w-7 p-0">
               <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
+              <MoreHorizontal className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -79,7 +79,7 @@ export const getAssessmentColumns = ({ clinicalParameters, onEdit, onDelete }: G
       cell: ({ row }) => {
         const parameterId = row.getValue("clinical_parameter_id") as number;
         const parameter = clinicalParameters.find(p => p.id === parameterId);
-        return <div>{parameter?.name || `Unknown (ID: ${parameterId})`}</div>
+        return <div className="text-xs font-medium">{parameter?.name || `Unknown (${parameterId})`}</div>
       },
     },
     {
@@ -89,20 +89,16 @@ export const getAssessmentColumns = ({ clinicalParameters, onEdit, onDelete }: G
         const parameterId = row.original.clinical_parameter_id;
         const parameter = clinicalParameters.find(p => p.id === parameterId);
         const value = row.getValue("value") as string;
-        return <div>{value} {parameter?.unit}</div>
+        return <div className="text-xs">{value} {parameter?.unit}</div>
       }
     },
     {
       accessorKey: "measured_at",
-      header: "Measured Date",
+      header: "Date",
       cell: ({ row }) => {
         const date = row.getValue("measured_at") as string;
-        return <div>{new Date(date).toLocaleString()}</div>
+        return <div className="text-xs">{new Date(date).toLocaleDateString()}</div>
       },
-    },
-    {
-        accessorKey: "notes",
-        header: "Notes",
     },
     {
       id: "actions",

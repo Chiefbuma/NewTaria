@@ -101,7 +101,7 @@ export default function AddAssessmentModal({ isOpen, onClose, onSave, parameter,
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="border-primary/20 sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-primary font-bold text-xl">{existingAssessment ? 'Edit' : 'Add'} Assessment</DialogTitle>
+          <DialogTitle className="text-xl font-bold">{existingAssessment ? 'Edit' : 'Add'} Assessment</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="space-y-3 py-4">

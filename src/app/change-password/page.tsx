@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ShieldCheck } from 'lucide-react';
+import AuthShell from '@/components/auth/auth-shell';
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -62,55 +62,48 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-md">
-        <Card>
-          <CardHeader>
-            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <CardTitle>Change Password</CardTitle>
-            <CardDescription>
-              Update your temporary password before continuing into the app.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <InlineField label="Current" htmlFor="currentPassword">
-                <PasswordInput
-                  id="currentPassword"
-                  required
-                  value={formData.currentPassword}
-                  onChange={(e) => updateField('currentPassword', e.target.value)}
-                  disabled={loading}
-                />
-              </InlineField>
-              <InlineField label="New Password" htmlFor="newPassword">
-                <PasswordInput
-                  id="newPassword"
-                  required
-                  value={formData.newPassword}
-                  onChange={(e) => updateField('newPassword', e.target.value)}
-                  disabled={loading}
-                />
-              </InlineField>
-              <InlineField label="Confirm" htmlFor="confirmPassword">
-                <PasswordInput
-                  id="confirmPassword"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={(e) => updateField('confirmPassword', e.target.value)}
-                  disabled={loading}
-                />
-              </InlineField>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save New Password'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    <AuthShell
+      title="Change Password"
+      description="Update your temporary password before continuing into the app."
+      headerBadge={
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white">
+          <ShieldCheck className="h-6 w-6" />
+        </div>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <InlineField label="Current" htmlFor="currentPassword">
+          <PasswordInput
+            id="currentPassword"
+            required
+            value={formData.currentPassword}
+            onChange={(e) => updateField('currentPassword', e.target.value)}
+            disabled={loading}
+          />
+        </InlineField>
+        <InlineField label="New Password" htmlFor="newPassword">
+          <PasswordInput
+            id="newPassword"
+            required
+            value={formData.newPassword}
+            onChange={(e) => updateField('newPassword', e.target.value)}
+            disabled={loading}
+          />
+        </InlineField>
+        <InlineField label="Confirm" htmlFor="confirmPassword">
+          <PasswordInput
+            id="confirmPassword"
+            required
+            value={formData.confirmPassword}
+            onChange={(e) => updateField('confirmPassword', e.target.value)}
+            disabled={loading}
+          />
+        </InlineField>
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save New Password'}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }
 
@@ -125,7 +118,7 @@ function InlineField({
 }) {
   return (
     <div className="grid grid-cols-[120px_minmax(0,1fr)] items-center gap-3">
-      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
         {label}
       </Label>
       <div>{children}</div>

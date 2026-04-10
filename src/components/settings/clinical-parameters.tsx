@@ -143,9 +143,10 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
         enableSorting: false,
         enableHiding: false,
     },
-    { accessorKey: "name", header: "Parameter" },
-    { accessorKey: "type", header: "Type", cell: ({ row }) => <span className="capitalize">{row.original.type}</span> },
-    { accessorKey: "unit", header: "Unit", cell: ({ row }) => row.original.unit || '-' },
+    { accessorKey: "name", header: "Parameter", cell: ({ row }) => <span className="text-xs font-medium">{row.original.name}</span> },
+    { accessorKey: "category", header: "Category", cell: ({ row }) => <span className="text-xs capitalize">{String(row.original.category).replace('_', ' ')}</span> },
+    { accessorKey: "type", header: "Type", cell: ({ row }) => <span className="text-xs capitalize">{row.original.type}</span> },
+    { accessorKey: "unit", header: "Unit", cell: ({ row }) => <span className="text-xs">{row.original.unit || '-'}</span> },
     {
         id: "actions",
         cell: ({ row }) => (

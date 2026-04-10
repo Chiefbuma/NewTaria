@@ -35,8 +35,8 @@ export default function PatientInfoCard({ patient }: { patient: Patient }) {
   const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
 
   return (
-    <Card className="border-border">
-      <CardHeader className="flex flex-col items-center text-center gap-4">
+    <Card className="overflow-hidden border-primary/10">
+      <CardHeader className="bg-muted/30 flex flex-col items-center text-center gap-4">
         <Avatar className="w-24 h-24 border-4 border-primary/20 shadow-md">
           {patientAvatar && <AvatarImage src={patientAvatar.imageUrl} alt={`${patient.first_name} ${patient.surname || ''}`} />}
           <AvatarFallback className="text-3xl bg-muted text-muted-foreground">{`${patient.first_name[0]}${patient.surname ? patient.surname[0] : ''}`}</AvatarFallback>
@@ -46,7 +46,7 @@ export default function PatientInfoCard({ patient }: { patient: Patient }) {
           <CardDescription className="text-muted-foreground">Patient ID: {patient.patient_identifier || `PT-${patient.id}`}</CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4 pt-4">
+      <CardContent className="space-y-4 pt-6">
         <Separator className="bg-border" />
         <div className="grid grid-cols-1 gap-4 pt-4">
           <DetailItem

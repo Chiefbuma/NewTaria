@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { CalendarCheck, Clock, CalendarPlus, Edit, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { formatAppointmentDateTime } from '@/lib/date-format';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -81,7 +82,7 @@ export default function AppointmentsCard({ patient, onSchedule, onEdit, onUpdate
                             <p className="text-sm text-muted-foreground">With: {nextAppointment.clinician?.name}</p>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                                 <Clock className="h-3 w-3" />
-                                <span>{new Date(nextAppointment.appointment_date).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                                <span>{formatAppointmentDateTime(nextAppointment.appointment_date)}</span>
                             </div>
                         </div>
                         <div className="flex justify-end gap-2">

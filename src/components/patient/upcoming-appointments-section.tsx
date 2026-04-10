@@ -3,6 +3,7 @@ import type { Patient } from '@/lib/types';
 import { motion } from 'framer-motion';
 import { CalendarCheck } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
+import { formatAppointmentDateTime } from '@/lib/date-format';
 
 export default function UpcomingAppointmentsSection({ patient, onUpdate }: { patient: Patient, onUpdate: () => void }) {
     const appointments = patient.appointments;
@@ -25,7 +26,7 @@ export default function UpcomingAppointmentsSection({ patient, onUpdate }: { pat
                     {appointments.length > 0 ? (
                         <div>
                             <p className="font-semibold">{appointments[0].title}</p>
-                            <p>Date: {new Date(appointments[0].appointment_date).toLocaleString()}</p>
+                            <p>Date: {formatAppointmentDateTime(appointments[0].appointment_date)}</p>
                             <p>With: {appointments[0].clinician?.name}</p>
                         </div>
                     ) : (

@@ -3,15 +3,14 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import Logo from '@/components/logo';
 import { authenticateUser } from '@/lib/actions';
+import AuthShell from '@/components/auth/auth-shell';
 
 export default function LoginPageClient() {
   const [phone, setPhone] = useState('');
@@ -47,64 +46,52 @@ export default function LoginPageClient() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-md">
-        <div className="mb-6 flex items-center justify-center">
-          <Logo className="h-8 w-auto" />
-        </div>
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Welcome Back</CardTitle>
-            <CardDescription>
-              Enter your credentials to access your dashboard.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-3">
-                <InlineField label="Phone Number" htmlFor="phone">
-                  <Input
-                    id="phone"
-                    type="tel"
-                    required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    disabled={loading}
-                  />
-                </InlineField>
-                <div className="grid grid-cols-[120px_minmax(0,1fr)] items-center gap-3">
-                  <div className="flex items-center">
-                    <Label htmlFor="password" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
-                      Password
-                    </Label>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Link
-                        href="/forgot-password"
-                        className="ml-auto inline-block text-sm underline"
-                      >
-                        Forgot password?
-                      </Link>
-                    </div>
-                    <PasswordInput
-                      id="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Login'}
-                </Button>
+    <AuthShell
+      title="Welcome Back"
+      description="Enter your credentials to access your dashboard."
+    >
+      <form onSubmit={handleSubmit}>
+        <div className="space-y-3">
+          <InlineField label="Phone Number" htmlFor="phone">
+            <Input
+              id="phone"
+              type="tel"
+              required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              disabled={loading}
+            />
+          </InlineField>
+          <div className="grid grid-cols-[120px_minmax(0,1fr)] items-center gap-3">
+            <div className="flex items-center">
+              <Label htmlFor="password" className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                Password
+              </Label>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Link
+                  href="/forgot-password"
+                  className="ml-auto inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  Forgot password?
+                </Link>
               </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+              <PasswordInput
+                id="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Login'}
+          </Button>
+        </div>
+      </form>
+    </AuthShell>
   );
 }
 
@@ -119,7 +106,7 @@ function InlineField({
 }) {
   return (
     <div className="grid grid-cols-[120px_minmax(0,1fr)] items-center gap-3">
-      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
         {label}
       </Label>
       <div>{children}</div>
