@@ -47,69 +47,49 @@ export default function LoginPageClient() {
 
   return (
     <AuthShell
-      title="Welcome Back"
-      description="Enter your credentials to access your dashboard."
+      title="Login to Your Account"
+      description="Enter your phone number and password to sign in."
     >
-      <form onSubmit={handleSubmit}>
-        <div className="space-y-3">
-          <InlineField label="Phone Number" htmlFor="phone">
-            <Input
-              id="phone"
-              type="tel"
-              required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              disabled={loading}
-            />
-          </InlineField>
-          <div className="grid grid-cols-[120px_minmax(0,1fr)] items-center gap-3">
-            <div className="flex items-center">
-              <Label htmlFor="password" className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                Password
-              </Label>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <Label htmlFor="phone" className="mb-2 block text-sm font-medium text-gray-700">Phone Number</Label>
+          <Input
+            id="phone"
+            type="tel"
+            required
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            disabled={loading}
+            placeholder="e.g. +1 123 456 7890"
+            className="w-full"
+          />
+        </div>
+        
+        <div>
+            <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
                 <Link
                   href="/forgot-password"
-                  className="ml-auto inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+                  className="text-sm font-medium text-primary hover:underline"
                 >
                   Forgot password?
                 </Link>
-              </div>
-              <PasswordInput
+            </div>
+            <PasswordInput
                 id="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
-              />
-            </div>
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Login'}
-          </Button>
+                placeholder="Enter your password"
+                className="mt-1 w-full"
+            />
         </div>
+
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sign In'}
+        </Button>
       </form>
     </AuthShell>
-  );
-}
-
-function InlineField({
-  label,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-center gap-3">
-      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
-        {label}
-      </Label>
-      <div>{children}</div>
-    </div>
   );
 }

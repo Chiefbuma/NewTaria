@@ -20,12 +20,13 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 type BreakdownRow = {
   label: string;
   value: number | string;
+  male: number | string;
+  female: number | string;
   color?: string;
   percentage?: string;
 };
 
 interface VisualSectionProps {
-  index: number;
   title: string;
   icon: React.ReactNode;
   chartData: any[];
@@ -34,22 +35,19 @@ interface VisualSectionProps {
   note?: string;
 }
 
-const VisualSection = ({ index, title, icon, chartData, tableData, total, note }: VisualSectionProps) => {
+const VisualSection = ({ title, icon, chartData, tableData, total, note }: VisualSectionProps) => {
   const hasData = total > 0;
 
   return (
     <Card className="overflow-hidden border-border/60 bg-card shadow-[0_24px_55px_-34px_rgba(15,23,42,0.18)]">
-      <CardHeader className="bg-muted/30">
+      <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/70 bg-background text-xs font-black text-foreground">
-              {index}
-            </div>
             <div className="flex items-center gap-2">
               <div className="rounded-xl bg-primary/10 p-2 text-primary">{icon}</div>
               <div className="grid gap-0.5">
-                <h2 className="text-base font-bold tracking-tight text-foreground">{title}</h2>
-                {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
+                <h2 className="text-lg font-bold tracking-tight text-foreground">{title}</h2>
+                {note ? <p className="text-sm text-muted-foreground">{note}</p> : null}
               </div>
             </div>
           </div>
@@ -101,47 +99,47 @@ const VisualSection = ({ index, title, icon, chartData, tableData, total, note }
           </Card>
 
           <Card className="overflow-hidden border-border/60 bg-background shadow-sm lg:col-span-7">
-            <Table>
-              <TableHeader className="bg-muted/30">
-                <TableRow className="hover:bg-muted/30">
-                  <TableHead className="h-8 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Category
-                  </TableHead>
-                  <TableHead className="h-8 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Count
-                  </TableHead>
-                  <TableHead className="h-8 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    %
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tableData.length ? (
-                  tableData.map((row, rowIndex) => (
-                    <TableRow key={rowIndex} className="border-b border-border/60 hover:bg-muted/30">
-                      <TableCell className="py-2 text-xs font-medium">
-                        <div className="flex items-center gap-2">
-                          {row.color ? (
-                            <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: row.color }} />
-                          ) : null}
-                          <span className="text-foreground">{row.label}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-2 text-right text-xs font-bold text-foreground">{row.value}</TableCell>
-                      <TableCell className="py-2 text-right text-xs font-bold text-muted-foreground">
-                        {row.percentage ?? (total ? `${Math.round((Number(row.value) / total) * 100)}%` : '0%')}
-                      </TableCell>
+            <div className='overflow-x-auto'>
+                <Table className='w-full'>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="whitespace-nowrap">Category</TableHead>
+                      <TableHead className="whitespace-nowrap text-right">Count</TableHead>
+                      <TableHead className="whitespace-nowrap text-right">Male</TableHead>
+                      <TableHead className="whitespace-nowrap text-right">Female</TableHead>
+                      <TableHead className="whitespace-nowrap text-right">%</TableHead>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={3} className="py-10 text-center text-sm italic text-muted-foreground">
-                      No records found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {tableData.length ? (
+                      tableData.map((row, rowIndex) => (
+                        <TableRow key={rowIndex}>
+                          <TableCell className="py-2 font-medium">
+                            <div className="flex items-center gap-2">
+                              {row.color ? (
+                                <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: row.color }} />
+                              ) : null}
+                              <span className="text-foreground">{row.label}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-2 text-right font-bold text-foreground">{row.value}</TableCell>
+                          <TableCell className="py-2 text-right font-bold text-foreground">{row.male}</TableCell>
+                          <TableCell className="py-2 text-right font-bold text-foreground">{row.female}</TableCell>
+                          <TableCell className="py-2 text-right font-bold text-muted-foreground">
+                            {row.percentage ?? (total ? `${Math.round((Number(row.value) / total) * 100)}%` : '0%')}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-10 text-center text-sm italic text-muted-foreground">
+                          No records found.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+            </div>
           </Card>
         </div>
       </CardContent>
@@ -176,18 +174,6 @@ export default function AdminOverview({ stats }: { stats: any }) {
     'hsl(var(--chart-5))',
   ];
 
-  const statusCounts = (stats.statusDistribution || []).reduce((acc: Record<string, number>, row: any) => {
-    acc[row.status] = Number(row.count);
-    return acc;
-  }, {});
-
-  const activeMembers = statusCounts['Active'] ?? 0;
-  const onboardedMembers = Number(stats.totalOnboarded ?? 0);
-  const upcomingAppointments = Number(stats.upcomingAppointments ?? 0);
-  const needsAttention = Number(stats.totalCritical ?? 0);
-  const engaged30d = Number(stats.membersWithRecentCheckIn30d ?? 0);
-  const noCheckIn14d = Number(stats.membersWithNoCheckIn14d ?? 0);
-
   const genderChart = (stats.genderDistribution || []).map((g: any, i: number) => ({
     name: g.gender,
     value: Number(g.count),
@@ -196,6 +182,8 @@ export default function AdminOverview({ stats }: { stats: any }) {
   const genderTable: BreakdownRow[] = (stats.genderDistribution || []).map((g: any, i: number) => ({
     label: g.gender,
     value: Number(g.count),
+    male: g.gender === 'Male' ? Number(g.count) : 0,
+    female: g.gender === 'Female' ? Number(g.count) : 0,
     color: COLORS[i % COLORS.length],
     percentage: stats.totalPatients ? `${Math.round((Number(g.count) / stats.totalPatients) * 100)}%` : undefined,
   }));
@@ -208,6 +196,8 @@ export default function AdminOverview({ stats }: { stats: any }) {
   const ageTable: BreakdownRow[] = (stats.ageDistribution || []).map((a: any, i: number) => ({
     label: a.age_group,
     value: Number(a.count),
+    male: a.male_count, // Assuming the backend sends this
+    female: a.female_count, // Assuming the backend sends this
     color: COLORS[(i + 1) % COLORS.length],
     percentage: stats.totalPatients ? `${Math.round((Number(a.count) / stats.totalPatients) * 100)}%` : undefined,
   }));
@@ -220,6 +210,8 @@ export default function AdminOverview({ stats }: { stats: any }) {
   const diagnosisTable: BreakdownRow[] = (stats.diagnosisDistribution || []).map((d: any, i: number) => ({
     label: d.diagnosis,
     value: Number(d.count),
+    male: d.male_count, // Assuming the backend sends this
+    female: d.female_count, // Assuming the backend sends this
     color: COLORS[(i + 2) % COLORS.length],
     percentage: stats.totalPatients ? `${Math.round((Number(d.count) / stats.totalPatients) * 100)}%` : undefined,
   }));
@@ -233,12 +225,16 @@ export default function AdminOverview({ stats }: { stats: any }) {
     {
       label: 'Targets Achieved',
       value: Number(stats.totalCompleted ?? 0),
+      male: stats.completed_male_count, // Assuming the backend sends this
+      female: stats.completed_female_count, // Assuming the backend sends this
       color: 'hsl(var(--chart-2))',
       percentage: totalGoalsSet ? `${Math.round((Number(stats.totalCompleted ?? 0) / totalGoalsSet) * 100)}%` : undefined,
     },
     {
       label: 'Pending / Overdue',
       value: Number(stats.totalInProgress ?? 0) + Number(stats.totalCritical ?? 0),
+      male: stats.pending_male_count, // Assuming the backend sends this
+      female: stats.pending_female_count, // Assuming the backend sends this
       color: 'hsl(var(--muted))',
       percentage: totalGoalsSet
         ? `${Math.round(((Number(stats.totalInProgress ?? 0) + Number(stats.totalCritical ?? 0)) / totalGoalsSet) * 100)}%`
@@ -254,33 +250,16 @@ export default function AdminOverview({ stats }: { stats: any }) {
   const statusTable: BreakdownRow[] = (stats.statusDistribution || []).map((row: any, i: number) => ({
     label: row.status,
     value: Number(row.count),
+    male: row.male_count, // Assuming the backend sends this
+    female: row.female_count, // Assuming the backend sends this
     color: COLORS[i % COLORS.length],
     percentage: stats.totalPatients ? `${Math.round((Number(row.count) / stats.totalPatients) * 100)}%` : undefined,
   }));
 
   return (
     <div className="space-y-8 pb-12">
-      <Card className="overflow-hidden border-border/60 bg-card shadow-[0_24px_55px_-34px_rgba(15,23,42,0.18)]">
-        <CardHeader className="bg-muted/30">
-          <CardTitle className="text-base font-bold tracking-tight text-foreground">Priority Metrics</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <PriorityMetric index={1} icon={Users} label="Onboarded" value={onboardedMembers} sub="All non-pending" />
-            <PriorityMetric index={2} icon={TrendingUp} label="Active" value={activeMembers} sub="In care" />
-            <PriorityMetric index={3} icon={ShieldAlert} label="Needs attention" value={needsAttention} sub="Overdue goals" tone="danger" />
-            <PriorityMetric index={4} icon={CalendarDays} label="Upcoming" value={upcomingAppointments} sub="Appointments" />
-            <PriorityMetric index={5} icon={BarChart3} label="Engagement" value={engaged30d} sub="Checked-in (30d)" />
-          </div>
-          <div className="mt-3 text-xs font-semibold text-muted-foreground">
-            <span className="text-foreground">{noCheckIn14d}</span> members have no check-in in the last 14 days.
-          </div>
-        </CardContent>
-      </Card>
-
       <div className="space-y-6">
         <VisualSection
-          index={6}
           title="Goal Completion"
           note="Achieved vs pending across assigned goals."
           icon={<Target className="h-5 w-5" />}
@@ -290,7 +269,6 @@ export default function AdminOverview({ stats }: { stats: any }) {
         />
 
         <VisualSection
-          index={7}
           title="Member Status"
           note="Distribution across program states."
           icon={<ClipboardCheck className="h-5 w-5" />}
@@ -300,7 +278,6 @@ export default function AdminOverview({ stats }: { stats: any }) {
         />
 
         <VisualSection
-          index={8}
           title="Diagnosis Mix"
           note="Hypertension, diabetes, or both."
           icon={<Activity className="h-5 w-5" />}
@@ -311,7 +288,6 @@ export default function AdminOverview({ stats }: { stats: any }) {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <VisualSection
-            index={9}
             title="Age Distribution"
             icon={<Calendar className="h-5 w-5" />}
             chartData={ageChart}
@@ -319,7 +295,6 @@ export default function AdminOverview({ stats }: { stats: any }) {
             total={Number(stats.totalPatients)}
           />
           <VisualSection
-            index={10}
             title="Gender Distribution"
             icon={<Users className="h-5 w-5" />}
             chartData={genderChart}
@@ -331,41 +306,3 @@ export default function AdminOverview({ stats }: { stats: any }) {
     </div>
   );
 }
-
-function PriorityMetric({
-  index,
-  icon: Icon,
-  label,
-  value,
-  sub,
-  tone,
-}: {
-  index: number;
-  icon: any;
-  label: string;
-  value: number | string;
-  sub?: string;
-  tone?: 'danger';
-}) {
-  return (
-    <div
-      className={cn(
-        'rounded-2xl border border-border/70 bg-background p-4 shadow-sm',
-        tone === 'danger' ? 'border-red-500/25 bg-red-500/5' : null
-      )}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-xl border border-border/70 bg-muted/20 text-[11px] font-black text-foreground">
-            {index}
-          </div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
-        </div>
-        <Icon className={cn('h-4 w-4', tone === 'danger' ? 'text-red-600' : 'text-primary')} />
-      </div>
-      <div className="mt-3 text-2xl font-black text-foreground">{value}</div>
-      {sub ? <div className="mt-1 text-xs text-muted-foreground">{sub}</div> : null}
-    </div>
-  );
-}
-

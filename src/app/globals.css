@@ -95,7 +95,7 @@
   }
 
   .form-header-bar {
-    @apply border-b border-border/70 bg-background/70 text-foreground backdrop-blur-xl;
+    @apply border-b border-border/70 text-foreground;
   }
 }
  
