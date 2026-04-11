@@ -17,7 +17,9 @@ export function isClinicianRole(role: UserRole | undefined | null) {
 }
 
 export function isInternalUserRole(role: UserRole | undefined | null) {
-  return role === 'admin' || role === 'navigator' || role === 'staff' || isClinicianRole(role);
+  // "Internal" here means "non-member portal user". Partners are allowed into the care-team web app,
+  // but their actions are still constrained by per-mutation permission checks + partner scoping.
+  return role === 'admin' || role === 'navigator' || role === 'staff' || isClinicianRole(role) || isPartnerRole(role);
 }
 
 export function canAccessAdminCenter(role: UserRole | undefined | null) {
@@ -25,11 +27,11 @@ export function canAccessAdminCenter(role: UserRole | undefined | null) {
 }
 
 export function canManageOnboarding(role: UserRole | undefined | null) {
-  return role === 'admin' || role === 'navigator';
+  return role === 'admin' || role === 'navigator' || isPartnerRole(role);
 }
 
 export function canManageGoals(role: UserRole | undefined | null) {
-  return role === 'admin' || role === 'navigator';
+  return role === 'admin' || role === 'navigator' || isPartnerRole(role);
 }
 
 export function canManageAssessments(role: UserRole | undefined | null) {
@@ -41,7 +43,7 @@ export function canManageReviews(role: UserRole | undefined | null) {
 }
 
 export function canManageAppointments(role: UserRole | undefined | null) {
-  return role === 'admin' || role === 'navigator';
+  return role === 'admin' || role === 'navigator' || isPartnerRole(role);
 }
 
 export function canManagePrescriptions(role: UserRole | undefined | null) {
@@ -64,7 +66,7 @@ export function getRoleLabel(role: UserRole | undefined | null) {
       return 'Staff';
     case 'user':
     case 'patient':
-      return 'Patient';
+      return 'Member';
     default:
       return 'User';
   }

@@ -1,32 +1,22 @@
 
 'use client';
 
+import type React from 'react';
 import { useState, useEffect } from 'react';
 import type { Medication } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { DataTable } from '../ui/data-table';
 import { ColumnDef } from "@tanstack/react-table";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
 
 export default function MedicationManagement() {
   const [medications, setMedications] = useState<Medication[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentMed, setCurrentMed] = useState<Partial<Medication> | null>(null);
   const [confirmAction, setConfirmAction] = useState<null | (() => Promise<void>)>(null);
   const [confirmTitle, setConfirmTitle] = useState('');
   const [confirmDescription, setConfirmDescription] = useState('');
@@ -45,40 +35,27 @@ export default function MedicationManagement() {
   };
 
   useEffect(() => { loadMedications(); }, []);
-  const handleOpenModal = (med?: Medication) => {
-    setCurrentMed(med || { name: '', dosage: '' });
-    setIsModalOpen(true);
+
+  const saveMedication = async (data: Partial<Medication>): Promise<Medication> => {
+    if (!data.name) throw new Error('Medication name is required.');
+    const method = data.id ? 'PUT' : 'POST';
+    const res = await fetch('/api/medications', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      throw new Error(payload?.error || 'Failed to save medication.');
+    }
+    return res.json();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentMed?.name) return;
-    
-    setIsSubmitting(true);
-    try {
-        const method = currentMed.id ? 'PUT' : 'POST';
-        const res = await fetch('/api/medications', {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(currentMed)
-        });
-        
-        if (!res.ok) throw new Error('Failed to save medication');
-        const saved = await res.json();
-
-        if (currentMed.id) {
-            setMedications(prev => prev.map(m => m.id === saved.id ? saved : m));
-        } else {
-            setMedications(prev => [saved, ...prev]);
-        }
-        
-        toast({ title: 'Success', description: 'Medication saved successfully.' });
-        setIsModalOpen(false);
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: e.message });
-    } finally {
-        setIsSubmitting(false);
-    }
+  const applySavedMedication = (saved: Medication) => {
+    setMedications((prev) => {
+      const exists = prev.some((m) => m.id === saved.id);
+      return exists ? prev.map((m) => (m.id === saved.id ? saved : m)) : [saved, ...prev];
+    });
   };
 
   const executeDelete = async (id: number) => {
@@ -99,32 +76,26 @@ export default function MedicationManagement() {
   };
 
   const columns: ColumnDef<Medication>[] = [
-    {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-    },
     { accessorKey: "name", header: "Name" },
     { accessorKey: "dosage", header: "Default Dosage" },
     {
         id: "actions",
         cell: ({ row }) => (
             <div className="flex justify-end gap-2">
-                <Button variant="ghost" size="icon" onClick={() => handleOpenModal(row.original)}><Edit className="h-4 w-4" /></Button>
+                <MedicationUpsertPopover
+                  medication={row.original}
+                  saveMedication={saveMedication}
+                  onSaved={(saved) => {
+                    applySavedMedication(saved);
+                    toast({ title: 'Success', description: 'Medication saved successfully.' });
+                  }}
+                  trigger={
+                    <Button variant="ghost" size="icon">
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Edit</span>
+                    </Button>
+                  }
+                />
                 <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete(row.original.id)}><Trash2 className="h-4 w-4" /></Button>
             </div>
         )
@@ -132,9 +103,18 @@ export default function MedicationManagement() {
   ];
 
   const toolbarActions = (
-    <Button onClick={() => handleOpenModal()} className="bg-primary hover:bg-primary/90 shadow-sm">
-      <PlusCircle className="mr-2 h-4 w-4" /> Add Medication
-    </Button>
+    <MedicationUpsertPopover
+      saveMedication={saveMedication}
+      onSaved={(saved) => {
+        applySavedMedication(saved);
+        toast({ title: 'Success', description: 'Medication saved successfully.' });
+      }}
+      trigger={
+        <Button className="bg-primary hover:bg-primary/90 shadow-sm">
+          <PlusCircle className="mr-2 h-4 w-4" /> Add Medication
+        </Button>
+      }
+    />
   );
 
   return (
@@ -144,29 +124,6 @@ export default function MedicationManagement() {
       ) : (
           <DataTable columns={columns} data={medications} toolbarActions={toolbarActions} />
       )}
-
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{currentMed?.id ? 'Edit' : 'Add'} Medication</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-3 py-4">
-              <InlineField label="Medication Name" htmlFor="name">
-                <Input id="name" value={currentMed?.name || ''} onChange={(e) => setCurrentMed(p => ({...p!, name: e.target.value}))} required />
-              </InlineField>
-              <InlineField label="Typical Dosage" htmlFor="dosage">
-                <Input id="dosage" value={currentMed?.dosage || ''} onChange={(e) => setCurrentMed(p => ({...p!, dosage: e.target.value}))} />
-              </InlineField>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Medication
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <ConfirmActionDialog
         open={Boolean(confirmAction)}
@@ -185,6 +142,92 @@ export default function MedicationManagement() {
         }}
       />
     </div>
+  );
+}
+
+function MedicationUpsertPopover({
+  trigger,
+  medication,
+  saveMedication,
+  onSaved,
+}: {
+  trigger: React.ReactNode;
+  medication?: Medication;
+  saveMedication: (data: Partial<Medication>) => Promise<Medication>;
+  onSaved: (saved: Medication) => void;
+}) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [name, setName] = useState('');
+  const [dosage, setDosage] = useState('');
+
+  const title = medication?.id ? 'Edit Medication' : 'Add Medication';
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) {
+          setName(medication?.name || '');
+          setDosage(medication?.dosage || '');
+        }
+      }}
+    >
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent align="end" sideOffset={10} className="w-[440px] max-w-[calc(100vw-2rem)] p-0">
+        <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
+          <div className="flex items-center justify-between bg-primary px-4 py-3 text-primary-foreground">
+            <p className="text-sm font-bold">{title}</p>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-primary-foreground/80">Catalog</span>
+          </div>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!name.trim()) return;
+              try {
+                setIsSubmitting(true);
+                const saved = await saveMedication({
+                  id: medication?.id,
+                  name: name.trim(),
+                  dosage: dosage.trim(),
+                });
+                onSaved(saved);
+                setOpen(false);
+              } catch (err: any) {
+                toast({ variant: 'destructive', title: 'Error', description: err?.message || 'Unable to save medication.' });
+              } finally {
+                setIsSubmitting(false);
+              }
+            }}
+          >
+            <div className="space-y-3 p-4">
+              <InlineField label="Medication Name" htmlFor="name">
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
+              </InlineField>
+              <InlineField label="Typical Dosage" htmlFor="dosage">
+                <Input id="dosage" value={dosage} onChange={(e) => setDosage(e.target.value)} className="h-8" />
+              </InlineField>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
+              <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

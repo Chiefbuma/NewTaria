@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import type { User, UserRole } from '@/lib/types';
-import { fetchUserById, fetchPatientById, fetchPatientByUserId } from '@/lib/data';
+import { canAccessPatientById, fetchUserById, fetchPatientById, fetchPatientByUserId } from '@/lib/data';
 import { SESSION_COOKIE_NAME, createSessionToken, getSessionCookieOptions, getSessionCookieValue, verifySessionToken } from '@/lib/session';
 import { canAccessAdminCenter, canManageAppointments, canManageAssessments, canManageGoals, canManageOnboarding, canManagePrescriptions, canManageReviews, isInternalUserRole, isPatientRole } from '@/lib/role-utils';
 
@@ -84,6 +84,17 @@ export async function authorizePatientAccess(patientId: number | string) {
   }
 
   return { user: authResult, patient };
+}
+
+export async function ensurePatientInScope(
+  patientId: number | string,
+  requestingUser: User & { patientId?: number }
+) {
+  const ok = await canAccessPatientById(patientId, requestingUser);
+  if (!ok) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  return true;
 }
 
 export function isAllowedForPatientMutation(

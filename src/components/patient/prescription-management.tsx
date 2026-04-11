@@ -1,16 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Patient, Prescription, Medication } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Pill, PlusCircle, Loader2 } from 'lucide-react';
-import { DataTable } from '../ui/data-table';
-import { getPrescriptionColumns } from './prescription-columns';
+import { Pill, PlusCircle, Edit } from 'lucide-react';
 import AddPrescriptionModal from './add-prescription-modal';
 import { useToast } from '@/hooks/use-toast';
 import { upsertPrescription as upsertPrescriptionApi, deletePrescription as deletePrescriptionApi } from '@/lib/api-service';
 import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
+import { DataTable } from '@/components/ui/data-table';
+import { getPrescriptionColumns } from './prescription-columns';
 
 interface PrescriptionManagementProps {
     patient: Patient;
@@ -22,26 +22,10 @@ interface PrescriptionManagementProps {
 
 export default function PrescriptionManagement({ patient, prescriptions, medications, onPrescriptionsUpdate, readOnly = false }: PrescriptionManagementProps) {
     const { toast } = useToast();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [editingPrescription, setEditingPrescription] = useState<Prescription | null>(null);
     const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
-    
-    const handleAddClick = () => {
-        if (readOnly) return;
-        setEditingPrescription(null);
-        setIsModalOpen(true);
-    }
-
-    const handleEditClick = (prescription: Prescription) => {
-        if (readOnly) return;
-        setEditingPrescription(prescription);
-        setIsModalOpen(true);
-    }
 
     const handleSave = async (prescriptionData: Omit<Prescription, 'id' | 'patient_id'> & { id?: number }) => {
         if (readOnly) return;
-        setIsSubmitting(true);
         try {
             const saved = await upsertPrescriptionApi({
                 ...prescriptionData,
@@ -60,12 +44,8 @@ export default function PrescriptionManagement({ patient, prescriptions, medicat
 
             onPrescriptionsUpdate(updatedPrescriptions);
             toast({ title: 'Success', description: 'Prescription saved to database.' });
-            setIsModalOpen(false);
-            setEditingPrescription(null);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to save prescription.' });
-        } finally {
-            setIsSubmitting(false);
         }
     }
 
@@ -81,10 +61,30 @@ export default function PrescriptionManagement({ patient, prescriptions, medicat
         }
     }
 
-    const columns = getPrescriptionColumns({
-        onEdit: handleEditClick,
-        onDelete: (id) => setPendingDeleteId(id),
-    });
+    const columns = useMemo(
+        () =>
+            getPrescriptionColumns({
+                renderEdit: (prescription) => (
+                  <AddPrescriptionModal
+                    trigger={
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <Edit className="h-4 w-4" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                    }
+                    onSave={handleSave}
+                    medications={medications}
+                    existingPrescription={prescription}
+                    align="end"
+                    disabled={readOnly}
+                  />
+                ),
+                onDeactivate: (id) => setPendingDeleteId(id),
+                readOnly,
+            }),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [readOnly, medications, prescriptions]
+    );
 
     return (
         <>
@@ -96,30 +96,33 @@ export default function PrescriptionManagement({ patient, prescriptions, medicat
                             <CardDescription>Manage patient's prescriptions.</CardDescription>
                         </div>
                         {!readOnly && (
-                            <Button onClick={handleAddClick} size="sm" className="bg-primary hover:bg-primary/90 shadow-md">
+                          <AddPrescriptionModal
+                            trigger={
+                              <Button size="sm" className="bg-primary hover:bg-primary/90 shadow-md">
                                 <PlusCircle className="mr-2 h-4 w-4" /> Add Prescription
-                            </Button>
+                              </Button>
+                            }
+                            onSave={handleSave}
+                            medications={medications}
+                            existingPrescription={null}
+                            align="end"
+                          />
                         )}
                     </div>
                 </CardHeader>
                 <CardContent className="pt-6">
                     {prescriptions.length > 0 ? (
-                         <DataTable columns={columns} data={prescriptions} />
+                         <DataTable
+                            columns={columns}
+                            data={prescriptions}
+                            defaultDensity="compact"
+                            enableSearch={false}
+                          />
                     ) : (
                         <p className="text-center text-muted-foreground py-12 italic border-2 border-dashed rounded-xl">No active prescriptions recorded.</p>
                     )}
                 </CardContent>
             </Card>
-
-            {isModalOpen && !readOnly && (
-                <AddPrescriptionModal 
-                    isOpen={isModalOpen}
-                    onClose={() => { if (!isSubmitting) { setIsModalOpen(false); setEditingPrescription(null); } }}
-                    onSave={handleSave}
-                    medications={medications}
-                    existingPrescription={editingPrescription}
-                />
-            )}
 
             <ConfirmActionDialog
                 open={pendingDeleteId !== null}

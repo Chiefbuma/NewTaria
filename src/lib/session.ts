@@ -42,6 +42,17 @@ async function signValue(value: string) {
   return toBase64Url(new Uint8Array(signature));
 }
 
+function timingSafeEqualString(a: string, b: string) {
+  // Edge-safe constant-time-ish compare (avoids Node's `crypto` + `Buffer`).
+  // We still bail early on length mismatch to avoid extra work.
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
 export async function createSessionToken(userId: number, mustChangePassword = false) {
   const payload: SessionPayload = {
     userId,
@@ -60,7 +71,7 @@ export async function verifySessionToken(token: string | undefined | null): Prom
   if (!encodedPayload || !signature) return null;
 
   const expectedSignature = await signValue(encodedPayload);
-  if (signature !== expectedSignature) return null;
+  if (!timingSafeEqualString(signature, expectedSignature)) return null;
 
   try {
     const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(encodedPayload))) as SessionPayload;

@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import PatientHeader from './patient-header';
 import { activatePatient } from '@/lib/api-service';
+import { isPartnerRole } from '@/lib/role-utils';
 
 interface OnboardingFormProps {
     patient: Patient;
@@ -38,11 +39,18 @@ export default function OnboardingForm({ patient, initialPartners, currentUser }
             setFormData(prev => ({
                 ...prev,
                 navigator_id: currentUser.id,
-                emr_number: `EMR/TAR/${patient.id}`
+                emr_number: `EMR/TAR/${patient.id}`,
+                ...(isPartnerRole(currentUser.role) && currentUser.partner_id ? { partner_id: currentUser.partner_id } : {}),
             }));
         }
         // Fetch fresh partners
-        fetch('/api/partners').then(res => res.json()).then(setPartners);
+        fetch('/api/partners').then(res => res.json()).then((list: Partner[]) => {
+            if (isPartnerRole(currentUser?.role) && currentUser?.partner_id) {
+                setPartners(list.filter((p) => Number(p.id) === Number(currentUser.partner_id)));
+                return;
+            }
+            setPartners(list);
+        });
     }, [currentUser, patient.id]);
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -216,11 +224,25 @@ export default function OnboardingForm({ patient, initialPartners, currentUser }
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="partner_id">Assign Partner</Label>
-                                <Select value={String(formData.partner_id || 'null')} onValueChange={(value) => handleSelectChange('partner_id', value)}>
-                                    <SelectTrigger className="border-primary/20"><SelectValue /></SelectTrigger>
+                                <Select
+                                    value={String(formData.partner_id || 'null')}
+                                    onValueChange={(value) => handleSelectChange('partner_id', value)}
+                                    disabled={isPartnerRole(currentUser?.role)}
+                                >
+                                    <SelectTrigger className="border-primary/20"><SelectValue placeholder="Select partner" /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="null">None</SelectItem>
-                                        {partners.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                                        {isPartnerRole(currentUser?.role) ? (
+                                            currentUser?.partner_id ? (
+                                                <SelectItem value={String(currentUser.partner_id)}>{currentUser.partner_name || 'Your Partner'}</SelectItem>
+                                            ) : (
+                                                <SelectItem value="null">No partner linked</SelectItem>
+                                            )
+                                        ) : (
+                                            <>
+                                                <SelectItem value="null">None</SelectItem>
+                                                {partners.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                                            </>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>

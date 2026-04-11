@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { 
     Patient, 
@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/button';
 import {
   Activity,
   PlusCircle,
+  Pencil,
   Save,
   FileText,
   Loader2,
@@ -44,8 +45,6 @@ import {
   Building2,
   Stethoscope,
   ShieldAlert,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -59,22 +58,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import ReportViewer from '@/components/report-viewer';
 import AddAssessmentModal from '@/components/patient/add-assessment-modal';
 import PrescriptionManagement from '@/components/patient/prescription-management';
 import AppointmentsCard from '@/components/patient/appointments-card';
 import PatientInfoCard from '@/components/patient/patient-info-card';
-import AddAppointmentModal from '@/components/patient/add-appointment-modal';
 import AddGoalModal from '@/components/patient/add-goal-modal';
 import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
     createAssessment, 
     deleteAssessment, 
+    updateAssessment as updateAssessmentApi,
     createGoal, 
     deleteGoal, 
     createReview, 
-    upsertAppointment,
     updatePatient,
 } from '@/lib/api-service';
 import {
@@ -84,6 +84,225 @@ import {
   canManageReviews as canRoleManageReviews,
   isPartnerRole,
 } from '@/lib/role-utils';
+
+function todayYmd() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function GoalCheckInPopover({
+  patientId,
+  parameter,
+  goal,
+  onCreated,
+  disabled,
+}: {
+  patientId: number;
+  parameter: ClinicalParameter | undefined;
+  goal: Goal;
+  onCreated: (assessment: Assessment) => void;
+  disabled?: boolean;
+}) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState('');
+  const [notes, setNotes] = useState('');
+  const [date, setDate] = useState(todayYmd());
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const uploadFile = async (file: File, kind: 'image' | 'voice') => {
+    const formData = new FormData();
+    formData.set('kind', kind);
+    formData.set('file', file);
+    const res = await fetch('/api/uploads', { method: 'POST', body: formData });
+    if (!res.ok) {
+      let msg = `Upload failed (${res.status})`;
+      try {
+        const data = await res.json();
+        msg = data?.error || msg;
+      } catch { /* ignore */ }
+      throw new Error(msg);
+    }
+    return res.json() as Promise<{ url: string }>;
+  };
+
+  const handleFileChange = async (file: File | null) => {
+    if (!file || !parameter) return;
+    if (parameter.type !== 'image' && parameter.type !== 'voice') return;
+    try {
+      setIsUploading(true);
+      const result = await uploadFile(file, parameter.type);
+      setValue(result.url);
+      toast({ title: 'Uploaded', description: 'Attachment ready to submit.' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Upload failed', description: e?.message || 'Could not upload file.' });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const submit = async () => {
+    if (!parameter) return;
+    if (isUploading) return;
+    if (!date || !value.trim()) {
+      toast({ variant: 'destructive', title: 'Missing details', description: 'Please enter a value and a date.' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const saved = await createAssessment({
+        patient_id: patientId,
+        clinical_parameter_id: parameter.id,
+        value: value.trim(),
+        notes: notes.trim() ? notes.trim() : null,
+        measured_at: date, // date-only
+        is_normal: null,
+      });
+      onCreated(saved);
+      toast({ title: 'Success', description: 'Assessment saved.' });
+      setOpen(false);
+      setValue('');
+      setNotes('');
+      setDate(todayYmd());
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: e?.message || 'Failed to save assessment.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderValueInput = () => {
+    if (!parameter) return <Input disabled className="h-8" />;
+    if (parameter.type === 'numeric') {
+      return <Input type="number" step="any" className="h-8" value={value} onChange={(e) => setValue(e.target.value)} />;
+    }
+    if (parameter.type === 'choice') {
+      return (
+        <Select value={value} onValueChange={setValue}>
+          <SelectTrigger className="h-8">
+            <SelectValue placeholder="Select..." />
+          </SelectTrigger>
+          <SelectContent>
+            {(parameter.options ?? []).map((opt) => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+    if (parameter.type === 'text') {
+      return <Textarea className="min-h-20" value={value} onChange={(e) => setValue(e.target.value)} />;
+    }
+    if (parameter.type === 'image') {
+      return (
+        <div className="space-y-2">
+          <Input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            disabled={isUploading}
+            onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
+          />
+          {value ? (
+            <div className="rounded-md border border-border bg-muted/20 p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={value} alt="Uploaded photo" className="max-h-44 w-full rounded object-contain" />
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">Upload a photo (or use camera capture on mobile).</p>
+          )}
+        </div>
+      );
+    }
+    if (parameter.type === 'voice') {
+      return (
+        <div className="space-y-2">
+          <Input
+            type="file"
+            accept="audio/*"
+            capture="user"
+            disabled={isUploading}
+            onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
+          />
+          {value ? (
+            <div className="rounded-md border border-border bg-muted/20 p-2">
+              <audio controls src={value} className="w-full" />
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">Upload a voice note (or use microphone capture on mobile).</p>
+          )}
+        </div>
+      );
+    }
+    return <Input className="h-8" value={value} onChange={(e) => setValue(e.target.value)} />;
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (v) {
+          setValue('');
+          setNotes('');
+          setDate(todayYmd());
+        }
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          disabled={disabled || !parameter}
+          className="h-8 w-8 text-primary hover:bg-primary/10"
+          title="Add check-in"
+        >
+          <PlusCircle className="h-4 w-4" />
+          <span className="sr-only">Add check-in</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[360px] p-4">
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Add check-in</p>
+            <p className="text-[11px] text-muted-foreground">Target: {goal.target_operator} {goal.target_value}</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Date</Label>
+            <Input type="date" className="h-8" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              {parameter?.type === 'image' ? 'Photo' : parameter?.type === 'voice' ? 'Voice note' : 'Value'}
+            </Label>
+            {renderValueInput()}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Notes (optional)</Label>
+            <Textarea className="min-h-16" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting || isUploading}>
+              Cancel
+            </Button>
+            <Button type="button" className="h-8" onClick={submit} disabled={isSubmitting || isUploading || !value.trim() || !date}>
+              {isSubmitting || isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Save
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const DetailItem = ({
   label,
@@ -129,25 +348,19 @@ export default function PatientDetailsPage({
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
-  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   
   const [editFormData, setEditFormData] = useState<Partial<Patient>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [isAddAssessmentModalOpen, setAddAssessmentModalOpen] = useState(false);
-  const [selectedGoalParameter, setSelectedGoalParameter] = useState<ClinicalParameter | null>(null);
-  const [isAddGoalModalOpen, setAddGoalModalOpen] = useState(false);
-  const [pendingGoalDeleteId, setPendingGoalDeleteId] = useState<number | null>(null);
-  const [pendingAssessmentDeleteId, setPendingAssessmentDeleteId] = useState<number | null>(null);
-  const [showAllGoalHistory, setShowAllGoalHistory] = useState<Record<number, boolean>>({});
+		  const [pendingGoalDeleteId, setPendingGoalDeleteId] = useState<number | null>(null);
+		  const [pendingAssessmentDeleteId, setPendingAssessmentDeleteId] = useState<number | null>(null);
 
   // ROLE PERMISSIONS
   const isAdmin = currentUser?.role === 'admin';
   const isNavigator = currentUser?.role === 'navigator';
   const isPartner = isPartnerRole(currentUser?.role);
 
-  const canEditPatient = isAdmin || isNavigator;
+  const canEditPatient = isAdmin || isNavigator || isPartner;
   const canManageAssessments = canRoleManageAssessments(currentUser?.role) && !isPartner;
   const canManageReviews = canRoleManageReviews(currentUser?.role) && !isPartner;
   const canManageAppointments = canRoleManageAppointments(currentUser?.role) && !isPartner;
@@ -158,9 +371,23 @@ export default function PatientDetailsPage({
         ...patient,
         dob: patient.dob ? new Date(patient.dob).toISOString().split('T')[0] : '',
         wellness_date: patient.wellness_date ? new Date(patient.wellness_date).toISOString().split('T')[0] : '',
+        // Partners can edit patient details, but the partner assignment should remain scoped to their org.
+        ...(isPartner && currentUser?.partner_id ? { partner_id: currentUser.partner_id } : {}),
     });
     setIsEditModalOpen(true);
   };
+
+  // Allow deep-linking into the edit form from table row actions.
+  // Uses hash to avoid SSR/searchParams complications.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.location.hash === '#edit') {
+      handleOpenEditModal()
+      // Clear the hash so refreshes don't keep popping the modal.
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleUpdatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,22 +420,21 @@ export default function PatientDetailsPage({
       return;
     }
     try {
-        const goal = await createGoal({
-            patient_id: patient.id,
-            clinical_parameter_id: Number(goalData.clinical_parameter_id),
-            target_value: goalData.target_value,
-            target_operator: goalData.target_operator as any,
-            deadline: goalData.deadline,
-            notes: goalData.notes,
-            status: 'active'
-        });
-        setPatient(prev => ({...prev, goals: [goal, ...prev.goals]}));
-        setAddGoalModalOpen(false);
-        toast({title: 'Success', description: 'Goal added successfully!'});
-    } catch (error: any) {
-        toast({variant: 'destructive', title: 'Error', description: error.message});
-    }
-  };
+	        const goal = await createGoal({
+	            patient_id: patient.id,
+	            clinical_parameter_id: Number(goalData.clinical_parameter_id),
+	            target_value: goalData.target_value,
+	            target_operator: goalData.target_operator as any,
+	            deadline: goalData.deadline,
+	            notes: goalData.notes,
+	            status: 'active'
+	        });
+	        setPatient(prev => ({...prev, goals: [goal, ...prev.goals]}));
+	        toast({title: 'Success', description: 'Goal added successfully!'});
+	    } catch (error: any) {
+	        toast({variant: 'destructive', title: 'Error', description: error.message});
+	    }
+	  };
 
   const handleDeleteGoalItem = async (goalId: number) => {
     if (!canManageAssessments) return;
@@ -221,85 +447,41 @@ export default function PatientDetailsPage({
     }
   }
   
-  const handlePrescriptionsUpdate = (updatedPrescriptions: Prescription[]) => {
-      setPatient(prev => ({ ...prev, prescriptions: updatedPrescriptions }));
-  }
+		  const handlePrescriptionsUpdate = (updatedPrescriptions: Prescription[]) => {
+		      setPatient(prev => ({ ...prev, prescriptions: updatedPrescriptions }));
+		  }
 
-  const calculateAssessmentWeek = (assessment: Assessment) => {
-    if (!patient?.date_of_onboarding) return 'N/A';
-    const assessmentDate = new Date(assessment.measured_at);
-    const treatmentStartDate = new Date(patient.date_of_onboarding);
-    const timeDiff = assessmentDate.getTime() - treatmentStartDate.getTime();
-    const weeksDiff = Math.floor(timeDiff / (1000 * 3600 * 24 * 7)) + 1;
-    if (weeksDiff < 1) return 'Week 1';
-    return `Week ${weeksDiff}`;
-  };
+		  const calculateAssessmentWeek = (assessment: Assessment) => {
+		    if (!patient?.date_of_onboarding) return 'N/A';
+		    const assessmentDate = new Date(assessment.measured_at);
+		    const treatmentStartDate = new Date(patient.date_of_onboarding);
+		    const timeDiff = assessmentDate.getTime() - treatmentStartDate.getTime();
+		    const weeksDiff = Math.floor(timeDiff / (1000 * 3600 * 24 * 7)) + 1;
+		    if (weeksDiff < 1) return 'Week 1';
+		    return `Week ${weeksDiff}`;
+		  };
 
-  const getAssessmentStatus = (current: Assessment, previous: Assessment | undefined, goal: Goal) => {
-    const val = current.value;
-    const target = goal.target_value;
-    const op = goal.target_operator;
+		  const assessmentMeetsTarget = (assessment: Assessment, goal: Goal) => {
+		    const current = parseFloat(assessment.value);
+		    const target = parseFloat(goal.target_value);
 
-    const nCur = parseFloat(val);
-    const nTar = parseFloat(target);
+	    if (!Number.isNaN(current) && !Number.isNaN(target)) {
+	      switch (goal.target_operator) {
+	        case '<': return current < target;
+	        case '<=': return current <= target;
+	        case '=': return current === target;
+	        case '>=': return current >= target;
+	        case '>': return current > target;
+	        default: return false;
+	      }
+	    }
 
-    const isTargetMet = (v: string, t: string, o: string) => {
-        const nv = parseFloat(v);
-        const nt = parseFloat(t);
-        if (!isNaN(nv) && !isNaN(nt)) {
-            switch (o) {
-                case '<': return nv < nt;
-                case '<=': return nv <= nt;
-                case '=': return nv === nt;
-                case '>=': return nv >= nt;
-                case '>': return nv > nt;
-                default: return false;
-            }
-        }
-        return v === t;
-    };
+	    return assessment.value === goal.target_value;
+	  };
 
-    if (isTargetMet(val, target, op)) {
-        return { label: 'Achieved', variant: 'default' as const };
-    }
-
-    if (!previous) return { label: 'In Progress', variant: 'secondary' as const };
-
-    const nPrev = parseFloat(previous.value);
-    if (!isNaN(nCur) && !isNaN(nPrev) && !isNaN(nTar)) {
-        const isImproving = (c: number, p: number, o: string) => {
-            if (o === '>=' || o === '>') return c > p;
-            if (o === '<=' || o === '<') return c < p;
-            return Math.abs(c - nTar) < Math.abs(p - nTar);
-        };
-        if (isImproving(nCur, nPrev, op)) return { label: 'On Track', variant: 'outline' as const };
-        return { label: 'Needs Improvement', variant: 'destructive' as const };
-    }
-
-    return { label: 'In Progress', variant: 'secondary' as const };
-  };
-
-  const assessmentMeetsTarget = (assessment: Assessment, goal: Goal) => {
-    const current = parseFloat(assessment.value);
-    const target = parseFloat(goal.target_value);
-
-    if (!Number.isNaN(current) && !Number.isNaN(target)) {
-      switch (goal.target_operator) {
-        case '<': return current < target;
-        case '<=': return current <= target;
-        case '=': return current === target;
-        case '>=': return current >= target;
-        case '>': return current > target;
-        default: return false;
-      }
-    }
-
-    return assessment.value === goal.target_value;
-  };
-
-  const handleDeleteAssessmentItem = async (assessmentId: number) => {
-      if (!canManageAssessments) return;
-      try {
+	  const handleDeleteAssessmentItem = async (assessmentId: number) => {
+	      if (!canManageAssessments) return;
+	      try {
           await deleteAssessment(assessmentId);
           setPatient(prev => ({
               ...prev,
@@ -311,43 +493,50 @@ export default function PatientDetailsPage({
       }
   }
 
-  const handleSaveAssessment = async (assessment: Omit<Assessment, 'id' | 'patient_id' | 'created_at'>) => {
-    try {
-        const saved = await createAssessment({
-            patient_id: patient.id,
-            ...assessment
-        });
-        setPatient(prev => ({...prev, assessments: [saved, ...prev.assessments]}));
-        toast({title: 'Success', description: 'Assessment saved.'});
-        setAddAssessmentModalOpen(false);
-    } catch (error: any) {
-        toast({variant: 'destructive', title: 'Error', description: error.message});
-    }
-  };
+	  const handleSaveAssessment = async (assessment: Omit<Assessment, 'id' | 'patient_id' | 'created_at'> & { id?: number }) => {
+	    try {
+	        if (assessment.id) {
+	            const saved = await updateAssessmentApi(assessment.id, {
+	                patient_id: patient.id,
+	                ...assessment,
+	            });
+	            setPatient(prev => ({
+	                ...prev,
+	                assessments: prev.assessments.map(a => a.id === assessment.id ? ({ ...a, ...saved }) : a)
+	            }));
+	            toast({title: 'Success', description: 'Assessment updated.'});
+	        } else {
+	            const saved = await createAssessment({
+	                patient_id: patient.id,
+	                ...assessment
+	            });
+	            setPatient(prev => ({...prev, assessments: [saved, ...prev.assessments]}));
+	            toast({title: 'Success', description: 'Assessment saved.'});
+	        }
+	    } catch (error: any) {
+	        toast({variant: 'destructive', title: 'Error', description: error.message});
+	    }
+	  };
   
   const handleAppointmentsUpdate = (updatedAppointments: Appointment[]) => {
      setPatient(prev => ({ ...prev, appointments: updatedAppointments }));
   }
 
-  const handleOpenAppointmentModal = (appointment?: Appointment) => {
-    setEditingAppointment(appointment || null);
-    setIsAppointmentModalOpen(true);
-  };
+	  const [reviewData, setReviewData] = useState({
+	    clinical_review: '',
+	    review_date: new Date().toISOString().split('T')[0]
+	  });
+	  const [isReviewPopoverOpen, setIsReviewPopoverOpen] = useState(false);
 
-  const [reviewData, setReviewData] = useState({
-    clinical_review: '',
-    review_date: new Date().toISOString().split('T')[0]
-  });
+		  const submitReview = async (): Promise<boolean> => {
+		    if (!canManageReviews) return false;
+		    if (!reviewData.clinical_review.trim()) {
+		        toast({variant: 'destructive', title: 'Error', description: 'Please enter the clinical review.'});
+		        return false;
+		    }
 
-  const submitReview = async () => {
-    if (!canManageReviews) return;
-    if (!reviewData.clinical_review.trim()) {
-        toast({variant: 'destructive', title: 'Error', description: 'Please enter the clinical review.'});
-        return;
-    }
-
-    try {
-        const saved = await createReview({
+	    try {
+	        const saved = await createReview({
             patient_id: patient.id,
             reviewed_by_id: currentUser!.id,
             review_date: reviewData.review_date,
@@ -360,15 +549,18 @@ export default function PatientDetailsPage({
         });
         const fullReview = { ...saved, reviewed_by: currentUser!.name };
         setPatient(prev => ({...prev, reviews: [fullReview, ...prev.reviews]}));
-        setReviewData({
-          clinical_review: '',
-          review_date: new Date().toISOString().split('T')[0]
-        });
-        toast({title: 'Success', description: 'Review submitted.'});
-    } catch (error: any) {
-        toast({variant: 'destructive', title: 'Error', description: error.message});
-    }
-  };
+	        setReviewData({
+	          clinical_review: '',
+	          review_date: new Date().toISOString().split('T')[0]
+	        });
+          setIsReviewPopoverOpen(false);
+	        toast({title: 'Success', description: 'Review submitted.'});
+	        return true;
+	    } catch (error: any) {
+	        toast({variant: 'destructive', title: 'Error', description: error.message});
+	        return false;
+	    }
+	  };
   
   const getStatusBadge = (goal: Goal) => {
     const isOverdue = new Date(goal.deadline) < new Date() && goal.status !== 'completed';
@@ -381,22 +573,18 @@ export default function PatientDetailsPage({
     return <Badge variant="secondary"><Activity className="mr-1 h-3 w-3"/>In Progress</Badge>;
   };
 
-  const getDisplayText = (goal: Goal) => {
-    const operatorSymbols: Record<string, string> = { '<': '<', '<=': '≤', '=': '=', '>=': '≥', '>': '>' };
-    const parameter = clinicalParameters.find(p => p.id === goal.clinical_parameter_id);
-    if (!parameter) return goal.target_value;
-    return `${operatorSymbols[goal.target_operator] || ''} ${goal.target_value} ${parameter.unit || ''}`.trim();
-  };
+	  const getDisplayText = (goal: Goal) => {
+	    const operatorSymbols: Record<string, string> = { '<': '<', '<=': '≤', '=': '=', '>=': '≥', '>': '>' };
+	    const parameter = clinicalParameters.find(p => p.id === goal.clinical_parameter_id);
+	    if (!parameter) return goal.target_value;
+		    return `${operatorSymbols[goal.target_operator] || ''} ${goal.target_value} ${parameter.unit || ''}`.trim();
+		  };
 
-  const [goalHistoryPages, setGoalHistoryPages] = useState<Record<number, number>>({});
-  const [reviewHistoryPage, setReviewHistoryPage] = useState(1);
-  const sortedReviews = useMemo(
-    () => [...patient.reviews].sort((a, b) => new Date(b.review_date).getTime() - new Date(a.review_date).getTime()),
-    [patient.reviews]
-  );
-  const recentReviews = sortedReviews.slice(0, 3);
-  const paginatedReviews = sortedReviews.slice((reviewHistoryPage - 1) * 5, reviewHistoryPage * 5);
-  const totalReviewPages = Math.max(1, Math.ceil(sortedReviews.length / 5));
+	  const sortedReviews = useMemo(
+	    () => [...patient.reviews].sort((a, b) => new Date(b.review_date).getTime() - new Date(a.review_date).getTime()),
+	    [patient.reviews]
+	  );
+	  const recentReviews = sortedReviews.slice(0, 3);
 
   return (
     <div className="container mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
@@ -412,19 +600,17 @@ export default function PatientDetailsPage({
                 </CardTitle>
                 <CardDescription>Important context at a glance.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4 pt-6">
-                <DetailItem label="Assigned Partner" value={patient.partner_name || 'N/A'} icon={Building2} />
-                {patient.corporate_name ? (
-                  <DetailItem label="Corporate Program" value={patient.corporate_name} icon={Building2} />
-                ) : null}
-                <DetailItem label="Wellness Date" value={patient.wellness_date ? new Date(patient.wellness_date).toLocaleDateString() : 'N/A'} icon={Clock} />
-              </CardContent>
-            </Card>
+	              <CardContent className="space-y-4 pt-6">
+	                <DetailItem label="Assigned Partner" value={patient.partner_name || 'N/A'} icon={Building2} />
+	                {patient.corporate_name ? (
+	                  <DetailItem label="Corporate Program" value={patient.corporate_name} icon={Building2} />
+	                ) : null}
+	              </CardContent>
+	            </Card>
             {canManageAppointments && (
               <AppointmentsCard 
                 patient={patient}
-                onSchedule={() => handleOpenAppointmentModal()}
-                onEdit={handleOpenAppointmentModal}
+                clinicians={clinicians}
                 onUpdate={handleAppointmentsUpdate}
               />
             )}
@@ -451,293 +637,299 @@ export default function PatientDetailsPage({
           </div>
 
           <div className="space-y-6">
-            <Card className="overflow-hidden border-border/60 shadow-sm">
-              <CardHeader className="bg-muted/30">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <CardTitle className="text-xl">Current Goals</CardTitle>
-                    <CardDescription>Clean, simple tracking for the patient&apos;s active care goals.</CardDescription>
-                  </div>
-                  {canManageAssessments && (
-                    <Button onClick={() => setAddGoalModalOpen(true)} size="sm">
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add Goal
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {patient.goals.length > 0 ? (
-                  <Accordion type="single" collapsible className="space-y-3">
-                    {patient.goals.map((goal) => {
-                    const parameter = clinicalParameters.find(p => p.id === goal.clinical_parameter_id);
-                    const history = patient.assessments
-                      .filter(a => a.clinical_parameter_id === goal.clinical_parameter_id)
-                      .sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime());
-                    const showAllHistory = showAllGoalHistory[goal.id] ?? false;
-                    const goalPage = goalHistoryPages[goal.id] ?? 1;
-                    const paginatedHistory = history.slice((goalPage - 1) * 5, goalPage * 5);
-                    const totalGoalPages = Math.max(1, Math.ceil(history.length / 5));
-                    const displayedHistory = showAllHistory ? paginatedHistory : history.slice(0, 3);
+	            <Card className="overflow-hidden border-border/60 shadow-sm">
+	              <CardHeader className="bg-muted/30">
+	                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+		                  <div>
+		                    <CardTitle className="text-xl">Current Goals</CardTitle>
+		                    <CardDescription>Clean, simple tracking for the patient&apos;s active care goals.</CardDescription>
+		                  </div>
+		                  {canManageAssessments && (
+		                    <AddGoalModal
+		                      trigger={
+		                        <Button size="sm">
+		                          <PlusCircle className="mr-2 h-4 w-4" />
+		                          Add Goal
+		                        </Button>
+		                      }
+		                      onSave={handleAddGoal}
+		                      clinicalParameters={clinicalParameters}
+		                      existingGoal={null}
+		                    />
+		                  )}
+		                </div>
+			              </CardHeader>
+		              <CardContent className="pt-6">
+		                {patient.goals.filter((g) => g.status === 'active').length > 0 ? (
+		                  <div className="space-y-3">
+		                    {patient.goals.filter((g) => g.status === 'active').map((goal, index) => {
+		                    const parameter = clinicalParameters.find(p => p.id === goal.clinical_parameter_id);
+		                    const history = patient.assessments
+		                      .filter(a => a.clinical_parameter_id === goal.clinical_parameter_id)
+		                      .sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime());
+		                    const displayedHistory = history.slice(0, 3);
 
-                      return (
-                        <AccordionItem
-                          key={goal.id}
-                          value={`goal-${goal.id}`}
-                          className="overflow-hidden rounded-2xl border border-border/70 bg-card px-3 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.16)]"
-                        >
-                          <div className="flex items-start gap-2">
-                            <AccordionTrigger className="py-3 hover:no-underline">
-                              <div className="flex w-full flex-col gap-2 text-left lg:flex-row lg:items-center lg:justify-between">
-                                <div className="space-y-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <h4 className="text-base font-semibold text-foreground">{parameter?.name}</h4>
-                                    {getStatusBadge(goal)}
+			                      return (
+			                        <div
+			                          key={goal.id}
+			                          className="overflow-hidden rounded-2xl border border-border/70 bg-card px-3 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.16)]"
+			                        >
+			                          <div className="flex items-start justify-between gap-2 py-3">
+			                            <div className="min-w-0 flex-1">
+			                              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+			                                <h4 className="min-w-0 text-base font-semibold text-foreground">
+			                                  {index + 1}. {parameter?.name}
+			                                </h4>
+
+			                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+			                                  <p className="whitespace-nowrap">
+			                                    Target:{' '}
+			                                    <span className="font-medium text-foreground">{getDisplayText(goal)}</span>
+			                                  </p>
+			                                  <p className="whitespace-nowrap">
+			                                    Deadline:{' '}
+			                                    <span className="font-medium text-foreground">
+			                                      {new Date(goal.deadline).toLocaleDateString()}
+			                                    </span>
+			                                  </p>
+			                                </div>
+			                              </div>
+			                            </div>
+
+			                            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+			                              {getStatusBadge(goal)}
+			                              {canManageAssessments && (
+			                                <>
+			                                  <GoalCheckInPopover
+			                                    patientId={patient.id}
+			                                    parameter={parameter}
+			                                    goal={goal}
+			                                    disabled={!canManageAssessments}
+			                                    onCreated={(saved) => {
+			                                      setPatient((prev) => ({ ...prev, assessments: [saved, ...prev.assessments] }));
+			                                    }}
+			                                  />
+			                                  <Button
+			                                    type="button"
+			                                    variant="ghost"
+			                                    size="icon"
+			                                    onClick={() => setPendingGoalDeleteId(goal.id)}
+			                                    className="h-8 w-8 text-red-500 hover:bg-red-50"
+			                                  >
+			                                    <Trash2 className="h-4 w-4" />
+			                                  </Button>
+			                                </>
+			                              )}
+			                            </div>
+			                          </div>
+
+			                          <div className="space-y-3 pb-3 pl-3 sm:pl-4">
+			                            {history.length > 0 ? (
+			                              <div className="space-y-2 rounded-xl border border-border/70 bg-muted/20 p-2.5">
+			                                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+			                                  Recent Records
+			                                </p>
+		                                <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
+		                                  <table className="min-w-full text-sm">
+		                                    <thead className="bg-muted/40">
+		                                      <tr>
+		                                        <th className="px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Week</th>
+		                                        <th className="px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Value</th>
+		                                        <th className="px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+		                                      </tr>
+		                                    </thead>
+		                                    <tbody>
+		                                      {displayedHistory.map((assessment) => {
+		                                        const meetsTarget = assessmentMeetsTarget(assessment, goal);
+
+		                                        return (
+		                                          <tr key={assessment.id} className="border-t border-border/70">
+		                                            <td className="px-3 py-1.5 text-xs font-medium text-foreground">
+		                                              {calculateAssessmentWeek(assessment)}
+		                                            </td>
+		                                            <td className="px-3 py-1.5 text-xs text-muted-foreground">
+		                                              <span className="font-medium text-foreground">
+		                                                {assessment.value} {parameter?.unit || ''}
+		                                              </span>
+		                                            </td>
+		                                            <td className="px-3 py-1.5">
+		                                              <div className="flex items-center justify-between gap-2">
+		                                                <Badge
+		                                                  variant="outline"
+		                                                  className={
+		                                                    meetsTarget
+		                                                      ? 'bg-green-500/20 text-green-700 border-green-500/30'
+		                                                      : 'bg-red-500/15 text-red-700 border-red-500/30'
+		                                                  }
+		                                                >
+		                                                  {meetsTarget ? 'Meets Target' : 'Off Target'}
+		                                                </Badge>
+			                                                {canManageAssessments ? (
+			                                                  <div className="flex items-center gap-1">
+			                                                    <AddAssessmentModal
+			                                                      trigger={
+			                                                        <Button
+			                                                          type="button"
+			                                                          variant="ghost"
+			                                                          size="icon"
+			                                                          className="h-7 w-7 text-primary hover:bg-primary/10"
+			                                                        >
+			                                                          <Pencil className="h-3.5 w-3.5" />
+			                                                        </Button>
+			                                                      }
+			                                                      onSave={handleSaveAssessment}
+			                                                      parameter={parameter ?? null}
+			                                                      existingAssessment={assessment}
+			                                                      allParameters={clinicalParameters}
+			                                                    />
+			                                                    <Button
+			                                                      type="button"
+			                                                      variant="ghost"
+			                                                      size="icon"
+		                                                      className="h-7 w-7 text-red-500 hover:bg-red-50"
+		                                                      onClick={() => setPendingAssessmentDeleteId(assessment.id)}
+		                                                    >
+		                                                      <Trash2 className="h-3.5 w-3.5" />
+		                                                    </Button>
+		                                                  </div>
+		                                                ) : null}
+		                                              </div>
+		                                            </td>
+		                                          </tr>
+		                                        );
+		                                      })}
+		                                    </tbody>
+		                                  </table>
+		                                </div>
+		                              </div>
+			                            ) : (
+			                              <div className="rounded-xl border-2 border-dashed border-border bg-muted/20 p-3 text-sm text-muted-foreground">
+			                                No assessments have been recorded for this goal yet.
+			                              </div>
+			                            )}
+			                          </div>
+			                        </div>
+			                      );
+			                    })}
+		                  </div>
+		                ) : (
+		                  <p className="rounded-xl border-2 border-dashed border-border bg-muted/20 py-8 text-center italic text-muted-foreground">No health goals defined for this patient.</p>
+		                )}
+		              </CardContent>
+		            </Card>
+
+	            <PrescriptionManagement
+	                patient={patient}
+	                prescriptions={patient.prescriptions}
+	                medications={initialMedications}
+	                onPrescriptionsUpdate={handlePrescriptionsUpdate}
+	                readOnly={!canManagePrescriptions}
+	            />
+
+		            {canManageReviews && (
+		                <Card className="border-border/60 shadow-sm overflow-hidden">
+	                    <CardHeader className="bg-muted/30">
+	                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+	                          <div>
+	                            <CardTitle className="text-xl">Clinical Review</CardTitle>
+	                            <CardDescription>Conduct comprehensive clinical evaluation</CardDescription>
+	                          </div>
+	                          <Popover
+                              open={isReviewPopoverOpen}
+                              onOpenChange={(open) => {
+                                setIsReviewPopoverOpen(open);
+                                if (!open) {
+                                  setReviewData({
+                                    clinical_review: '',
+                                    review_date: new Date().toISOString().split('T')[0],
+                                  });
+                                }
+                              }}
+                            >
+                              <PopoverTrigger asChild>
+	                              <Button type="button" size="sm" className="bg-primary hover:bg-primary/90 px-5">
+	                                <PlusCircle className="mr-2 h-4 w-4" />
+	                                Add Review
+	                              </Button>
+                              </PopoverTrigger>
+                              <PopoverContent align="end" sideOffset={10} className="w-[520px] max-w-[calc(100vw-2rem)] p-0">
+                                <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
+                                  <div className="flex items-center justify-between bg-primary px-4 py-3 text-primary-foreground">
+                                    <p className="text-sm font-bold">Add Clinical Review</p>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-primary-foreground/80">
+                                      Review
+                                    </span>
                                   </div>
-                                  <p className="text-sm text-muted-foreground">
-                                    Target: <span className="font-medium text-foreground">{getDisplayText(goal)}</span>
-                                  </p>
-                                  <p className="text-sm text-muted-foreground">
-                                    Deadline: <span className="font-medium text-foreground">{new Date(goal.deadline).toLocaleDateString()}</span>
-                                  </p>
-                                </div>
-                              </div>
-                            </AccordionTrigger>
-                            {canManageAssessments && (
-                              <div className="flex shrink-0 items-center gap-1 pt-3">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => { setSelectedGoalParameter(parameter!); setAddAssessmentModalOpen(true); }}
-                                  className="h-8 w-8 text-primary hover:bg-primary/10"
-                                >
-                                  <PlusCircle className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setPendingGoalDeleteId(goal.id)}
-                                  className="h-8 w-8 text-red-500 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4"/>
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                          <AccordionContent className="space-y-3 pb-3">
-                            {history.length > 0 ? (
-                              <div className="space-y-2 rounded-xl border border-border/70 bg-muted/20 p-2.5">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                                    {showAllHistory ? 'All Records' : 'Recent Records'}
-                                  </p>
-                                  {history.length > 3 && (
+                                  <div className="space-y-3 p-4">
+                                    <InlineField label="Review Date" htmlFor="review_date">
+                                      <Input
+                                        id="review_date"
+                                        type="date"
+                                        className="h-8"
+                                        value={reviewData.review_date}
+                                        onChange={(e) => setReviewData((p) => ({ ...p, review_date: e.target.value }))}
+                                        required
+                                      />
+                                    </InlineField>
+                                    <InlineField label="Clinical Review" htmlFor="clinical_review" alignStart>
+                                      <Textarea
+                                        id="clinical_review"
+                                        className="min-h-28"
+                                        value={reviewData.clinical_review}
+                                        onChange={(e) => setReviewData((p) => ({ ...p, clinical_review: e.target.value }))}
+                                        required
+                                      />
+                                    </InlineField>
+                                  </div>
+                                  <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
+                                    <Button type="button" variant="outline" className="h-8" onClick={() => setIsReviewPopoverOpen(false)}>
+                                      Cancel
+                                    </Button>
                                     <Button
                                       type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 px-2 text-xs"
-                                      onClick={() => {
-                                        setShowAllGoalHistory((prev) => ({ ...prev, [goal.id]: !showAllHistory }));
-                                        setGoalHistoryPages((prev) => ({ ...prev, [goal.id]: 1 }));
+                                      className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"
+                                      onClick={async () => {
+                                        await submitReview();
                                       }}
                                     >
-                                      {showAllHistory ? 'Show Recent' : 'View All'}
-                                    </Button>
-                                  )}
-                                </div>
-                                <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
-                                  <table className="min-w-full text-sm">
-                                    <thead className="bg-muted/40">
-                                      <tr>
-                                        <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Week / Value</th>
-                                        <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {displayedHistory.map((assessment) => {
-                                        const meetsTarget = assessmentMeetsTarget(assessment, goal);
-
-                                        return (
-                                          <tr key={assessment.id} className="border-t border-border/70">
-                                            <td className="px-3 py-2.5">
-                                              <p className="text-sm font-medium text-foreground">{calculateAssessmentWeek(assessment)}</p>
-                                              <p className="text-xs text-muted-foreground">
-                                                {assessment.value} {parameter?.unit || ''}
-                                              </p>
-                                            </td>
-                                            <td className="px-3 py-2.5">
-                                              <div className="flex items-center justify-between gap-2">
-                                                <Badge variant="outline" className={meetsTarget ? 'bg-green-500/20 text-green-700 border-green-500/30' : 'bg-red-500/15 text-red-700 border-red-500/30'}>
-                                                  {meetsTarget ? 'Meets Target' : 'Off Target'}
-                                                </Badge>
-                                                {canManageAssessments && (
-                                                  <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => setPendingAssessmentDeleteId(assessment.id)}
-                                                    className="h-7 w-7 text-red-500 hover:bg-red-50"
-                                                  >
-                                                    <Trash2 className="h-3.5 w-3.5"/>
-                                                  </Button>
-                                                )}
-                                              </div>
-                                            </td>
-                                          </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
-                                </div>
-                                {showAllHistory && history.length > 5 && (
-                                  <div className="flex items-center justify-between pt-1">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      disabled={goalPage === 1}
-                                      onClick={() => setGoalHistoryPages((prev) => ({ ...prev, [goal.id]: Math.max(1, goalPage - 1) }))}
-                                    >
-                                      <ChevronLeft className="mr-1 h-4 w-4" />
-                                      Prev
-                                    </Button>
-                                    <span className="text-xs text-muted-foreground">Page {goalPage} of {totalGoalPages}</span>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      disabled={goalPage === totalGoalPages}
-                                      onClick={() => setGoalHistoryPages((prev) => ({ ...prev, [goal.id]: Math.min(totalGoalPages, goalPage + 1) }))}
-                                    >
-                                      Next
-                                      <ChevronRight className="ml-1 h-4 w-4" />
+                                      <Save className="mr-2 h-4 w-4" /> Save
                                     </Button>
                                   </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="rounded-xl border-2 border-dashed border-border bg-muted/20 p-3 text-sm text-muted-foreground">
-                                No assessments have been recorded for this goal yet.
-                              </div>
-                            )}
-                          </AccordionContent>
-                        </AccordionItem>
-                      );
-                    })}
-                  </Accordion>
-                ) : (
-                  <p className="rounded-xl border-2 border-dashed border-border bg-muted/20 py-8 text-center italic text-muted-foreground">No health goals defined for this patient.</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <PrescriptionManagement
-                patient={patient}
-                prescriptions={patient.prescriptions}
-                medications={initialMedications}
-                onPrescriptionsUpdate={handlePrescriptionsUpdate}
-                readOnly={!canManagePrescriptions}
-            />
-            <AddGoalModal
-              isOpen={isAddGoalModalOpen}
-              onClose={() => setAddGoalModalOpen(false)}
-              onSave={handleAddGoal}
-              clinicalParameters={clinicalParameters}
-            />
-
-            {canManageReviews && (
-                <Card className="border-border/60 shadow-sm overflow-hidden">
-                    <CardHeader className="bg-muted/30">
-                        <CardTitle className="text-xl">Clinical Review</CardTitle>
-                        <CardDescription>Conduct comprehensive clinical evaluation</CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-5">
-                        <div className="space-y-4">
-                            <div className="space-y-3">
-                                <div className="space-y-2">
-                                    <Label className="font-semibold">Clinical Review</Label>
-                                    <Textarea className="bg-background border-primary/20 min-h-28" value={reviewData.clinical_review} onChange={(e) => setReviewData(p => ({...p, clinical_review: e.target.value}))}/>
                                 </div>
-                                <Button onClick={submitReview} className="bg-primary hover:bg-primary/90 px-6"><Save className="mr-2 h-4 w-4"/> Save Review</Button>
-                            </div>
-                            <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
-                              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Recent Reviews</p>
-                              <div className="mt-3 space-y-2">
-                                {recentReviews.length > 0 ? recentReviews.map((review) => (
-                                  <div key={review.id} className="rounded-xl bg-background px-3 py-3">
-                                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                                      <p className="text-sm font-medium text-foreground">{new Date(review.review_date).toLocaleDateString()}</p>
-                                      <p className="text-xs text-muted-foreground">{review.reviewed_by}</p>
-                                    </div>
-                                    <p className="mt-2 text-sm text-muted-foreground">{review.assessment || review.plan || 'Clinical review recorded.'}</p>
-                                  </div>
-                                )) : (
-                                  <p className="rounded-xl bg-background px-3 py-3 text-sm text-muted-foreground">No clinical reviews yet.</p>
-                                )}
-                              </div>
-                              {sortedReviews.length > 0 && (
-                                <Accordion type="single" collapsible className="mt-3 rounded-xl border border-border/70 bg-background px-3">
-                                  <AccordionItem value="all-reviews" className="border-b-0">
-                                    <AccordionTrigger className="py-3 text-sm font-medium text-foreground hover:no-underline">
-                                      View all reviews
-                                    </AccordionTrigger>
-                                    <AccordionContent className="space-y-3 pb-3">
-                                      {paginatedReviews.map((review) => (
-                                        <div key={review.id} className="rounded-xl border border-border/70 bg-muted/20 px-3 py-3">
-                                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                                            <p className="text-sm font-medium text-foreground">{new Date(review.review_date).toLocaleDateString()}</p>
-                                            <p className="text-xs text-muted-foreground">{review.reviewed_by}</p>
-                                          </div>
-                                          <p className="mt-2 text-sm text-muted-foreground">{review.assessment || review.plan || 'Clinical review recorded.'}</p>
-                                        </div>
-                                      ))}
-                                      {sortedReviews.length > 5 && (
-                                        <div className="flex items-center justify-between pt-1">
-                                          <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={reviewHistoryPage === 1}
-                                            onClick={() => setReviewHistoryPage((prev) => Math.max(1, prev - 1))}
-                                          >
-                                            <ChevronLeft className="mr-1 h-4 w-4" />
-                                            Prev
-                                          </Button>
-                                          <span className="text-xs text-muted-foreground">Page {reviewHistoryPage} of {totalReviewPages}</span>
-                                          <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={reviewHistoryPage === totalReviewPages}
-                                            onClick={() => setReviewHistoryPage((prev) => Math.min(totalReviewPages, prev + 1))}
-                                          >
-                                            Next
-                                            <ChevronRight className="ml-1 h-4 w-4" />
-                                          </Button>
-                                        </div>
-                                      )}
-                                    </AccordionContent>
-                                  </AccordionItem>
-                                </Accordion>
-                              )}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                              </PopoverContent>
+                            </Popover>
+	                        </div>
+	                    </CardHeader>
+	                    <CardContent className="pt-5">
+	                        <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+	                          {sortedReviews.length > 0 ? (
+	                            <Accordion type="single" collapsible className="rounded-xl border border-border/70 bg-background px-3">
+	                              <AccordionItem value="all-reviews" className="border-b-0">
+	                                <AccordionTrigger className="py-3 text-sm font-medium text-foreground hover:no-underline">
+	                                  View all reviews
+	                                </AccordionTrigger>
+	                                <AccordionContent className="space-y-3 pb-3">
+	                                  {recentReviews.map((review) => (
+	                                    <div key={review.id} className="rounded-xl border border-border/70 bg-muted/20 px-3 py-3">
+	                                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+	                                        <p className="text-sm font-medium text-foreground">{new Date(review.review_date).toLocaleDateString()}</p>
+	                                        <p className="text-xs text-muted-foreground">{review.reviewed_by}</p>
+	                                      </div>
+	                                      <p className="mt-2 text-sm text-muted-foreground">{review.assessment || review.plan || 'Clinical review recorded.'}</p>
+	                                    </div>
+	                                  ))}
+	                                </AccordionContent>
+	                              </AccordionItem>
+	                            </Accordion>
+	                          ) : (
+	                            <p className="rounded-xl bg-background px-3 py-3 text-sm text-muted-foreground">No clinical reviews yet.</p>
+	                          )}
+	                        </div>
+	                    </CardContent>
+	                </Card>
+	            )}
 
-            {isPartner && (
-                <div className="p-6 rounded-xl border border-amber-500/20 bg-amber-500/10 flex items-center gap-4">
-                    <ShieldAlert className="h-8 w-8 text-amber-600" />
-                    <div className="flex-1">
-                        <h4 className="font-bold text-amber-800">Restricted Partner Access</h4>
-                        <p className="text-sm text-amber-700/80">As a Partner, you have view-only access to progress dashboards and assessment history for your associated patients. Clinical modifications are restricted.</p>
-                    </div>
-                </div>
-            )}
+            {/* Partner view restrictions are enforced by RBAC + API scoping; avoid noisy banners in the UI. */}
 
           </div>
         </div>
@@ -750,14 +942,14 @@ export default function PatientDetailsPage({
           corporate={patient.corporate_id ? { id: patient.corporate_id, name: patient.corporate_name!, wellness_date: patient.wellness_date! } : null}
         />
       )}
-      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-2xl border-primary/20">
-            <DialogHeader>
-                <DialogTitle className="text-2xl font-bold">Edit Patient Details</DialogTitle>
-                <CardDescription className="text-muted-foreground">Update the patient's registration information below.</CardDescription>
-            </DialogHeader>
-            <form onSubmit={handleUpdatePatient}>
-                <div className="space-y-3 py-4">
+	      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+	        <DialogContent className="sm:max-w-2xl border-primary/20">
+	            <DialogHeader>
+	                <DialogTitle className="text-2xl font-bold">Edit Patient Details</DialogTitle>
+	                <CardDescription className="text-muted-foreground">Update the patient's registration information below.</CardDescription>
+	            </DialogHeader>
+	            <form onSubmit={handleUpdatePatient}>
+	                <div className="space-y-3 py-4">
                     <InlineField label="First Name" htmlFor="first_name">
                         <Input id="first_name" className="border-primary/20" value={editFormData.first_name || ''} onChange={handleEditFormChange} required />
                     </InlineField>
@@ -785,14 +977,104 @@ export default function PatientDetailsPage({
                     <InlineField label="Email" htmlFor="email">
                         <Input id="email" type="email" className="border-primary/20" value={editFormData.email || ''} onChange={handleEditFormChange} />
                     </InlineField>
-                    <InlineField label="Phone" htmlFor="phone">
-                        <Input id="phone" type="tel" className="border-primary/20" value={editFormData.phone || ''} onChange={handleEditFormChange} />
-                    </InlineField>
-                    <InlineField label="Wellness Date" htmlFor="wellness_date">
-                        <Input id="wellness_date" type="date" className="border-primary/20" value={editFormData.wellness_date || ''} onChange={handleEditFormChange} required />
-                    </InlineField>
-                </div>
-                <DialogFooter>
+	                    <InlineField label="Phone" htmlFor="phone">
+	                        <Input id="phone" type="tel" className="border-primary/20" value={editFormData.phone || ''} onChange={handleEditFormChange} />
+	                    </InlineField>
+	                    <InlineField label="Address" htmlFor="address" alignStart>
+	                        <Textarea
+	                            id="address"
+	                            className="border-primary/20 min-h-20"
+	                            value={editFormData.address || ''}
+	                            onChange={handleEditFormChange}
+	                        />
+	                    </InlineField>
+	                    <InlineField label="Primary Diagnosis" htmlFor="primary_diagnosis">
+	                        <Select
+	                            value={editFormData.primary_diagnosis || ''}
+	                            onValueChange={(value) => handleEditSelectChange('primary_diagnosis', value)}
+	                        >
+	                            <SelectTrigger className="border-primary/20"><SelectValue placeholder="Select diagnosis" /></SelectTrigger>
+	                            <SelectContent>
+	                                <SelectItem value="Hypertension">Hypertension</SelectItem>
+	                                <SelectItem value="Diabetes">Diabetes</SelectItem>
+	                                <SelectItem value="Hypertension and Diabetes">Hypertension and Diabetes</SelectItem>
+	                            </SelectContent>
+	                        </Select>
+	                    </InlineField>
+	                    <InlineField label="Comorbid Conditions" htmlFor="comorbid_conditions" alignStart>
+	                        <Textarea
+	                            id="comorbid_conditions"
+	                            className="border-primary/20 min-h-20"
+	                            value={editFormData.comorbid_conditions || ''}
+	                            onChange={handleEditFormChange}
+	                        />
+	                    </InlineField>
+	                    <InlineField label="Medication Summary" htmlFor="current_medications_summary" alignStart>
+	                        <Textarea
+	                            id="current_medications_summary"
+	                            className="border-primary/20 min-h-20"
+	                            value={editFormData.current_medications_summary || ''}
+	                            onChange={handleEditFormChange}
+	                        />
+	                    </InlineField>
+		                    <InlineField label="Wellness Date" htmlFor="wellness_date">
+		                        <Input id="wellness_date" type="date" className="border-primary/20" value={editFormData.wellness_date || ''} onChange={handleEditFormChange} required />
+		                    </InlineField>
+	                    <InlineField label="Status" htmlFor="status">
+	                        <Select value={editFormData.status || ''} onValueChange={(value) => handleEditSelectChange('status', value)} required>
+	                            <SelectTrigger className="border-primary/20"><SelectValue /></SelectTrigger>
+	                            <SelectContent>
+	                                <SelectItem value="Active">Active</SelectItem>
+	                                <SelectItem value="In Review">In Review</SelectItem>
+	                                <SelectItem value="Critical">Critical</SelectItem>
+	                                <SelectItem value="Discharged">Discharged</SelectItem>
+	                            </SelectContent>
+	                        </Select>
+	                    </InlineField>
+
+	                    <div className="pt-2">
+	                        <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+	                            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Emergency Contact</p>
+	                            <div className="mt-3 space-y-3">
+	                                <InlineField label="Name" htmlFor="emergency_contact_name">
+	                                    <Input
+	                                        id="emergency_contact_name"
+	                                        className="border-primary/20"
+	                                        value={editFormData.emergency_contact_name || ''}
+	                                        onChange={handleEditFormChange}
+	                                    />
+	                                </InlineField>
+	                                <InlineField label="Phone" htmlFor="emergency_contact_phone">
+	                                    <Input
+	                                        id="emergency_contact_phone"
+	                                        type="tel"
+	                                        className="border-primary/20"
+	                                        value={editFormData.emergency_contact_phone || ''}
+	                                        onChange={handleEditFormChange}
+	                                    />
+	                                </InlineField>
+	                                <InlineField label="Relation" htmlFor="emergency_contact_relation">
+	                                    <Input
+	                                        id="emergency_contact_relation"
+	                                        className="border-primary/20"
+	                                        value={editFormData.emergency_contact_relation || ''}
+	                                        onChange={handleEditFormChange}
+	                                    />
+	                                </InlineField>
+	                                <InlineField label="Email" htmlFor="emergency_contact_email">
+	                                    <Input
+	                                        id="emergency_contact_email"
+	                                        type="email"
+	                                        className="border-primary/20"
+	                                        value={editFormData.emergency_contact_email || ''}
+	                                        onChange={handleEditFormChange}
+	                                    />
+	                                </InlineField>
+	                            </div>
+	                        </div>
+	                    </div>
+	                </div>
+	                <DialogFooter>
                     <DialogClose asChild>
                         <Button type="button" variant="outline" className="border-primary/20">Cancel</Button>
                     </DialogClose>
@@ -804,46 +1086,6 @@ export default function PatientDetailsPage({
             </form>
         </DialogContent>
       </Dialog>
-      
-      {isAddAssessmentModalOpen && (
-        <AddAssessmentModal
-            isOpen={isAddAssessmentModalOpen}
-            onClose={() => setAddAssessmentModalOpen(false)}
-            onSave={handleSaveAssessment}
-            parameter={selectedGoalParameter}
-            allParameters={clinicalParameters}
-        />
-      )}
-      {isAppointmentModalOpen && (
-        <AddAppointmentModal
-            isOpen={isAppointmentModalOpen}
-            onClose={() => setIsAppointmentModalOpen(false)}
-            onSave={async (appointmentData) => {
-                try {
-                    const saved = await upsertAppointment({ ...appointmentData, patient_id: patient.id });
-                    const clinician = clinicians.find(c => c.id === Number(appointmentData.clinician_id));
-                    const fullAppt: Appointment = {
-                      ...saved,
-                      clinician: clinician ?? saved.clinician,
-                    };
-                    
-                    const updatedAppointments = editingAppointment
-                        ? patient.appointments.map(a => a.id === editingAppointment.id ? fullAppt : a)
-                        : [fullAppt, ...patient.appointments];
-
-                    handleAppointmentsUpdate(updatedAppointments);
-                    setIsAppointmentModalOpen(false);
-                    setEditingAppointment(null);
-                    toast({ title: 'Success', description: 'Appointment saved.' });
-                } catch (error: any) {
-                    toast({ variant: 'destructive', title: 'Error', description: error.message });
-                }
-            }}
-            patient={patient}
-            clinicians={clinicians}
-            existingAppointment={editingAppointment}
-        />
-      )}
       <ConfirmActionDialog
         open={pendingGoalDeleteId !== null}
         onOpenChange={(open) => {
@@ -880,14 +1122,22 @@ function InlineField({
   label,
   htmlFor,
   children,
+  alignStart,
 }: {
   label: string;
   htmlFor: string;
   children: React.ReactNode;
+  alignStart?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-[132px_minmax(0,1fr)] items-center gap-3">
-      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+    <div className={cn("grid grid-cols-[132px_minmax(0,1fr)] gap-3", alignStart ? "items-start" : "items-center")}>
+      <Label
+        htmlFor={htmlFor}
+        className={cn(
+          "text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white",
+          alignStart ? "pt-2" : null
+        )}
+      >
         {label}
       </Label>
       <div>{children}</div>

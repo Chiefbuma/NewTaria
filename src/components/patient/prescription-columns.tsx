@@ -1,72 +1,98 @@
 'use client';
 
 import { ColumnDef } from "@tanstack/react-table";
-import { MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import type React from "react";
+import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { Prescription } from "@/lib/types";
-import { Badge } from "@/components/ui/badge";
 
 interface GetPrescriptionColumnsProps {
-  onEdit: (prescription: Prescription) => void;
-  onDelete: (id: number) => void;
+  renderEdit?: (prescription: Prescription) => React.ReactNode;
+  onDeactivate: (id: number) => void;
+  readOnly?: boolean;
 }
 
-export const getPrescriptionColumns = ({ onEdit, onDelete }: GetPrescriptionColumnsProps): ColumnDef<Prescription>[] => {
-  return [
+function formatExpiry(value: string | null) {
+  if (!value) return "No expiry"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "No expiry"
+  return date.toLocaleDateString()
+}
+
+function initials(value: string) {
+  const parts = value.trim().split(/\s+/).filter(Boolean)
+  const first = parts[0]?.[0] ?? "R"
+  const second = parts[1]?.[0] ?? "X"
+  return `${first}${second}`.toUpperCase()
+}
+
+export const getPrescriptionColumns = ({
+  renderEdit,
+  onDeactivate,
+  readOnly = false,
+}: GetPrescriptionColumnsProps): ColumnDef<Prescription>[] => {
+  const cols: ColumnDef<Prescription>[] = [
     {
-      accessorKey: "medication.name",
+      id: "medication",
       header: "Medication",
-    },
-    {
-      accessorKey: "dosage",
-      header: "Dosage",
-      cell: ({ row }) => <span className="text-xs">{row.original.dosage}</span>,
-    },
-    {
-      accessorKey: "frequency",
-      header: "Frequency",
-      cell: ({ row }) => <span className="text-xs">{row.original.frequency}</span>,
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
+      accessorFn: (row) => row.medication?.name ?? "",
+      meta: {
+        headerClassName: "w-auto",
+        cellClassName: "w-auto",
+      },
       cell: ({ row }) => {
-        const status = row.original.status;
-        const variant = status === 'active' ? 'default' : status === 'completed' ? 'secondary' : 'destructive';
-        return <Badge variant={variant} className="capitalize">{status}</Badge>;
-      }
+        const p = row.original
+        const name = p.medication?.name || "Medication"
+        return (
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Avatar className="h-7 w-7">
+              <AvatarFallback className="text-[10px] font-bold">{initials(name)}</AvatarFallback>
+            </Avatar>
+            <div className="grid min-w-0 gap-0.5">
+              <p className="truncate text-xs font-semibold text-foreground">{name}</p>
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                <span className="font-medium text-foreground">{p.dosage}</span>
+                {p.expiry_date ? ` • Exp: ${formatExpiry(p.expiry_date)}` : " • No expiry"}
+              </p>
+            </div>
+          </div>
+        )
+      },
     },
-    {
+  ]
+
+  if (!readOnly) {
+    cols.push({
       id: "actions",
+      meta: {
+        headerClassName: "w-[88px] text-right",
+        cellClassName: "w-[88px] text-right",
+      },
       cell: ({ row }) => {
         const prescription = row.original;
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-7 w-7 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-3.5 w-3.5" />
+          <div className="flex items-center justify-end gap-1.5" data-prevent-row-click="true">
+            {renderEdit ? renderEdit(prescription) : (
+              <Button variant="ghost" size="icon" className="h-7 w-7" disabled>
+                <Edit className="h-4 w-4" />
+                <span className="sr-only">Edit</span>
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => onEdit(prescription)}>
-                <Edit className="mr-2 h-4 w-4" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDelete(prescription.id)} className="text-red-500">
-                <Trash2 className="mr-2 h-4 w-4" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-destructive hover:bg-destructive/10"
+              onClick={() => onDeactivate(prescription.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">Deactivate</span>
+            </Button>
+          </div>
         );
       },
-    },
-  ];
+    })
+  }
+
+  return cols
 };

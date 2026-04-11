@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authorizeInternalApiRequest, isAllowedForPatientMutation } from '@/lib/auth';
+import { authorizeInternalApiRequest, ensurePatientInScope, isAllowedForPatientMutation } from '@/lib/auth';
 import { updatePatientDetails } from '@/lib/data';
 
 export async function PUT(req: Request) {
@@ -10,6 +10,8 @@ export async function PUT(req: Request) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
         const { id, ...data } = await req.json();
+        const scoped = await ensurePatientInScope(id, authResult);
+        if (scoped instanceof NextResponse) return scoped;
         await updatePatientDetails(id, data);
         return NextResponse.json({ id, ...data });
     } catch (error: any) {

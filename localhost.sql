@@ -59,6 +59,9 @@ CREATE TABLE `users` (
   `partner_id` int(11) DEFAULT NULL,
   `must_change_password` tinyint(1) NOT NULL DEFAULT 1,
   `password_changed_at` timestamp NULL DEFAULT NULL,
+  `failed_login_attempts` int(11) NOT NULL DEFAULT 0,
+  `locked_until` timestamp NULL DEFAULT NULL,
+  `last_login_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -66,6 +69,7 @@ CREATE TABLE `users` (
   UNIQUE KEY `uk_users_phone` (`phone`),
   KEY `idx_users_role` (`role`),
   KEY `idx_users_partner_id` (`partner_id`),
+  KEY `idx_users_locked_until` (`locked_until`),
   KEY `idx_users_deleted_at` (`deleted_at`),
   CONSTRAINT `fk_user_partner` FOREIGN KEY (`partner_id`) REFERENCES `partners` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -160,10 +164,11 @@ CREATE TABLE `patients` (
 CREATE TABLE `clinical_parameters` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
-  `type` enum('numeric','text','choice') NOT NULL DEFAULT 'numeric',
+  `type` enum('numeric','text','choice','image','voice') NOT NULL DEFAULT 'numeric',
   `unit` varchar(50) DEFAULT NULL,
   `options` text DEFAULT NULL,
   `category` enum('vital_sign','lab_result','clinical_measurement','symptom','assessment') NOT NULL DEFAULT 'vital_sign',
+  `allow_self_monitoring` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -177,6 +182,7 @@ CREATE TABLE `assessments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `patient_id` int(11) NOT NULL,
   `clinical_parameter_id` int(11) NOT NULL,
+  `created_by_user_id` int(11) DEFAULT NULL,
   `value` varchar(255) NOT NULL,
   `notes` text DEFAULT NULL,
   `is_normal` tinyint(1) DEFAULT NULL,
@@ -185,9 +191,11 @@ CREATE TABLE `assessments` (
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_assessments_patient_param_date` (`patient_id`, `clinical_parameter_id`, `measured_at`),
+  KEY `idx_assessments_creator_date` (`created_by_user_id`, `created_at`),
   KEY `idx_assessments_deleted_at` (`deleted_at`),
   CONSTRAINT `fk_assessment_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_assessment_param` FOREIGN KEY (`clinical_parameter_id`) REFERENCES `clinical_parameters` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_assessment_param` FOREIGN KEY (`clinical_parameter_id`) REFERENCES `clinical_parameters` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_assessment_creator` FOREIGN KEY (`created_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 6. Health Goals
@@ -319,85 +327,137 @@ INSERT INTO `diagnoses` (`code`, `name`, `description`) VALUES
 ('J45.909', 'Unspecified asthma, uncomplicated', 'Stable outpatient asthma monitoring.');
 
 INSERT INTO `users` (`name`, `phone`, `email`, `password`, `role`, `partner_id`, `must_change_password`, `password_changed_at`) VALUES
-('System Admin', '0700000001', 'admin@taria.com', '$2a$10$K7L1OJq5Z6y.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.', 'admin', NULL, 1, NULL),
-('Navigator One', '0700000002', 'nav@taria.com', '$2a$10$K7L1OJq5Z6y.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.', 'navigator', 4, 1, NULL),
-('Clinician One', '0700000003', 'clinician@taria.com', '$2a$10$K7L1OJq5Z6y.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.', 'clinician', 4, 1, NULL),
-('Payer Liaison', '0700000004', 'payer@taria.com', '$2a$10$K7L1OJq5Z6y.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.', 'payer', 1, 1, NULL),
-('Clinic Liaison', '0700000005', 'clinic@taria.com', '$2a$10$K7L1OJq5Z6y.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.Y8uX.', 'partner', 5, 1, NULL);
+-- Default seed password for local dev: TempPass123! (users will be forced to change on first login).
+('System Admin', '0700000001', 'admin@taria.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'admin', NULL, 1, NULL),
+('Navigator One', '0700000002', 'nav@taria.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'navigator', 4, 1, NULL),
+('Clinician One', '0700000003', 'clinician@taria.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'clinician', 4, 1, NULL),
+('Partner Admin', '0700000004', 'partner@taria.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'partner', 8, 1, NULL);
 
-INSERT INTO `clinical_parameters` (`name`, `type`, `unit`, `options`, `category`) VALUES 
-('Systolic BP', 'numeric', 'mmHg', NULL, 'vital_sign'),
-('Diastolic BP', 'numeric', 'mmHg', NULL, 'vital_sign'),
-('Weight', 'numeric', 'kg', NULL, 'clinical_measurement'),
-('KCB Status', 'choice', NULL, '["Good", "Average", "Bad"]', 'assessment'),
-('Mood', 'choice', NULL, '["Happy", "Anxious", "Sad", "Calm"]', 'assessment'),
-('Clinic Notes', 'text', NULL, NULL, 'assessment');
+-- SEED MEMBER USERS (PORTAL LOGINS)
+INSERT INTO `users` (`name`, `phone`, `email`, `password`, `role`, `partner_id`, `must_change_password`, `password_changed_at`) VALUES
+('Maria Garcia', '0711000004', 'maria@example.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'user', NULL, 1, NULL),
+('Grace Njeri', '0711000006', 'grace.njeri@radiant.example.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'user', NULL, 1, NULL),
+('Peter Mwangi', '0711000007', 'peter.mwangi@radiant.example.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'user', NULL, 1, NULL),
+('Faith Achieng', '0711000008', 'faith.achieng@radiant.example.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'user', NULL, 1, NULL),
+('Daniel Kiptoo', '0711000009', 'daniel.kiptoo@radiant.example.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'user', NULL, 1, NULL);
+
+INSERT INTO `clinical_parameters` (`name`, `type`, `unit`, `options`, `category`, `allow_self_monitoring`) VALUES 
+('Systolic BP', 'numeric', 'mmHg', NULL, 'vital_sign', 1),
+('Diastolic BP', 'numeric', 'mmHg', NULL, 'vital_sign', 1),
+('Weight', 'numeric', 'kg', NULL, 'clinical_measurement', 1),
+('KCB Status', 'choice', NULL, '["Good", "Average", "Bad"]', 'assessment', 1),
+('Mood', 'choice', NULL, '["Happy", "Anxious", "Sad", "Calm"]', 'assessment', 1),
+('Clinic Notes', 'text', NULL, NULL, 'assessment', 1);
 
 -- SEED PATIENTS
-INSERT INTO `patients` (`first_name`, `surname`, `dob`, `gender`, `email`, `phone`, `status`, `primary_diagnosis`, `date_of_onboarding`) VALUES 
-('James', 'Smith', '1985-05-15', 'Male', 'james@example.com', '0711000001', 'Active', 'Hypertension', CURDATE()),
-('Robert', 'Johnson', '1972-11-20', 'Male', 'robert@example.com', '0711000002', 'Active', 'Diabetes', CURDATE()),
-('Michael', 'Brown', '1960-03-10', 'Male', 'michael@example.com', '0711000003', 'Active', 'Hypertension and Diabetes', CURDATE()),
-('Maria', 'Garcia', '1990-08-22', 'Female', 'maria@example.com', '0711000004', 'Active', 'Hypertension', CURDATE()),
-('Sarah', 'Wilson', '1982-12-05', 'Female', 'sarah@example.com', '0711000005', 'Active', 'Diabetes', CURDATE()),
-('Grace', 'Njeri', '1991-04-12', 'Female', 'grace.njeri@radiant.example.com', '0711000006', 'Active', 'Hypertension', CURDATE()),
-('Peter', 'Mwangi', '1988-09-03', 'Male', 'peter.mwangi@radiant.example.com', '0711000007', 'Active', 'Diabetes', CURDATE()),
-('Faith', 'Achieng', '1979-01-27', 'Female', 'faith.achieng@radiant.example.com', '0711000008', 'Active', 'Hypertension and Diabetes', CURDATE()),
-('Daniel', 'Kiptoo', '1994-06-18', 'Male', 'daniel.kiptoo@radiant.example.com', '0711000009', 'Pending', 'Hypertension', CURDATE());
-
-UPDATE `patients`
-SET
-  `patient_identifier` = CONCAT('PT-', YEAR(CURDATE()), '-', LPAD(`id`, 5, '0')),
-  `portal_username` = CONCAT(LOWER(`first_name`), '.', LPAD(`id`, 4, '0')),
-  `clinic_id` = CASE
-    WHEN `email` IN ('james@example.com', 'maria@example.com') THEN (SELECT `id` FROM `clinics` WHERE `name` = 'Nairobi Care Centre' LIMIT 1)
-    WHEN `email` IN ('robert@example.com', 'sarah@example.com') THEN (SELECT `id` FROM `clinics` WHERE `name` = 'Mombasa Wellness Hub' LIMIT 1)
-    WHEN `email` = 'michael@example.com' THEN (SELECT `id` FROM `clinics` WHERE `name` = 'Kisumu Outreach Clinic' LIMIT 1)
-    WHEN `email` IN (
-      'grace.njeri@radiant.example.com',
-      'peter.mwangi@radiant.example.com',
-      'faith.achieng@radiant.example.com',
-      'daniel.kiptoo@radiant.example.com'
-    ) THEN (SELECT `id` FROM `clinics` WHERE `name` = 'Radiant Hospital Group' LIMIT 1)
-    ELSE `clinic_id`
-  END,
-  `partner_id` = CASE
-    WHEN `email` IN ('james@example.com', 'maria@example.com') THEN (SELECT `id` FROM `partners` WHERE `name` = 'Aetna Insurance' AND `partner_type` = 'insurance' LIMIT 1)
-    WHEN `email` IN ('robert@example.com', 'sarah@example.com') THEN (SELECT `id` FROM `partners` WHERE `name` = 'Blue Cross' AND `partner_type` = 'insurance' LIMIT 1)
-    WHEN `email` = 'michael@example.com' THEN (SELECT `id` FROM `partners` WHERE `name` = 'Self-Pay' AND `partner_type` = 'insurance' LIMIT 1)
-    WHEN `email` IN (
-      'grace.njeri@radiant.example.com',
-      'peter.mwangi@radiant.example.com',
-      'faith.achieng@radiant.example.com',
-      'daniel.kiptoo@radiant.example.com'
-    ) THEN (SELECT `id` FROM `partners` WHERE `name` = 'Radiant' AND `partner_type` = 'insurance' LIMIT 1)
-    ELSE `partner_id`
-  END,
-  `primary_diagnosis_id` = CASE
-    WHEN `primary_diagnosis` = 'Diabetes' THEN 1
-    WHEN `primary_diagnosis` = 'Hypertension' THEN 2
-    ELSE 1
-  END,
-  `policy_number` = CONCAT('POL-', LPAD(`id`, 5, '0')),
-  `coverage_limits` = 'Standard annual outpatient cover',
-  `pre_authorization_status` = 'Not Required',
-  `emergency_contact_name` = CONCAT('Contact ', `id`),
-  `emergency_contact_phone` = CONCAT('07220000', LPAD(`id`, 2, '0')),
-  `emergency_contact_relation` = 'Sibling',
-  `emergency_contact_email` = CONCAT('contact', `id`, '@example.com'),
-  `allergies_intolerances` = 'None documented',
-  `past_medical_history` = 'Routine follow-up care',
-  `surgical_history` = 'No major surgical history reported',
-  `family_history` = 'Family history captured at intake',
-  `social_history` = 'Lives with family and has phone access',
-  `comorbid_conditions` = CASE
-    WHEN `email` = 'michael@example.com' THEN 'Obesity'
-    WHEN `email` = 'sarah@example.com' THEN 'Asthma'
-    WHEN `email` = 'faith.achieng@radiant.example.com' THEN 'Type 2 diabetes, dyslipidemia'
-    WHEN `email` = 'daniel.kiptoo@radiant.example.com' THEN 'Obesity'
-    ELSE ''
-  END
-WHERE `patient_identifier` IS NULL;
+INSERT INTO `patients` (
+  `user_id`,
+  `patient_identifier`,
+  `portal_username`,
+  `first_name`,
+  `surname`,
+  `dob`,
+  `gender`,
+  `email`,
+  `phone`,
+  `status`,
+  `primary_diagnosis`,
+  `date_of_onboarding`,
+  `navigator_id`,
+  `clinic_id`,
+  `partner_id`,
+  `primary_diagnosis_id`
+) VALUES 
+(
+  (SELECT `id` FROM `users` WHERE `phone` = '0711000004' LIMIT 1),
+  CONCAT('PT-', YEAR(CURDATE()), '-', LPAD(1, 5, '0')),
+  'maria.0004',
+  'Maria',
+  'Garcia',
+  '1990-08-22',
+  'Female',
+  'maria@example.com',
+  '0711000004',
+  'Active',
+  'Hypertension',
+  CURDATE(),
+  (SELECT `id` FROM `users` WHERE `phone` = '0700000002' LIMIT 1),
+  (SELECT `id` FROM `clinics` WHERE `name` = 'Nairobi Care Centre' LIMIT 1),
+  (SELECT `id` FROM `partners` WHERE `name` = 'Aetna Insurance' AND `partner_type` = 'insurance' LIMIT 1),
+  2
+),
+(
+  (SELECT `id` FROM `users` WHERE `phone` = '0711000006' LIMIT 1),
+  CONCAT('PT-', YEAR(CURDATE()), '-', LPAD(2, 5, '0')),
+  'grace.0006',
+  'Grace',
+  'Njeri',
+  '1991-04-12',
+  'Female',
+  'grace.njeri@radiant.example.com',
+  '0711000006',
+  'Active',
+  'Hypertension',
+  CURDATE(),
+  (SELECT `id` FROM `users` WHERE `phone` = '0700000002' LIMIT 1),
+  (SELECT `id` FROM `clinics` WHERE `name` = 'Radiant Hospital Group' LIMIT 1),
+  (SELECT `id` FROM `partners` WHERE `name` = 'Radiant' AND `partner_type` = 'insurance' LIMIT 1),
+  2
+),
+(
+  (SELECT `id` FROM `users` WHERE `phone` = '0711000007' LIMIT 1),
+  CONCAT('PT-', YEAR(CURDATE()), '-', LPAD(3, 5, '0')),
+  'peter.0007',
+  'Peter',
+  'Mwangi',
+  '1988-09-03',
+  'Male',
+  'peter.mwangi@radiant.example.com',
+  '0711000007',
+  'Active',
+  'Diabetes',
+  CURDATE(),
+  (SELECT `id` FROM `users` WHERE `phone` = '0700000002' LIMIT 1),
+  (SELECT `id` FROM `clinics` WHERE `name` = 'Radiant Hospital Group' LIMIT 1),
+  (SELECT `id` FROM `partners` WHERE `name` = 'Radiant' AND `partner_type` = 'insurance' LIMIT 1),
+  1
+),
+(
+  (SELECT `id` FROM `users` WHERE `phone` = '0711000008' LIMIT 1),
+  CONCAT('PT-', YEAR(CURDATE()), '-', LPAD(4, 5, '0')),
+  'faith.0008',
+  'Faith',
+  'Achieng',
+  '1979-01-27',
+  'Female',
+  'faith.achieng@radiant.example.com',
+  '0711000008',
+  'Active',
+  'Hypertension and Diabetes',
+  CURDATE(),
+  (SELECT `id` FROM `users` WHERE `phone` = '0700000002' LIMIT 1),
+  (SELECT `id` FROM `clinics` WHERE `name` = 'Radiant Hospital Group' LIMIT 1),
+  (SELECT `id` FROM `partners` WHERE `name` = 'Radiant' AND `partner_type` = 'insurance' LIMIT 1),
+  1
+),
+(
+  (SELECT `id` FROM `users` WHERE `phone` = '0711000009' LIMIT 1),
+  CONCAT('PT-', YEAR(CURDATE()), '-', LPAD(5, 5, '0')),
+  'daniel.0009',
+  'Daniel',
+  'Kiptoo',
+  '1994-06-18',
+  'Male',
+  'daniel.kiptoo@radiant.example.com',
+  '0711000009',
+  'Active',
+  'Hypertension',
+  CURDATE(),
+  (SELECT `id` FROM `users` WHERE `phone` = '0700000002' LIMIT 1),
+  (SELECT `id` FROM `clinics` WHERE `name` = 'Radiant Hospital Group' LIMIT 1),
+  (SELECT `id` FROM `partners` WHERE `name` = 'Radiant' AND `partner_type` = 'insurance' LIMIT 1),
+  2
+);
 
 INSERT INTO `medications` (`name`, `dosage`) VALUES
 ('Metformin', '500mg'),

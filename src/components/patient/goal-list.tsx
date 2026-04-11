@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import type { Patient, Goal, ClinicalParameter } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,19 +8,6 @@ import { PlusCircle, Trash2, Edit } from 'lucide-react';
 import AddGoalModal from './add-goal-modal';
 
 export default function GoalList({ patient, goals, clinicalParameters, onGoalsUpdate }: { patient: Patient, goals: Goal[], clinicalParameters: ClinicalParameter[], onGoalsUpdate: (goals: Goal[]) => void }) {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
-    
-    const handleAddGoal = () => {
-        setEditingGoal(null);
-        setIsModalOpen(true);
-    }
-
-    const handleEditGoal = (goal: Goal) => {
-        setEditingGoal(goal);
-        setIsModalOpen(true);
-    }
-
     const handleSaveGoal = (newGoalData: Omit<Goal, 'id' | 'patient_id' | 'created_at'> & { id?: number }) => {
         let updatedGoals;
         if (newGoalData.id) {
@@ -36,8 +22,6 @@ export default function GoalList({ patient, goals, clinicalParameters, onGoalsUp
             updatedGoals = [...goals, fullGoal];
         }
         onGoalsUpdate(updatedGoals);
-        setIsModalOpen(false);
-        setEditingGoal(null);
     }
 
     const handleDeleteGoal = (id: number) => {
@@ -53,9 +37,16 @@ export default function GoalList({ patient, goals, clinicalParameters, onGoalsUp
         <div className="space-y-6 pt-6">
             <div className="flex items-center justify-between">
                 <div />
-                <Button onClick={handleAddGoal}>
-                    <PlusCircle className="mr-2" /> Add Goal
-                </Button>
+                <AddGoalModal
+                    trigger={
+                        <Button>
+                            <PlusCircle className="mr-2" /> Add Goal
+                        </Button>
+                    }
+                    onSave={handleSaveGoal}
+                    clinicalParameters={clinicalParameters}
+                    existingGoal={null}
+                />
             </div>
              <Card>
                 <CardHeader>
@@ -79,9 +70,16 @@ export default function GoalList({ patient, goals, clinicalParameters, onGoalsUp
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Badge variant={goal.status === 'active' ? 'default' : 'secondary'}>{goal.status}</Badge>
-                                        <Button variant="ghost" size="icon" onClick={() => handleEditGoal(goal)}>
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
+                                        <AddGoalModal
+                                            trigger={
+                                                <Button variant="ghost" size="icon">
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                            }
+                                            onSave={handleSaveGoal}
+                                            clinicalParameters={clinicalParameters}
+                                            existingGoal={goal}
+                                        />
                                         <Button variant="ghost" size="icon" onClick={() => handleDeleteGoal(goal.id)}>
                                             <Trash2 className="h-4 w-4 text-red-500" />
                                         </Button>
@@ -94,16 +92,6 @@ export default function GoalList({ patient, goals, clinicalParameters, onGoalsUp
                     )}
                 </CardContent>
             </Card>
-
-            {isModalOpen && (
-                <AddGoalModal 
-                    isOpen={isModalOpen}
-                    onClose={() => { setIsModalOpen(false); setEditingGoal(null); }}
-                    onSave={handleSaveGoal}
-                    clinicalParameters={clinicalParameters}
-                    existingGoal={editingGoal}
-                />
-            )}
         </div>
     );
 }

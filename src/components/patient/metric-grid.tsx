@@ -1,33 +1,35 @@
 'use client';
-import { useState } from 'react';
 import type { Patient, ClinicalParameter, Assessment } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, TrendingUp } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import AddAssessmentModal from './add-assessment-modal';
-import { format, subDays } from 'date-fns';
+import { FileAudio, Image as ImageIcon } from 'lucide-react';
 
 type MetricCardProps = {
   parameter: ClinicalParameter;
   assessments: Assessment[];
-  onAddAssessment: (parameter: ClinicalParameter) => void;
+  onSaveAssessment: (assessment: Omit<Assessment, 'id' | 'patient_id' | 'created_at'> & { id?: number }) => void;
 };
 
-const MetricCard = ({ parameter, assessments, onAddAssessment }: MetricCardProps) => {
+const MetricCard = ({ parameter, assessments, onSaveAssessment }: MetricCardProps) => {
   const latestAssessment = assessments
     .filter(a => a.clinical_parameter_id === parameter.id)
     .sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())[0];
 
-  const history = assessments
-    .filter(a => a.clinical_parameter_id === parameter.id)
-    .sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())
-    .slice(-10) // Get last 10 for chart
-    .map(a => ({
-      date: new Date(a.measured_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      value: parseFloat(a.value),
-    }));
+  const history = parameter.type === 'numeric'
+    ? assessments
+        .filter(a => a.clinical_parameter_id === parameter.id)
+        .sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())
+        .slice(-10) // Get last 10 for chart
+        .map(a => ({
+          date: new Date(a.measured_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          value: parseFloat(a.value),
+        }))
+        .filter((d) => Number.isFinite(d.value))
+    : [];
 
   const chartConfig = {
     value: {
@@ -44,16 +46,39 @@ const MetricCard = ({ parameter, assessments, onAddAssessment }: MetricCardProps
                  <CardTitle className="text-lg">{parameter.name}</CardTitle>
                  {parameter.unit && <CardDescription>{parameter.unit}</CardDescription>}
             </div>
-            <Button variant="ghost" size="icon" onClick={() => onAddAssessment(parameter)}>
-                <PlusCircle className="h-5 w-5 text-muted-foreground" />
-            </Button>
+            <AddAssessmentModal
+              trigger={
+                <Button variant="ghost" size="icon">
+                  <PlusCircle className="h-5 w-5 text-muted-foreground" />
+                </Button>
+              }
+              parameter={parameter}
+              existingAssessment={null}
+              onSave={onSaveAssessment}
+            />
         </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col justify-between">
         <div>
             {latestAssessment ? (
             <>
-                <p className="text-4xl font-bold">{latestAssessment.value}</p>
+                {parameter.type === 'image' ? (
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                    <a href={latestAssessment.value} target="_blank" rel="noreferrer" className="text-sm font-semibold text-primary hover:underline">
+                      View photo
+                    </a>
+                  </div>
+                ) : parameter.type === 'voice' ? (
+                  <div className="flex items-center gap-2">
+                    <FileAudio className="h-4 w-4 text-muted-foreground" />
+                    <a href={latestAssessment.value} target="_blank" rel="noreferrer" className="text-sm font-semibold text-primary hover:underline">
+                      Play voice note
+                    </a>
+                  </div>
+                ) : (
+                  <p className="text-4xl font-bold">{latestAssessment.value}</p>
+                )}
                 <p className="text-sm text-muted-foreground">
                 Measured on {new Date(latestAssessment.measured_at).toLocaleDateString()}
                 </p>
@@ -81,15 +106,7 @@ const MetricCard = ({ parameter, assessments, onAddAssessment }: MetricCardProps
 };
 
 export default function MetricGrid({ patient, clinicalParameters, onAssessmentsUpdate }: { patient: Patient, clinicalParameters: ClinicalParameter[], onAssessmentsUpdate: (assessments: Assessment[]) => void }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedParameter, setSelectedParameter] = useState<ClinicalParameter | null>(null);
-
-  const handleAddAssessmentClick = (parameter: ClinicalParameter) => {
-    setSelectedParameter(parameter);
-    setIsModalOpen(true);
-  };
-  
-  const handleSaveAssessment = (newAssessment: Omit<Assessment, 'id' | 'patient_id' | 'created_at'>) => {
+  const handleSaveAssessment = (newAssessment: Omit<Assessment, 'id' | 'patient_id' | 'created_at'> & { id?: number }) => {
     const fullAssessment: Assessment = {
         id: Date.now(),
         patient_id: patient.id,
@@ -97,7 +114,6 @@ export default function MetricGrid({ patient, clinicalParameters, onAssessmentsU
         ...newAssessment
     };
     onAssessmentsUpdate([...patient.assessments, fullAssessment]);
-    setIsModalOpen(false);
   }
 
   return (
@@ -108,19 +124,10 @@ export default function MetricGrid({ patient, clinicalParameters, onAssessmentsU
             key={param.id}
             parameter={param}
             assessments={patient.assessments}
-            onAddAssessment={handleAddAssessmentClick}
+            onSaveAssessment={handleSaveAssessment}
           />
         ))}
       </div>
-
-       {isModalOpen && selectedParameter && (
-        <AddAssessmentModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          parameter={selectedParameter}
-          onSave={handleSaveAssessment}
-        />
-      )}
     </div>
   );
 }

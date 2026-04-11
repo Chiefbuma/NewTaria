@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Patient, ClinicalParameter, Assessment, Goal } from '@/lib/types';
 import {
   Card,
@@ -9,6 +9,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   LineChart,
   Line,
@@ -20,10 +26,24 @@ import {
   PieChart,
   Pie,
   Cell,
+  ReferenceLine,
 } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Target, FileText } from 'lucide-react';
+import { BarChart, Target, FileText, Plus, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { createAssessment, createPatientAssessment, deletePatientAssessment, updatePatientAssessment } from '@/lib/api-service';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: Assessment[], parameter: ClinicalParameter, goal?: Goal | null }) => {
     
@@ -137,7 +157,7 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
     )
 }
 
-const ParameterTextTable = ({ assessments }: { assessments: Assessment[] }) => {
+const ParameterTextTable = ({ assessments, parameter }: { assessments: Assessment[]; parameter: ClinicalParameter }) => {
     const latestAssessments = assessments
         .sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())
         .slice(0, 4);
@@ -157,7 +177,16 @@ const ParameterTextTable = ({ assessments }: { assessments: Assessment[] }) => {
                                         {format(new Date(a.measured_at), 'MMM dd, yyyy')}
                                     </span>
                                 </div>
-                                <p className="text-sm text-foreground leading-relaxed">{a.value}</p>
+                                {parameter.type === 'image' ? (
+                                  <a href={a.value} target="_blank" rel="noreferrer" className="block">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={a.value} alt="Assessment upload" className="mt-1 max-h-[220px] w-full rounded-md object-contain" />
+                                  </a>
+                                ) : parameter.type === 'voice' ? (
+                                  <audio controls src={a.value} className="mt-1 w-full" />
+                                ) : (
+                                  <p className="text-sm text-foreground leading-relaxed">{a.value}</p>
+                                )}
                                 {a.notes && <p className="text-[10px] text-muted-foreground mt-1 italic">"{a.notes}"</p>}
                             </div>
                         ))}
@@ -172,7 +201,7 @@ const ParameterTextTable = ({ assessments }: { assessments: Assessment[] }) => {
     );
 };
 
-const ParameterLineChart = ({ assessments, parameter }: { assessments: Assessment[], parameter: ClinicalParameter }) => {
+const ParameterLineChart = ({ assessments, parameter, goal }: { assessments: Assessment[], parameter: ClinicalParameter, goal?: Goal | null }) => {
     const chartData = useMemo(() => {
         const dailySummary: { [date: string]: { sum: number, count: number } } = {};
 
@@ -199,6 +228,24 @@ const ParameterLineChart = ({ assessments, parameter }: { assessments: Assessmen
 
     }, [assessments]);
 
+    const targetValue = useMemo(() => {
+        if (!goal) return null;
+        const t = parseFloat(goal.target_value);
+        return Number.isFinite(t) ? t : null;
+    }, [goal]);
+
+    const yDomain = useMemo((): [number, number] | undefined => {
+        if (chartData.length === 0) return undefined;
+        const values = chartData.map((d) => d.value);
+        const minValue = Math.min(...values, targetValue ?? Infinity);
+        const maxValue = Math.max(...values, targetValue ?? -Infinity);
+
+        // Give the chart a little breathing room; fall back to +/-1 when flat.
+        const span = maxValue - minValue;
+        const pad = span > 0 ? span * 0.12 : 1;
+        return [minValue - pad, maxValue + pad];
+    }, [chartData, targetValue]);
+
     const chartConfig = {
         value: { label: parameter.name, color: 'hsl(var(--primary))' }
     };
@@ -222,11 +269,26 @@ const ParameterLineChart = ({ assessments, parameter }: { assessments: Assessmen
                                         tick={{ fill: 'hsl(var(--foreground))', fontSize: 10 }}
                                     />
                                     <YAxis 
+                                        domain={yDomain}
                                         axisLine={false} 
                                         tickLine={false} 
                                         tick={{ fill: 'hsl(var(--foreground))', fontSize: 10 }}
                                     />
                                     <Tooltip content={<ChartTooltipContent labelKey="fullDate" />} />
+                                    {targetValue !== null && (
+                                        <ReferenceLine
+                                            y={targetValue}
+                                            stroke="hsla(var(--muted-foreground), 0.55)"
+                                            strokeDasharray="4 4"
+                                            ifOverflow="extendDomain"
+                                            label={{
+                                                value: `Target ${goal?.target_operator ?? ''} ${goal?.target_value ?? ''}`.trim(),
+                                                position: 'insideTopRight',
+                                                fill: 'hsla(var(--muted-foreground), 0.9)',
+                                                fontSize: 10,
+                                            }}
+                                        />
+                                    )}
                                     <Line 
                                         type="monotone" 
                                         dataKey="value" 
@@ -250,19 +312,289 @@ const ParameterLineChart = ({ assessments, parameter }: { assessments: Assessmen
     );
 };
 
+function todayYmd() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function SelfMonitorPopover({
+  parameter,
+  goal,
+  patientId,
+  mode,
+  intent = 'create',
+  existingAssessment,
+  onCreated,
+  onUpdated,
+}: {
+  parameter: ClinicalParameter;
+  goal: Goal;
+  patientId: number;
+  mode: 'patient' | 'staff';
+  intent?: 'create' | 'edit';
+  existingAssessment?: Assessment | null;
+  onCreated: (assessment: Assessment) => void;
+  onUpdated?: (assessment: Assessment) => void;
+}) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(existingAssessment?.value ?? '');
+  const [notes, setNotes] = useState(existingAssessment?.notes ?? '');
+  const [date, setDate] = useState(() => {
+    if (!existingAssessment?.measured_at) return todayYmd();
+    const d = new Date(existingAssessment.measured_at);
+    if (Number.isNaN(d.getTime())) return todayYmd();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  });
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    if (intent === 'edit' && existingAssessment) {
+      setValue(existingAssessment.value ?? '');
+      setNotes(existingAssessment.notes ?? '');
+      const d = new Date(existingAssessment.measured_at);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      setDate(
+        Number.isNaN(d.getTime())
+          ? todayYmd()
+          : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+      );
+      return;
+    }
+    // Create: reset to a clean form when opening.
+    setValue('');
+    setNotes('');
+    setDate(todayYmd());
+  }, [open, intent, existingAssessment?.id]);
+
+  const uploadFile = async (file: File, kind: 'image' | 'voice') => {
+    const formData = new FormData();
+    formData.set('kind', kind);
+    formData.set('file', file);
+    const res = await fetch('/api/uploads', { method: 'POST', body: formData });
+    if (!res.ok) {
+      let msg = `Upload failed (${res.status})`;
+      try {
+        const data = await res.json();
+        msg = data?.error || msg;
+      } catch { /* ignore */ }
+      throw new Error(msg);
+    }
+    return res.json() as Promise<{ url: string }>;
+  };
+
+  const handleFileChange = async (file: File | null) => {
+    if (!file) return;
+    if (parameter.type !== 'image' && parameter.type !== 'voice') return;
+
+    try {
+      setIsUploading(true);
+      const result = await uploadFile(file, parameter.type);
+      setValue(result.url);
+      toast({ title: 'Uploaded', description: 'Attachment ready to submit.' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Upload failed', description: e?.message || 'Could not upload file.' });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const submit = async () => {
+    if (isUploading) return;
+    if (!date || !value.trim()) {
+      toast({ variant: 'destructive', title: 'Missing details', description: 'Please enter a value and a date.' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (existingAssessment?.id && mode === 'patient') {
+        const updated = await updatePatientAssessment({
+          id: existingAssessment.id,
+          value: value.trim(),
+          measured_at: date,
+          notes: notes.trim() ? notes.trim() : null,
+        });
+        onUpdated?.(updated);
+        toast({ title: 'Updated', description: 'Your latest check-in has been updated.' });
+      } else {
+        const created =
+          mode === 'patient'
+            ? await createPatientAssessment({
+                clinical_parameter_id: parameter.id,
+                value: value.trim(),
+                measured_at: date, // date-only (no time)
+                notes: notes.trim() ? notes.trim() : null,
+              })
+            : await createAssessment({
+                patient_id: patientId,
+                clinical_parameter_id: parameter.id,
+                value: value.trim(),
+                measured_at: date, // date-only (no time)
+                notes: notes.trim() ? notes.trim() : null,
+                is_normal: null,
+              });
+        onCreated(created);
+        toast({ title: 'Saved', description: 'Your check-in has been recorded.' });
+      }
+      setOpen(false);
+      setValue('');
+      setNotes('');
+      setDate(todayYmd());
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: e?.message || 'Could not save assessment.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const valueLabel =
+    parameter.type === 'image' ? 'Photo' :
+    parameter.type === 'voice' ? 'Voice note' :
+    'Value';
+
+  const renderValueInput = () => {
+    if (parameter.type === 'numeric') {
+      return <Input type="number" step="any" className="h-8" value={value} onChange={(e) => setValue(e.target.value)} />;
+    }
+    if (parameter.type === 'choice') {
+      return (
+        <Select value={value} onValueChange={setValue}>
+          <SelectTrigger className="h-8">
+            <SelectValue placeholder="Select..." />
+          </SelectTrigger>
+          <SelectContent>
+            {(parameter.options ?? []).map((opt) => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+    if (parameter.type === 'text') {
+      return <Textarea className="min-h-20" value={value} onChange={(e) => setValue(e.target.value)} />;
+    }
+    if (parameter.type === 'image') {
+      return (
+        <div className="space-y-2">
+          <Input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            disabled={isUploading}
+            onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
+          />
+          {value ? (
+            <div className="rounded-md border border-border bg-muted/20 p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={value} alt="Uploaded photo" className="max-h-44 w-full rounded object-contain" />
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">Upload a photo (or use camera capture on mobile).</p>
+          )}
+        </div>
+      );
+    }
+    if (parameter.type === 'voice') {
+      return (
+        <div className="space-y-2">
+          <Input
+            type="file"
+            accept="audio/*"
+            capture="user"
+            disabled={isUploading}
+            onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
+          />
+          {value ? (
+            <div className="rounded-md border border-border bg-muted/20 p-2">
+              <audio controls src={value} className="w-full" />
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">Upload a voice note (or use microphone capture on mobile).</p>
+          )}
+        </div>
+      );
+    }
+    return <Input className="h-8" value={value} onChange={(e) => setValue(e.target.value)} />;
+  };
+
+  const triggerLabel = intent === 'edit' ? 'Edit latest check-in' : 'Add check-in';
+  const TriggerIcon = intent === 'edit' ? Pencil : Plus;
+
+  return (
+    <Popover open={open} onOpenChange={(v) => setOpen(v)}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          className="h-8 w-8 rounded-xl"
+          title={triggerLabel}
+        >
+          <TriggerIcon className="h-4 w-4" />
+          <span className="sr-only">{triggerLabel}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[360px] p-4">
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">{intent === 'edit' ? 'Edit latest check-in' : 'Add check-in'}</p>
+            <p className="text-[11px] text-muted-foreground">
+              Target: {goal.target_operator} {goal.target_value}
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Date</Label>
+            <Input type="date" className="h-8" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{valueLabel}</Label>
+            {renderValueInput()}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Notes (optional)</Label>
+            <Textarea className="min-h-16" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting || isUploading}>
+              Cancel
+            </Button>
+            <Button type="button" className="h-8" onClick={submit} disabled={isSubmitting || isUploading || !value.trim() || !date}>
+              {(isSubmitting || isUploading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Save
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function ProgressDashboard({ 
     patient, 
     clinicalParameters,
-    fromDate,
-    toDate,
     patientView = false,
+    onAssessmentsUpdate,
+    checkInMode = 'staff',
+    currentUserId,
 }: { 
     patient: Patient, 
     clinicalParameters: ClinicalParameter[],
-    fromDate: Date,
-    toDate: Date,
     patientView?: boolean,
+    onAssessmentsUpdate?: (assessments: Assessment[]) => void,
+    checkInMode?: 'patient' | 'staff' | 'none',
+    currentUserId?: number | null,
 }) {
+    const { toast } = useToast();
+    const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
     
     const trackedParameters = useMemo(() => {
         const latestGoalByParameter = new Map<number, Goal>();
@@ -281,26 +613,34 @@ export default function ProgressDashboard({
                 if (!parameter) return null;
 
                 const assessments = patient.assessments
-                    .filter((assessment) => {
-                        const measuredAt = new Date(assessment.measured_at);
-                        return (
-                            assessment.clinical_parameter_id === parameterId &&
-                            measuredAt >= fromDate &&
-                            measuredAt <= toDate
-                        );
-                    })
+                    .filter((assessment) => assessment.clinical_parameter_id === parameterId && (assessment.deleted_at == null))
                     .sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
 
                 return { parameter, goal, assessments };
             })
             .filter((item): item is { parameter: ClinicalParameter; goal: Goal; assessments: Assessment[] } => !!item);
-    }, [patient.goals, patient.assessments, clinicalParameters, fromDate, toDate]);
+    }, [patient.goals, patient.assessments, clinicalParameters]);
 
 
     return (
         <div className={patientView ? "space-y-6" : "space-y-10"}>
             {trackedParameters.length > 0 ? (
                 trackedParameters.map(({ parameter, assessments, goal }) => {
+                    const latestMine =
+                      checkInMode === 'patient' && currentUserId
+                        ? [...patient.assessments]
+                            .filter(
+                              (a) =>
+                                a.deleted_at == null &&
+                                a.clinical_parameter_id === parameter.id &&
+                                Number(a.created_by_user_id ?? 0) === Number(currentUserId)
+                            )
+                            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                            [0] ?? null
+                        : null;
+                    const canShowCheckInControls =
+                      checkInMode !== 'none' &&
+                      (checkInMode !== 'patient' || Boolean(parameter.allow_self_monitoring));
                     return (
                         <Card key={parameter.id} className="overflow-hidden border-primary/10 shadow-[0_24px_50px_-34px_rgba(15,23,42,0.22)]">
                             <CardHeader className="bg-muted/30">
@@ -313,9 +653,87 @@ export default function ProgressDashboard({
                                             </span>
                                         )}
                                     </div>
-                                    <span className="rounded bg-background px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                                        {parameter.type}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      {canShowCheckInControls ? (
+                                        <div className="flex items-center gap-1.5">
+                                          <SelfMonitorPopover
+                                            parameter={parameter}
+                                            goal={goal}
+                                            patientId={patient.id}
+                                            mode={checkInMode === 'patient' ? 'patient' : 'staff'}
+                                            onCreated={(created) => {
+                                              const updated = [...patient.assessments, created];
+                                              onAssessmentsUpdate?.(updated);
+                                            }}
+                                          />
+                                          {checkInMode === 'patient' && latestMine ? (
+                                            <>
+                                              <SelfMonitorPopover
+                                                intent="edit"
+                                                parameter={parameter}
+                                                goal={goal}
+                                                patientId={patient.id}
+                                                mode="patient"
+                                                existingAssessment={latestMine}
+                                                onCreated={() => {}}
+                                                onUpdated={(updatedRow) => {
+                                                  const updated = patient.assessments.map((a) => a.id === updatedRow.id ? { ...a, ...updatedRow } : a);
+                                                  onAssessmentsUpdate?.(updated);
+                                                }}
+                                              />
+
+                                              <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                  <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="outline"
+                                                    className="h-8 w-8 rounded-xl text-destructive"
+                                                    title="Delete latest check-in"
+                                                    disabled={pendingDeleteId === latestMine.id}
+                                                  >
+                                                    <Trash2 className="h-4 w-4" />
+                                                    <span className="sr-only">Delete latest check-in</span>
+                                                  </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                  <AlertDialogHeader>
+                                                    <AlertDialogTitle>Delete latest check-in?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                      This will remove your most recent check-in for this goal. You can only delete the latest one.
+                                                    </AlertDialogDescription>
+                                                  </AlertDialogHeader>
+                                                  <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction
+                                                      className="bg-destructive hover:bg-destructive/90"
+                                                      onClick={async () => {
+                                                        try {
+                                                          setPendingDeleteId(latestMine.id);
+                                                          await deletePatientAssessment(latestMine.id);
+                                                          const updated = patient.assessments.filter((a) => a.id !== latestMine.id);
+                                                          onAssessmentsUpdate?.(updated);
+                                                          toast({ title: 'Deleted', description: 'Your latest check-in was deleted.' });
+                                                        } catch (e: any) {
+                                                          toast({ variant: 'destructive', title: 'Error', description: e?.message || 'Failed to delete check-in.' });
+                                                        } finally {
+                                                          setPendingDeleteId(null);
+                                                        }
+                                                      }}
+                                                    >
+                                                      Delete
+                                                    </AlertDialogAction>
+                                                  </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                              </AlertDialog>
+                                            </>
+                                          ) : null}
+                                        </div>
+                                      ) : null}
+                                      <span className="rounded bg-background px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                                          {parameter.type}
+                                      </span>
+                                    </div>
                                 </div>
                                 <p className="text-sm text-muted-foreground">
                                     {goal ? `Target: ${goal.target_operator} ${goal.target_value}` : 'Recent activity and progress summary'}
@@ -329,7 +747,7 @@ export default function ProgressDashboard({
                                                 <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
                                             </div>
                                             <div className="lg:col-span-8">
-                                                <ParameterLineChart assessments={assessments} parameter={parameter} />
+                                                <ParameterLineChart assessments={assessments} parameter={parameter} goal={goal} />
                                             </div>
                                         </>
                                     ) : parameter.type === 'choice' ? (
@@ -338,12 +756,12 @@ export default function ProgressDashboard({
                                                 <ParameterDonutChart assessments={assessments} parameter={parameter} goal={goal} />
                                             </div>
                                             <div className="lg:col-span-8">
-                                                <ParameterTextTable assessments={assessments} />
+                                                <ParameterTextTable assessments={assessments} parameter={parameter} />
                                             </div>
                                         </>
                                     ) : (
                                         <div className="lg:col-span-12">
-                                            <ParameterTextTable assessments={assessments} />
+                                            <ParameterTextTable assessments={assessments} parameter={parameter} />
                                         </div>
                                     )}
                                 </div>

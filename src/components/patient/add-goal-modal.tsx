@@ -1,32 +1,32 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import type { Goal, ClinicalParameter } from '@/lib/types';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
+import { useEffect, useMemo, useState } from 'react';
+import type { ClinicalParameter, Goal } from '@/lib/types';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
-interface AddGoalModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+export default function AddGoalModal({
+  trigger,
+  onSave,
+  clinicalParameters,
+  existingGoal,
+  disabled = false,
+  align = 'end',
+}: {
+  trigger: React.ReactNode;
   onSave: (goal: Omit<Goal, 'id' | 'patient_id' | 'created_at'> & { id?: number }) => void;
   clinicalParameters: ClinicalParameter[];
   existingGoal?: Goal | null;
-}
-
-export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParameters, existingGoal }: AddGoalModalProps) {
+  disabled?: boolean;
+  align?: 'start' | 'center' | 'end';
+}) {
+  const [open, setOpen] = useState(false);
   const [clinicalParameterId, setClinicalParameterId] = useState('');
   const [targetValue, setTargetValue] = useState('');
   const [targetOperator, setTargetOperator] = useState<'<' | '<=' | '=' | '>=' | '>'>('<=');
@@ -34,14 +34,15 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
   const [deadline, setDeadline] = useState('');
   const { toast } = useToast();
 
-  const selectedParameter = clinicalParameters.find((p) => p.id.toString() === clinicalParameterId);
+  const selectedParameter = useMemo(
+    () => clinicalParameters.find((p) => p.id.toString() === clinicalParameterId),
+    [clinicalParameters, clinicalParameterId]
+  );
 
   useEffect(() => {
+    if (!open) return;
     if (existingGoal) {
-      const safeDeadline = existingGoal.deadline
-        ? new Date(existingGoal.deadline).toISOString().split('T')[0]
-        : '';
-
+      const safeDeadline = existingGoal.deadline ? new Date(existingGoal.deadline).toISOString().split('T')[0] : '';
       setClinicalParameterId(existingGoal.clinical_parameter_id?.toString() ?? '');
       setTargetValue(existingGoal.target_value ?? '');
       setTargetOperator(existingGoal.target_operator ?? '<=');
@@ -54,7 +55,52 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
       setNotes('');
       setDeadline('');
     }
-  }, [existingGoal, isOpen]);
+  }, [existingGoal, open]);
+
+  const renderTargetInput = () => {
+    if (!selectedParameter) {
+      return <Input disabled readOnly value="" className="h-8" />;
+    }
+
+    switch (selectedParameter.type) {
+      case 'numeric':
+        return (
+          <Input
+            type="number"
+            step="any"
+            value={targetValue ?? ''}
+            onChange={(e) => setTargetValue(e.target.value)}
+            required
+            className="h-8"
+          />
+        );
+      case 'choice':
+        return (
+          <Select onValueChange={setTargetValue} value={targetValue ?? ''} required>
+            <SelectTrigger className="h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {selectedParameter.options?.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      default:
+        return (
+          <Input
+            type="text"
+            value={targetValue ?? ''}
+            onChange={(e) => setTargetValue(e.target.value)}
+            required
+            className="h-8"
+          />
+        );
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,110 +122,89 @@ export default function AddGoalModal({ isOpen, onClose, onSave, clinicalParamete
       deadline: new Date(deadline).toISOString(),
       status: existingGoal?.status || 'active',
     });
-  };
-
-  const renderTargetInput = () => {
-    if (!selectedParameter) {
-      return <Input disabled readOnly value="" className="h-8 border-primary/20" />;
-    }
-
-    switch (selectedParameter.type) {
-      case 'numeric':
-        return (
-          <Input
-            type="number"
-            step="any"
-            value={targetValue ?? ''}
-            onChange={(e) => setTargetValue(e.target.value)}
-            required
-            className="h-8 border-primary/20"
-          />
-        );
-      case 'choice':
-        return (
-          <Select onValueChange={setTargetValue} value={targetValue ?? ''} required>
-            <SelectTrigger className="h-8 border-primary/20">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {selectedParameter.options?.map((option) => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-      default:
-        return (
-          <Input
-            type="text"
-            value={targetValue ?? ''}
-            onChange={(e) => setTargetValue(e.target.value)}
-            required
-            className="h-8 border-primary/20"
-          />
-        );
-    }
+    setOpen(false);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="border-primary/20 sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold">{existingGoal ? 'Edit Goal' : 'Add New Goal'}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-3 py-4">
-            <InlineField label="Parameter" htmlFor="parameter">
-              <Select onValueChange={setClinicalParameterId} value={clinicalParameterId} required>
-                <SelectTrigger id="parameter" className="h-8 border-primary/20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {clinicalParameters.map(p => (
-                    <SelectItem key={p.id} value={p.id.toString()}>{p.name} {p.unit ? `(${p.unit})` : ''}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </InlineField>
-
-            <InlineField label="Target Value" htmlFor="targetValue">
-              {renderTargetInput()}
-            </InlineField>
-
-            <InlineField label="Operator" htmlFor="operator">
-              <Select onValueChange={(v) => setTargetOperator(v as any)} value={targetOperator}>
-                <SelectTrigger id="operator" className="h-8 border-primary/20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="=">Equal to</SelectItem>
-                  <SelectItem value="<=">At or below</SelectItem>
-                  <SelectItem value="<">Below</SelectItem>
-                  <SelectItem value=">=">At or above</SelectItem>
-                  <SelectItem value=">">Above</SelectItem>
-                </SelectContent>
-              </Select>
-            </InlineField>
-
-            <InlineField label="Deadline" htmlFor="deadline">
-              <Input id="deadline" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} required className="h-8 border-primary/20" />
-            </InlineField>
-
-            <InlineField label="Notes" htmlFor="notes" alignStart>
-              <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-16 border-primary/20" />
-            </InlineField>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild disabled={disabled}>
+        {trigger}
+      </PopoverTrigger>
+      <PopoverContent
+        align={align}
+        sideOffset={10}
+        className="w-[420px] max-w-[calc(100vw-2rem)] p-0"
+      >
+        <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
+          <div className="flex items-center justify-between bg-primary px-4 py-3 text-primary-foreground">
+            <p className="text-sm font-bold">{existingGoal ? 'Edit Goal' : 'Add Goal'}</p>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-primary-foreground/80">
+              Goal setup
+            </span>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <DialogClose asChild>
-              <Button type="button" variant="outline" className="border-primary/20">Cancel</Button>
-            </DialogClose>
-            <Button type="submit" className="bg-primary hover:bg-primary/90">
-              {existingGoal ? 'Update Goal' : 'Add Goal'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-3 p-4">
+              <InlineField label="Parameter" htmlFor="parameter">
+                <Select onValueChange={setClinicalParameterId} value={clinicalParameterId} required>
+                  <SelectTrigger id="parameter" className="h-8">
+                    <SelectValue placeholder="Select parameter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clinicalParameters.map((p) => (
+                      <SelectItem key={p.id} value={p.id.toString()}>
+                        {p.name} {p.unit ? `(${p.unit})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </InlineField>
+
+              <InlineField label="Target" htmlFor="targetValue">
+                {renderTargetInput()}
+              </InlineField>
+
+              <InlineField label="Operator" htmlFor="operator">
+                <Select onValueChange={(v) => setTargetOperator(v as any)} value={targetOperator}>
+                  <SelectTrigger id="operator" className="h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="=">Equal to</SelectItem>
+                    <SelectItem value="<=">At or below</SelectItem>
+                    <SelectItem value="<">Below</SelectItem>
+                    <SelectItem value=">=">At or above</SelectItem>
+                    <SelectItem value=">">Above</SelectItem>
+                  </SelectContent>
+                </Select>
+              </InlineField>
+
+              <InlineField label="Deadline" htmlFor="deadline">
+                <Input
+                  id="deadline"
+                  type="date"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  required
+                  className="h-8"
+                />
+              </InlineField>
+
+              <InlineField label="Notes" htmlFor="notes" alignStart>
+                <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-16" />
+              </InlineField>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
+              <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90">
+                Save
+              </Button>
+            </div>
+          </form>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -195,11 +220,12 @@ function InlineField({
   alignStart?: boolean;
 }) {
   return (
-    <div className={`grid grid-cols-[120px_minmax(0,1fr)] gap-3 ${alignStart ? 'items-start' : 'items-center'}`}>
-      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+    <div className={cn('grid grid-cols-[120px_minmax(0,1fr)] gap-3', alignStart ? 'items-start' : 'items-center')}>
+      <Label htmlFor={htmlFor} className={cn('text-[11px] font-bold uppercase tracking-wider text-muted-foreground', alignStart ? 'pt-2' : null)}>
         {label}
       </Label>
       <div>{children}</div>
     </div>
   );
 }
+

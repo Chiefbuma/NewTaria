@@ -4,11 +4,13 @@ services:
   app:
     image: node:18-alpine
     container_name: newtaria-app-local
-    command: sh -lc "npm run dev"
+    command: >
+      sh -lc "mkdir -p /app/.next && npm run dev"
     ports:
       - "3002:3000"
     volumes:
       - .:/app
+      - newtaria-next-cache:/app/.next
       - ../RadiantAfya/node_modules:/app/node_modules:ro
     working_dir: /app
     env_file:
@@ -61,3 +63,4 @@ networks:
 
 volumes:
   newtaria-dbdata:
+  newtaria-next-cache:

@@ -3,17 +3,18 @@
 import { useState, type ElementType } from 'react';
 import type { Patient, ClinicalParameter, User, Appointment } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Calendar, CalendarClock, ClipboardList, Target, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Calendar, CalendarClock, ClipboardList, Target, TrendingUp } from 'lucide-react';
+import Link from 'next/link';
 import PatientInfoCard from '@/components/patient/patient-info-card';
 import AllNotesCard from './all-notes-card';
 import ProgressDashboard from './progress-dashboard';
 import AppointmentsCard from '@/components/patient/appointments-card';
-import AddAppointmentModal from '@/components/patient/add-appointment-modal';
+import PatientMedicationsCard from '@/components/patient/patient-medications-card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { isPatientRole } from '@/lib/role-utils';
-import { format, subMonths, startOfDay, endOfDay } from 'date-fns';
+import { canManageAppointments, canManageAssessments, isPartnerRole, isPatientRole } from '@/lib/role-utils';
+import { format } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatAppointmentDateTime } from '@/lib/date-format';
@@ -31,46 +32,21 @@ export default function ProgressPageClient({
 }) {
     const { toast } = useToast();
     const [patient, setPatient] = useState(initialPatient);
-    const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
-    const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
-
-    // Default to last 6 months
-    const [fromDate, setFromDate] = useState(format(subMonths(new Date(), 6), 'yyyy-MM-dd'));
-    const [toDate, setToDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
     const isPatientView = isPatientRole(currentUser?.role);
-    const filteredAssessments = patient.assessments.filter((assessment) => {
-        const measuredAt = new Date(assessment.measured_at);
-        return measuredAt >= startOfDay(new Date(fromDate)) && measuredAt <= endOfDay(new Date(toDate));
-    });
+    const canManageAppts = canManageAppointments(currentUser?.role);
+    const canManagePatientAssessments = canManageAssessments(currentUser?.role);
+    const checkInMode: 'patient' | 'staff' | 'none' = isPatientView ? 'patient' : (canManagePatientAssessments ? 'staff' : 'none');
+    const allAssessments = patient.assessments.filter((a) => a.deleted_at == null);
     const activeGoals = patient.goals.filter((goal) => goal.status === 'active');
     const completedGoals = patient.goals.filter((goal) => goal.status === 'completed');
-    const notesCount = filteredAssessments.filter((assessment) => assessment.notes?.trim()).length;
+    const notesCount = allAssessments.filter((assessment) => assessment.notes?.trim()).length;
     const nextAppointment = [...patient.appointments]
         .filter((appointment) => new Date(appointment.appointment_date) > new Date() && appointment.status !== 'cancelled')
         .sort((a, b) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime())[0] || null;
 
     const handleAppointmentsUpdate = (updatedAppointments: Appointment[]) => {
         setPatient(prev => ({ ...prev, appointments: updatedAppointments }));
-    };
-
-    const handleOpenAppointmentModal = (appointment?: Appointment) => {
-        setEditingAppointment(appointment || null);
-        setIsAppointmentModalOpen(true);
-    };
-
-    const handleSaveAppointment = (appointmentData: Omit<Appointment, 'id' | 'patient_id'> & { id?: number }) => {
-        const clinician = clinicians.find(c => c.id === Number(appointmentData.clinician_id));
-        const fullAppointmentData = { ...appointmentData, clinician };
-
-        const updatedAppointments = editingAppointment
-            ? patient.appointments.map(a => a.id === editingAppointment.id ? { ...a, ...fullAppointmentData, id: a.id, patient_id: patient.id } : a)
-            : [...patient.appointments, { ...fullAppointmentData, id: Date.now(), patient_id: patient.id } as Appointment];
-
-        handleAppointmentsUpdate(updatedAppointments as Appointment[]);
-        setIsAppointmentModalOpen(false);
-        setEditingAppointment(null);
-        toast({ title: 'Success', description: 'Appointment saved.' });
     };
 
     if (isPatientView) {
@@ -99,32 +75,8 @@ export default function ProgressPageClient({
 
                                 <div className="grid gap-3 sm:grid-cols-3">
                                     <HeroStat icon={Target} label="Active goals" value={String(activeGoals.length)} />
-                                    <HeroStat icon={TrendingUp} label="Assessments" value={String(filteredAssessments.length)} />
+                                    <HeroStat icon={TrendingUp} label="Assessments" value={String(allAssessments.length)} />
                                     <HeroStat icon={ClipboardList} label="Care notes" value={String(notesCount)} />
-                                </div>
-
-                                <div className="flex flex-col gap-3 rounded-2xl bg-white/75 p-4 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.3)] sm:flex-row sm:flex-wrap sm:items-center">
-                                    <RangeField
-                                        label="From"
-                                        value={fromDate}
-                                        onChange={setFromDate}
-                                    />
-                                    <RangeField
-                                        label="To"
-                                        value={toDate}
-                                        onChange={setToDate}
-                                    />
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-9 w-full text-xs text-muted-foreground hover:text-primary sm:w-auto"
-                                        onClick={() => {
-                                            setFromDate(format(subMonths(new Date(), 6), 'yyyy-MM-dd'));
-                                            setToDate(format(new Date(), 'yyyy-MM-dd'));
-                                        }}
-                                    >
-                                        Reset Range
-                                    </Button>
                                 </div>
                             </div>
 
@@ -158,24 +110,26 @@ export default function ProgressPageClient({
 
                                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                                     <MiniSummary label="Completed goals" value={String(completedGoals.length)} />
-                                    <MiniSummary label="Date range" value={`${format(new Date(fromDate), 'MMM d')} - ${format(new Date(toDate), 'MMM d')}`} />
+                                    <MiniSummary label="Updated" value={format(new Date(), 'MMM d, yyyy')} />
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+                        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
                         <div className="space-y-6">
                             <PatientInfoCard patient={patient} />
-                            <AllNotesCard assessments={filteredAssessments} clinicalParameters={clinicalParameters} />
+                            <AllNotesCard assessments={allAssessments} clinicalParameters={clinicalParameters} />
+                            <PatientMedicationsCard patient={patient} />
                         </div>
                         <div className="space-y-6">
                             <ProgressDashboard 
                                 patient={patient} 
                                 clinicalParameters={clinicalParameters} 
-                                fromDate={startOfDay(new Date(fromDate))}
-                                toDate={endOfDay(new Date(toDate))}
                                 patientView
+                                onAssessmentsUpdate={(assessments) => setPatient((prev) => ({ ...prev, assessments }))}
+                                checkInMode={checkInMode}
+                                currentUserId={currentUser?.id ?? null}
                             />
                         </div>
                     </div>
@@ -184,83 +138,48 @@ export default function ProgressPageClient({
         );
     }
 
+    const isPartnerView = isPartnerRole(currentUser?.role);
+
     return (
         <>
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
                 <div className="lg:col-span-1 space-y-6">
+                    {isPartnerView ? (
+                        <div className="flex items-center gap-2">
+                            <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+                                <Link href="/dashboard/registry" aria-label="Back to registry">
+                                    <ArrowLeft className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline" className="w-full">
+                                <Link href={`/dashboard/patient/${patient.id}#edit`}>Edit Member Details</Link>
+                            </Button>
+                        </div>
+                    ) : null}
                     <PatientInfoCard patient={patient} />
-                    {!isPatientView && (
+                    {canManageAppts && (
                         <AppointmentsCard 
                             patient={patient}
-                            onSchedule={() => handleOpenAppointmentModal()}
-                            onEdit={handleOpenAppointmentModal}
+                            clinicians={clinicians}
                             onUpdate={handleAppointmentsUpdate}
                         />
                     )}
                     
                     <AllNotesCard assessments={patient.assessments} clinicalParameters={clinicalParameters} />
+                    <PatientMedicationsCard patient={patient} />
                 </div>
                 <div className="lg:col-span-3 space-y-6">
-                    <div className="flex justify-stretch sm:justify-end">
-                        <div className="flex w-full flex-col gap-3 rounded-2xl border border-primary/10 bg-muted/30 p-4 sm:w-auto sm:flex-row sm:flex-wrap sm:items-end">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="fromDate" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1 flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" /> From Date
-                                </Label>
-                                <Input 
-                                    id="fromDate" 
-                                    type="date" 
-                                    className="h-9 w-full bg-background border-primary/20 text-sm focus:border-primary sm:w-[150px]"
-                                    value={fromDate}
-                                    onChange={(e) => setFromDate(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="toDate" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1 flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" /> To Date
-                                </Label>
-                                <Input 
-                                    id="toDate" 
-                                    type="date" 
-                                    className="h-9 w-full bg-background border-primary/20 text-sm focus:border-primary sm:w-[150px]"
-                                    value={toDate}
-                                    onChange={(e) => setToDate(e.target.value)}
-                                />
-                            </div>
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-9 w-full text-xs text-muted-foreground hover:text-primary sm:w-auto"
-                                onClick={() => {
-                                    setFromDate(format(subMonths(new Date(), 6), 'yyyy-MM-dd'));
-                                    setToDate(format(new Date(), 'yyyy-MM-dd'));
-                                }}
-                            >
-                                Reset Range
-                            </Button>
-                        </div>
-                    </div>
-                  
                   <ProgressDashboard 
                     patient={patient} 
                     clinicalParameters={clinicalParameters} 
-                    fromDate={startOfDay(new Date(fromDate))}
-                    toDate={endOfDay(new Date(toDate))}
                     patientView={false}
+                    onAssessmentsUpdate={(assessments) => setPatient((prev) => ({ ...prev, assessments }))}
+                    checkInMode={checkInMode}
+                    currentUserId={currentUser?.id ?? null}
                   />
                 </div>
             </div>
             
-            {isAppointmentModalOpen && (
-                <AddAppointmentModal
-                    isOpen={isAppointmentModalOpen}
-                    onClose={() => setIsAppointmentModalOpen(false)}
-                    onSave={handleSaveAppointment}
-                    patient={patient}
-                    clinicians={clinicians}
-                    existingAppointment={editingAppointment}
-                />
-            )}
         </>
     );
 }
@@ -300,26 +219,4 @@ function MiniSummary({
     );
 }
 
-function RangeField({
-    label,
-    value,
-    onChange,
-}: {
-    label: string;
-    value: string;
-    onChange: (value: string) => void;
-}) {
-    return (
-        <div className="space-y-1.5">
-            <Label className="ml-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                {label}
-            </Label>
-            <Input
-                type="date"
-                className="h-9 w-full rounded-xl border-primary/15 bg-white sm:w-[150px]"
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-            />
-        </div>
-    );
-}
+// Global date filtering removed: each goal visual auto-ranges to its own available assessment history.

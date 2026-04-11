@@ -2,7 +2,7 @@ import { fetchPatientById, fetchClinicalParameters, fetchUsers, fetchPartners, f
 import { notFound, redirect } from 'next/navigation';
 import PatientDetailsPage from './patient-details-page';
 import OnboardingForm from './onboarding-form';
-import { canManageOnboarding, isClinicianRole } from '@/lib/role-utils';
+import { canManageOnboarding, isClinicianRole, isPatientRole } from '@/lib/role-utils';
 import { getCurrentSessionUser } from '@/lib/auth';
 
 export default async function PatientPage({ params }: { params: Promise<{ id: string }> }) {
@@ -10,6 +10,11 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
   const currentUser = await getCurrentSessionUser();
   if (!currentUser) {
     redirect('/');
+  }
+
+  // Members (patients) should land on their own progress page.
+  if (isPatientRole(currentUser.role) && currentUser.patientId) {
+    redirect(`/dashboard/patient/${currentUser.patientId}/progress`);
   }
 
   const patient = await fetchPatientById(id, currentUser);

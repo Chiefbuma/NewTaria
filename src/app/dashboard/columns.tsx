@@ -3,22 +3,24 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { Loader2, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { placeholderImages } from "@/lib/placeholder-images"
 import type { Patient } from "@/lib/types"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-
-const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
+import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
+import { useToast } from "@/hooks/use-toast"
+import { bulkDeletePatients } from "@/lib/api-service"
 
 const PatientActions = ({ patient }: { patient: Patient }) => {
     const [isLoading, setIsLoading] = useState(false);
+    const [pendingDeactivate, setPendingDeactivate] = useState(false)
+    const [isDeactivating, setIsDeactivating] = useState(false)
     const router = useRouter();
+    const { toast } = useToast()
 
     const handleClick = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -28,53 +30,74 @@ const PatientActions = ({ patient }: { patient: Patient }) => {
     };
 
     return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={(event) => event.stopPropagation()}
-              disabled={isLoading}
-            >
-              {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
-              <span className="sr-only">Open actions</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleClick}>
-              Open Patient Dashboard
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(event) => event.stopPropagation()}
+                disabled={isLoading || isDeactivating}
+              >
+                {isLoading || isDeactivating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                )}
+                <span className="sr-only">Open actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleClick}>Open Patient Dashboard</DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  router.push(`/dashboard/patient/${patient.id}#edit`)
+                }}
+              >
+                Edit Patient Details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-600"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setPendingDeactivate(true)
+                }}
+              >
+                Deactivate Patient
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <ConfirmActionDialog
+            open={pendingDeactivate}
+            onOpenChange={(open) => setPendingDeactivate(open)}
+            title="Deactivate patient?"
+            description="This will archive the patient record and remove it from active registry lists."
+            confirmLabel="Deactivate"
+            onConfirm={async () => {
+              try {
+                setIsDeactivating(true)
+                await bulkDeletePatients([patient.id])
+                toast({ title: "Patient deactivated", description: "Patient has been archived from active lists." })
+                router.refresh()
+              } catch (error: any) {
+                toast({ variant: "destructive", title: "Unable to deactivate", description: error.message })
+              } finally {
+                setIsDeactivating(false)
+                setPendingDeactivate(false)
+              }
+            }}
+          />
+        </>
     );
 };
 
 
 export const columns: ColumnDef<Patient>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        onClick={(event) => event.stopPropagation()}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
   {
     accessorKey: "first_name",
     header: "Name",
@@ -86,8 +109,7 @@ export const columns: ColumnDef<Patient>[] = [
       return (
         <div className="flex items-center gap-3">
             <Avatar className="hidden h-8 w-8 sm:flex">
-                {patientAvatar && <AvatarImage src={patientAvatar.imageUrl} alt={name} />}
-                <AvatarFallback>{fallback}</AvatarFallback>
+              <AvatarFallback>{fallback}</AvatarFallback>
             </Avatar>
             <div className="grid gap-0.5">
                 <Link href={`/dashboard/patient/${patient.id}`} className="text-sm font-medium leading-none hover:underline">{name}</Link>
@@ -99,6 +121,8 @@ export const columns: ColumnDef<Patient>[] = [
   },
   {
     id: "diagnosis",
+    accessorFn: (row) => row.primary_diagnosis || row.primary_diagnosis_name || row.diagnosis || "Not set",
+    filterFn: (row, id, value) => String(row.getValue(id) ?? "") === String(value ?? ""),
     header: "Diagnosis",
     cell: ({ row }) => (
       <span className="text-xs text-foreground">
@@ -108,6 +132,8 @@ export const columns: ColumnDef<Patient>[] = [
   },
   {
     id: "partner",
+    accessorFn: (row) => row.partner_name || row.clinic_name || "Unassigned",
+    filterFn: (row, id, value) => String(row.getValue(id) ?? "") === String(value ?? ""),
     header: "Partner",
     cell: ({ row }) => {
       const patient = row.original
@@ -121,6 +147,7 @@ export const columns: ColumnDef<Patient>[] = [
   {
     accessorKey: "status",
     header: "Status",
+    filterFn: (row, id, value) => String(row.getValue(id) ?? "") === String(value ?? ""),
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
       const variant = status === 'Active' ? 'default' : status === 'Critical' ? 'destructive' : 'secondary';

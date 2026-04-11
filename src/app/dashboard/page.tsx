@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getCurrentSessionUser } from '@/lib/auth';
-import { canAccessAdminCenter, isPatientRole } from '@/lib/role-utils';
+import { canAccessAdminCenter, isPartnerRole, isPatientRole } from '@/lib/role-utils';
 
 export default async function DashboardPage() {
   const user = await getCurrentSessionUser();
@@ -13,8 +13,8 @@ export default async function DashboardPage() {
     redirect(`/dashboard/patient/${user.patientId}/progress`);
   }
 
-  if (canAccessAdminCenter(user.role)) {
-    redirect('/dashboard/admin?section=dashboard');
+  if (canAccessAdminCenter(user.role) || isPartnerRole(user.role)) {
+    redirect('/dashboard/insights');
   }
 
   redirect('/dashboard/registry');

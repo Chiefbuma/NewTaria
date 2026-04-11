@@ -15,7 +15,8 @@ import type {
     Clinic,
     Diagnosis,
     PatientOnboardingPayload,
-    PasswordResetToken
+    PasswordResetToken,
+    RegistryInsights
 } from './types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { isPartnerRole, isPatientRole } from '@/lib/role-utils';
@@ -35,6 +36,10 @@ function serialize<T>(obj: T): T {
 
 function toSqlDateTime(date: string | Date | null | undefined): string | null {
     if (!date) return null;
+    // If we get a date-only string, preserve the exact day (avoid timezone shifting).
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return `${date} 00:00:00`;
+    }
     const d = new Date(date);
     if (isNaN(d.getTime())) return null;
     const pad = (n: number) => n.toString().padStart(2, '0');
@@ -53,12 +58,16 @@ function calculatePatientStats(patient: any) {
     const totalGoals = Number(patient.total_goals || 0);
     const activeGoals = Number(patient.active_goals || 0);
     const totalAssessments = Number(patient.total_assessments || 0);
+    const overdueGoals = Number(patient.overdue_goals || 0);
+    const upcomingAppointments = Number(patient.upcoming_appointments || 0);
     return {
         totalGoals,
         activeGoals,
         totalAssessments,
         assessmentCoverage: totalGoals > 0 ? Math.round((totalAssessments / totalGoals) * 100) : 0,
-        needsAttention: patient.status === 'Critical' || (totalGoals > 0 && totalAssessments === 0)
+        needsAttention: patient.status === 'Critical' || (totalGoals > 0 && totalAssessments === 0),
+        overdueGoals,
+        upcomingAppointments,
     };
 }
 
@@ -97,7 +106,27 @@ function buildPatientScopeClause(requestingUser?: User, alias = '') {
     return { clause: '', params: [] as any[] };
 }
 
-export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
+export async function canAccessPatientById(patientId: number | string, requestingUser?: User): Promise<boolean> {
+    noStore();
+    try {
+        const scope = buildPatientScopeClause(requestingUser, 'p');
+        const [rows] = await db.query(
+            `
+            SELECT p.id
+            FROM patients p
+            WHERE p.id = ? AND p.deleted_at IS NULL
+            ${scope.clause}
+            LIMIT 1
+            `,
+            [String(patientId), ...scope.params]
+        );
+        return Boolean((rows as any[])[0]?.id);
+    } catch {
+        return false;
+    }
+}
+
+export async function fetchPatients(requestingUser?: User, organizationPartnerId?: number | null): Promise<Patient[]> {
     noStore();
     try {
         const scope = buildPatientScopeClause(requestingUser, 'p');
@@ -109,7 +138,20 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
                    cl.name as clinic_name,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.deleted_at IS NULL) as total_goals,
                    (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.status = 'active' AND g.deleted_at IS NULL) as active_goals,
-                   (SELECT COUNT(*) FROM assessments a WHERE a.patient_id = p.id AND a.deleted_at IS NULL) as total_assessments
+                   (SELECT COUNT(*) FROM assessments a WHERE a.patient_id = p.id AND a.deleted_at IS NULL) as total_assessments,
+                   (SELECT COUNT(*) FROM goals g WHERE g.patient_id = p.id AND g.status = 'active' AND g.deadline < CURDATE() AND g.deleted_at IS NULL) as overdue_goals,
+                   (SELECT COUNT(*) FROM appointments a WHERE a.patient_id = p.id AND a.appointment_date >= NOW() AND a.status IN ('scheduled','confirmed','rescheduled') AND a.deleted_at IS NULL) as upcoming_appointments,
+                   (
+                      SELECT a.appointment_date
+                      FROM appointments a
+                      WHERE
+                        a.patient_id = p.id
+                        AND a.appointment_date >= NOW()
+                        AND a.status IN ('scheduled','confirmed','rescheduled')
+                        AND a.deleted_at IS NULL
+                      ORDER BY a.appointment_date ASC
+                      LIMIT 1
+                   ) as next_appointment_date
             FROM patients p
             LEFT JOIN users u ON p.navigator_id = u.id
             LEFT JOIN partners pay ON p.partner_id = pay.id
@@ -118,6 +160,23 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
         `;
         const params: any[] = [...scope.params];
         query += scope.clause;
+
+        if (organizationPartnerId) {
+            const [orgRows] = await db.query(
+                'SELECT id, partner_type, clinic_id FROM partners WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+                [organizationPartnerId]
+            );
+            const org = (orgRows as any[])[0];
+            if (org) {
+                if (org.partner_type === 'clinic' && org.clinic_id) {
+                    query += ` AND p.clinic_id = ? `;
+                    params.push(org.clinic_id);
+                } else {
+                    query += ` AND p.partner_id = ? `;
+                    params.push(org.id);
+                }
+            }
+        }
         query += ` ORDER BY p.created_at DESC `;
         const [rows] = await db.query(query, params);
         const mapped = (rows as any[]).map(p => ({ 
@@ -133,6 +192,194 @@ export async function fetchPatients(requestingUser?: User): Promise<Patient[]> {
     } catch (error) {
         console.error('fetchPatients Error:', error);
         throw new Error('Failed to fetch patients.');
+    }
+}
+
+export async function fetchRegistryInsights(requestingUser?: User, organizationPartnerId?: number | null): Promise<RegistryInsights> {
+    noStore();
+    const scope = buildPatientScopeClause(requestingUser, 'p');
+    let orgClause = '';
+    const orgParams: any[] = [];
+
+    if (organizationPartnerId) {
+        const [orgRows] = await db.query(
+            'SELECT id, partner_type, clinic_id FROM partners WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+            [organizationPartnerId]
+        );
+        const org = (orgRows as any[])[0];
+        if (org) {
+            if (org.partner_type === 'clinic' && org.clinic_id) {
+                orgClause = ' AND p.clinic_id = ? ';
+                orgParams.push(org.clinic_id);
+            } else {
+                orgClause = ' AND p.partner_id = ? ';
+                orgParams.push(org.id);
+            }
+        }
+    }
+
+    try {
+        const [upcomingAppointmentsRows] = await db.query(
+            `
+            SELECT
+                p.id as patient_id,
+                CONCAT_WS(' ', p.first_name, p.surname) as patient_name,
+                pay.name as partner_name,
+                cl.name as clinic_name,
+                a.title,
+                a.appointment_date,
+                a.status
+            FROM appointments a
+            INNER JOIN patients p ON a.patient_id = p.id
+            LEFT JOIN partners pay ON p.partner_id = pay.id
+            LEFT JOIN clinics cl ON p.clinic_id = cl.id
+            WHERE
+                a.deleted_at IS NULL
+                AND p.deleted_at IS NULL
+                AND p.status <> 'Pending'
+                ${scope.clause}
+                ${orgClause}
+                AND a.appointment_date >= NOW()
+                AND a.status IN ('scheduled', 'confirmed', 'rescheduled')
+            ORDER BY a.appointment_date ASC
+            LIMIT 8
+            `,
+            [...scope.params, ...orgParams]
+        );
+
+        const [needsAttentionRows] = await db.query(
+            `
+            SELECT
+                p.id as patient_id,
+                CONCAT_WS(' ', p.first_name, p.surname) as patient_name,
+                p.status,
+                (
+                    SELECT COUNT(*)
+                    FROM goals g
+                    WHERE
+                        g.patient_id = p.id
+                        AND g.status = 'active'
+                        AND g.deadline < CURDATE()
+                        AND g.deleted_at IS NULL
+                ) as overdue_goals,
+                (
+                    SELECT MAX(a.measured_at)
+                    FROM assessments a
+                    WHERE a.patient_id = p.id AND a.deleted_at IS NULL
+                ) as last_assessment_at
+            FROM patients p
+            WHERE
+                p.deleted_at IS NULL
+                AND p.status <> 'Pending'
+                ${scope.clause}
+                ${orgClause}
+                AND (
+                    p.status = 'Critical'
+                    OR EXISTS (
+                        SELECT 1
+                        FROM goals g
+                        WHERE
+                            g.patient_id = p.id
+                            AND g.status = 'active'
+                            AND g.deadline < CURDATE()
+                            AND g.deleted_at IS NULL
+                    )
+                    OR (
+                        SELECT MAX(a.measured_at)
+                        FROM assessments a
+                        WHERE a.patient_id = p.id AND a.deleted_at IS NULL
+                    ) IS NULL
+                    OR (
+                        SELECT MAX(a.measured_at)
+                        FROM assessments a
+                        WHERE a.patient_id = p.id AND a.deleted_at IS NULL
+                    ) < DATE_SUB(NOW(), INTERVAL 14 DAY)
+                )
+            ORDER BY
+                (p.status = 'Critical') DESC,
+                overdue_goals DESC,
+                last_assessment_at ASC
+            LIMIT 8
+            `,
+            [...scope.params, ...orgParams]
+        );
+
+        const [leastInteractionRows] = await db.query(
+            `
+            SELECT
+                p.id as patient_id,
+                CONCAT_WS(' ', p.first_name, p.surname) as patient_name,
+                pay.name as partner_name,
+                cl.name as clinic_name,
+                (
+                    SELECT COUNT(*)
+                    FROM goals g
+                    WHERE g.patient_id = p.id AND g.status = 'active' AND g.deleted_at IS NULL
+                ) as active_goals,
+                (
+                    SELECT COUNT(*)
+                    FROM assessments a
+                    WHERE
+                        a.patient_id = p.id
+                        AND a.measured_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                        AND a.deleted_at IS NULL
+                ) as assessments_30d,
+                (
+                    SELECT MAX(a.measured_at)
+                    FROM assessments a
+                    WHERE a.patient_id = p.id AND a.deleted_at IS NULL
+                ) as last_assessment_at
+            FROM patients p
+            LEFT JOIN partners pay ON p.partner_id = pay.id
+            LEFT JOIN clinics cl ON p.clinic_id = cl.id
+            WHERE
+                p.deleted_at IS NULL
+                AND p.status <> 'Pending'
+                ${scope.clause}
+                ${orgClause}
+                AND (
+                    SELECT COUNT(*)
+                    FROM goals g
+                    WHERE g.patient_id = p.id AND g.status = 'active' AND g.deleted_at IS NULL
+                ) > 0
+            ORDER BY
+                assessments_30d ASC,
+                last_assessment_at ASC
+            LIMIT 8
+            `,
+            [...scope.params, ...orgParams]
+        );
+
+        return serialize({
+            upcomingAppointments: (upcomingAppointmentsRows as any[]).map((row) => ({
+                patient_id: Number(row.patient_id),
+                patient_name: row.patient_name,
+                partner_name: row.partner_name ?? null,
+                clinic_name: row.clinic_name ?? null,
+                title: row.title,
+                appointment_date: row.appointment_date,
+                status: row.status,
+            })),
+            needsAttention: (needsAttentionRows as any[]).map((row) => ({
+                patient_id: Number(row.patient_id),
+                patient_name: row.patient_name,
+                status: row.status,
+                overdue_goals: Number(row.overdue_goals || 0),
+                last_assessment_at: row.last_assessment_at ?? null,
+            })),
+            leastInteraction: (leastInteractionRows as any[]).map((row) => ({
+                patient_id: Number(row.patient_id),
+                patient_name: row.patient_name,
+                partner_name: row.partner_name ?? null,
+                clinic_name: row.clinic_name ?? null,
+                active_goals: Number(row.active_goals || 0),
+                assessments_30d: Number(row.assessments_30d || 0),
+                last_assessment_at: row.last_assessment_at ?? null,
+            })),
+        });
+    } catch (error) {
+        console.error('fetchRegistryInsights Error:', error);
+        return { upcomingAppointments: [], needsAttention: [], leastInteraction: [] };
     }
 }
 
@@ -220,6 +467,9 @@ export async function fetchUserById(id: number): Promise<User | null> {
                 u.partner_id,
                 u.must_change_password,
                 u.password_changed_at,
+                u.failed_login_attempts,
+                u.locked_until,
+                u.last_login_at,
                 p.name as partner_name,
                 p.partner_type,
                 p.clinic_id as partner_clinic_id
@@ -253,6 +503,9 @@ export async function fetchUsers(): Promise<User[]> {
                 u.partner_id,
                 u.must_change_password,
                 u.password_changed_at,
+                u.failed_login_attempts,
+                u.locked_until,
+                u.last_login_at,
                 p.name as partner_name,
                 p.partner_type,
                 p.clinic_id as partner_clinic_id
@@ -331,11 +584,29 @@ export async function fetchClinicalParameters(): Promise<ClinicalParameter[]> {
         const [rows] = await db.query('SELECT * FROM clinical_parameters WHERE deleted_at IS NULL ORDER BY name ASC');
         const parameters = (rows as any[]).map(p => ({
             ...p,
-            options: typeof p.options === 'string' ? JSON.parse(p.options) : (p.options || [])
+            options: typeof p.options === 'string' ? JSON.parse(p.options) : (p.options || []),
+            allow_self_monitoring: Boolean(p.allow_self_monitoring),
         }));
         return serialize(parameters as ClinicalParameter[]);
     } catch (error) {
         throw new Error('Failed to fetch parameters.');
+    }
+}
+
+export async function fetchClinicalParameterById(id: number): Promise<ClinicalParameter | null> {
+    noStore();
+    try {
+        const [rows] = await db.query('SELECT * FROM clinical_parameters WHERE id = ? AND deleted_at IS NULL LIMIT 1', [id]);
+        const row = (rows as any[])[0];
+        if (!row) return null;
+        const parameter = {
+            ...row,
+            options: typeof row.options === 'string' ? JSON.parse(row.options) : (row.options || []),
+            allow_self_monitoring: Boolean(row.allow_self_monitoring),
+        };
+        return serialize(parameter as ClinicalParameter);
+    } catch (error) {
+        return null;
     }
 }
 
@@ -404,6 +675,125 @@ export async function createUser(userData: any): Promise<number> {
         ]
     );
     return Number((result as any).insertId);
+}
+
+export async function createUserAndPatientOnboardingRecord(
+    userData: any,
+    patientIdentifier: string,
+    patientData: PatientOnboardingPayload
+): Promise<{ userId: number; patientId: number }> {
+    const conn = await db.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        const [userResult] = await conn.query(
+            'INSERT INTO users (name, phone, email, password, role, avatarUrl, partner_id, must_change_password, password_changed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                userData.name,
+                userData.phone ?? null,
+                userData.email,
+                userData.password,
+                userData.role || 'user',
+                userData.avatarUrl || null,
+                userData.partner_id || null,
+                userData.must_change_password ?? true,
+                userData.password_changed_at ?? null
+            ]
+        );
+        const userId = Number((userResult as any).insertId);
+
+        const selectedPartnerId = patientData.partner_id ?? patientData.payer_id ?? null;
+        let resolvedClinicId = patientData.clinic_id ?? null;
+
+        if (selectedPartnerId) {
+            const [partnerRows] = await conn.query(
+                'SELECT partner_type, clinic_id FROM partners WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+                [selectedPartnerId]
+            );
+            const selectedPartner = (partnerRows as any[])[0];
+
+            if (selectedPartner?.partner_type === 'clinic') {
+                resolvedClinicId = selectedPartner.clinic_id ?? resolvedClinicId;
+            }
+        }
+
+        const [patientResult] = await conn.query(
+            `INSERT INTO patients (
+                user_id,
+                patient_identifier,
+                portal_username,
+                first_name,
+                middle_name,
+                surname,
+                dob,
+                gender,
+                email,
+                phone,
+                address,
+                status,
+                date_of_onboarding,
+                clinic_id,
+                partner_id,
+                primary_diagnosis_id,
+                comorbid_conditions,
+                current_medications_summary,
+                allergies_intolerances,
+                past_medical_history,
+                surgical_history,
+                family_history,
+                social_history,
+                emergency_contact_name,
+                emergency_contact_phone,
+                emergency_contact_relation,
+                emergency_contact_email,
+                policy_number,
+                coverage_limits,
+                pre_authorization_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', CURDATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                userId,
+                patientIdentifier,
+                patientData.portal_username ?? patientData.email,
+                patientData.first_name,
+                patientData.middle_name ?? null,
+                patientData.surname,
+                toSqlDate(patientData.dob),
+                patientData.gender,
+                patientData.email,
+                patientData.phone,
+                patientData.address ?? null,
+                resolvedClinicId,
+                selectedPartnerId,
+                patientData.primary_diagnosis_id ?? null,
+                patientData.comorbid_conditions ?? null,
+                patientData.current_medications_summary ?? null,
+                patientData.allergies_intolerances ?? null,
+                patientData.past_medical_history ?? null,
+                patientData.surgical_history ?? null,
+                patientData.family_history ?? null,
+                patientData.social_history ?? null,
+                patientData.emergency_contact_name,
+                patientData.emergency_contact_phone,
+                patientData.emergency_contact_relation,
+                patientData.emergency_contact_email ?? null,
+                patientData.policy_number ?? null,
+                patientData.coverage_limits ?? null,
+                patientData.pre_authorization_status ?? 'Not Required',
+            ]
+        );
+
+        const patientId = Number((patientResult as any).insertId);
+
+        await conn.commit();
+        return { userId, patientId };
+    } catch (error) {
+        try {
+            await conn.rollback();
+        } catch { /* ignore */ }
+        throw error;
+    } finally {
+        conn.release();
+    }
 }
 
 export async function updateUser(id: number, userData: Partial<User> & { password?: string }): Promise<void> {
@@ -497,10 +887,70 @@ export async function createAssessment(data: any): Promise<number> {
     const measuredAt = toSqlDateTime(data.measured_at);
     if (!measuredAt) throw new Error('Invalid date format for assessment.');
     const [result] = await db.query(
-        'INSERT INTO assessments (patient_id, clinical_parameter_id, value, notes, is_normal, measured_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [data.patient_id, data.clinical_parameter_id, data.value, data.notes, data.is_normal, measuredAt]
+        'INSERT INTO assessments (patient_id, clinical_parameter_id, created_by_user_id, value, notes, is_normal, measured_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [data.patient_id, data.clinical_parameter_id, data.created_by_user_id ?? null, data.value, data.notes, data.is_normal, measuredAt]
     );
     return Number((result as any).insertId);
+}
+
+export async function updateAssessment(id: number, data: any): Promise<void> {
+    const measuredAt = toSqlDateTime(data.measured_at);
+    if (!measuredAt) throw new Error('Invalid date format for assessment.');
+    await db.query(
+        'UPDATE assessments SET clinical_parameter_id = ?, value = ?, notes = ?, is_normal = ?, measured_at = ? WHERE id = ?',
+        [data.clinical_parameter_id, data.value, data.notes, data.is_normal, measuredAt, id]
+    );
+}
+
+export async function fetchAssessmentById(id: number): Promise<Assessment | null> {
+    noStore();
+    const [rows] = await db.query('SELECT * FROM assessments WHERE id = ? AND deleted_at IS NULL LIMIT 1', [id]);
+    return serialize((rows as any[])[0] || null);
+}
+
+export async function fetchGoalById(id: number): Promise<Goal | null> {
+    noStore();
+    const [rows] = await db.query('SELECT * FROM goals WHERE id = ? AND deleted_at IS NULL LIMIT 1', [id]);
+    return serialize((rows as any[])[0] || null);
+}
+
+export async function fetchPrescriptionById(id: number): Promise<Prescription | null> {
+    noStore();
+    const [rows] = await db.query('SELECT * FROM prescriptions WHERE id = ? AND deleted_at IS NULL LIMIT 1', [id]);
+    return serialize((rows as any[])[0] || null);
+}
+
+export async function fetchAppointmentById(id: number): Promise<Appointment | null> {
+    noStore();
+    const [rows] = await db.query('SELECT * FROM appointments WHERE id = ? AND deleted_at IS NULL LIMIT 1', [id]);
+    return serialize((rows as any[])[0] || null);
+}
+
+export async function fetchReviewById(id: number): Promise<Review | null> {
+    noStore();
+    const [rows] = await db.query('SELECT * FROM reviews WHERE id = ? AND deleted_at IS NULL LIMIT 1', [id]);
+    return serialize((rows as any[])[0] || null);
+}
+
+export async function fetchLatestAssessmentIdForCreator(
+    patientId: number,
+    clinicalParameterId: number,
+    createdByUserId: number
+): Promise<number | null> {
+    noStore();
+    const [rows] = await db.query(
+        `SELECT id
+         FROM assessments
+         WHERE patient_id = ?
+           AND clinical_parameter_id = ?
+           AND created_by_user_id = ?
+           AND deleted_at IS NULL
+         ORDER BY created_at DESC, id DESC
+         LIMIT 1`,
+        [patientId, clinicalParameterId, createdByUserId]
+    );
+    const row = (rows as any[])[0];
+    return row ? Number(row.id) : null;
 }
 
 export async function createReview(data: any): Promise<number> {
@@ -614,19 +1064,34 @@ export async function upsertMedication(data: any): Promise<number> {
 
 export async function upsertClinicalParameter(data: any): Promise<number> {
     const optionsJson = Array.isArray(data.options) ? JSON.stringify(data.options) : null;
+    const allowSelfMonitoring = data.allow_self_monitoring ? 1 : 0;
     if (data.id) {
         await db.query(
-            'UPDATE clinical_parameters SET name = ?, type = ?, unit = ?, options = ?, category = ? WHERE id = ?',
-            [data.name, data.type, data.unit, optionsJson, data.category, data.id]
+            'UPDATE clinical_parameters SET name = ?, type = ?, unit = ?, options = ?, category = ?, allow_self_monitoring = ? WHERE id = ?',
+            [data.name, data.type, data.unit, optionsJson, data.category, allowSelfMonitoring, data.id]
         );
         return Number(data.id);
     } else {
         const [result] = await db.query(
-            'INSERT INTO clinical_parameters (name, type, unit, options, category) VALUES (?, ?, ?, ?, ?)',
-            [data.name, data.type, data.unit, optionsJson, data.category]
+            'INSERT INTO clinical_parameters (name, type, unit, options, category, allow_self_monitoring) VALUES (?, ?, ?, ?, ?, ?)',
+            [data.name, data.type, data.unit, optionsJson, data.category, allowSelfMonitoring]
         );
         return Number((result as any).insertId);
     }
+}
+
+export async function recordFailedLoginAttempt(userId: number, nextAttempts: number, lockedUntil: Date | null) {
+    await db.query(
+        'UPDATE users SET failed_login_attempts = ?, locked_until = ? WHERE id = ?',
+        [nextAttempts, lockedUntil ? toSqlDateTime(lockedUntil) : null, userId]
+    );
+}
+
+export async function recordSuccessfulLogin(userId: number) {
+    await db.query(
+        'UPDATE users SET failed_login_attempts = 0, locked_until = NULL, last_login_at = NOW() WHERE id = ?',
+        [userId]
+    );
 }
 
 export async function activatePatient(id: number, data: any): Promise<void> {
@@ -725,9 +1190,86 @@ export async function createPatientOnboardingRecord(
 }
 
 export async function updatePatientDetails(id: number, data: any): Promise<void> {
+    // Keep fields stable if callers send partial updates.
+    const [existingRows] = await db.query(
+        `
+        SELECT
+          first_name,
+          middle_name,
+          surname,
+          dob,
+          age,
+          gender,
+          email,
+          phone,
+          address,
+          wellness_date,
+          status,
+          partner_id,
+          primary_diagnosis,
+          comorbid_conditions,
+          current_medications_summary,
+          emergency_contact_name,
+          emergency_contact_phone,
+          emergency_contact_relation,
+          emergency_contact_email
+        FROM patients
+        WHERE id = ?
+        LIMIT 1
+        `,
+        [id]
+    );
+    const existing = (existingRows as any[])[0] || {};
+
+    const status = data.status ?? existing.status ?? null;
+    const partnerId = data.partner_id ?? existing.partner_id ?? null;
     await db.query(
-        'UPDATE patients SET first_name = ?, middle_name = ?, surname = ?, dob = ?, age = ?, gender = ?, email = ?, phone = ?, wellness_date = ?, partner_id = ? WHERE id = ?',
-        [data.first_name, data.middle_name, data.surname, toSqlDate(data.dob), data.age, data.gender, data.email, data.phone, toSqlDate(data.wellness_date), data.partner_id, id]
+        `
+        UPDATE patients
+        SET
+          first_name = ?,
+          middle_name = ?,
+          surname = ?,
+          dob = ?,
+          age = ?,
+          gender = ?,
+          email = ?,
+          phone = ?,
+          address = ?,
+          wellness_date = ?,
+          status = ?,
+          partner_id = ?,
+          primary_diagnosis = ?,
+          comorbid_conditions = ?,
+          current_medications_summary = ?,
+          emergency_contact_name = ?,
+          emergency_contact_phone = ?,
+          emergency_contact_relation = ?,
+          emergency_contact_email = ?
+        WHERE id = ?
+        `,
+        [
+          data.first_name ?? existing.first_name,
+          data.middle_name ?? existing.middle_name,
+          data.surname ?? existing.surname,
+          toSqlDate(data.dob ?? existing.dob),
+          data.age ?? existing.age,
+          data.gender ?? existing.gender,
+          data.email ?? existing.email,
+          data.phone ?? existing.phone,
+          data.address ?? existing.address ?? null,
+          toSqlDate(data.wellness_date ?? existing.wellness_date),
+          status ?? null,
+          partnerId ?? null,
+          data.primary_diagnosis ?? existing.primary_diagnosis ?? null,
+          data.comorbid_conditions ?? existing.comorbid_conditions ?? null,
+          data.current_medications_summary ?? existing.current_medications_summary ?? null,
+          data.emergency_contact_name ?? existing.emergency_contact_name ?? null,
+          data.emergency_contact_phone ?? existing.emergency_contact_phone ?? null,
+          data.emergency_contact_relation ?? existing.emergency_contact_relation ?? null,
+          data.emergency_contact_email ?? existing.emergency_contact_email ?? null,
+          id,
+        ]
     );
 }
 
@@ -787,44 +1329,128 @@ export async function deleteDiagnosis(id: number): Promise<void> { await db.quer
 export async function deleteMedication(id: number): Promise<void> { await db.query('UPDATE medications SET deleted_at = NOW() WHERE id = ?', [id]); }
 export async function deleteClinicalParameter(id: number): Promise<void> { await db.query('UPDATE clinical_parameters SET deleted_at = NOW() WHERE id = ?', [id]); }
 
-export async function fetchDashboardStats(requestingUser?: User) {
+export async function fetchDashboardStats(requestingUser?: User, organizationPartnerId?: number | null) {
     noStore();
     try {
-        const scope = buildPatientScopeClause(requestingUser);
-        const patientFilter = scope.clause;
+        // Use an aliased patient filter so it can be reused across JOIN queries cleanly.
+        const scope = buildPatientScopeClause(requestingUser, 'p');
+        let patientFilter = scope.clause;
         const patientParams = [...scope.params];
-        const goalPatientScope = scope.clause
-            ? `AND patient_id IN (SELECT id FROM patients WHERE deleted_at IS NULL ${scope.clause})`
-            : '';
+
+        if (organizationPartnerId) {
+            const [orgRows] = await db.query(
+                'SELECT id, partner_type, clinic_id FROM partners WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+                [organizationPartnerId]
+            );
+            const org = (orgRows as any[])[0];
+            if (org) {
+                if (org.partner_type === 'clinic' && org.clinic_id) {
+                    patientFilter += ' AND p.clinic_id = ?';
+                    patientParams.push(org.clinic_id);
+                } else {
+                    patientFilter += ' AND p.partner_id = ?';
+                    patientParams.push(org.id);
+                }
+            }
+        }
+
+        const scopedPatientsSubquery = `SELECT p.id FROM patients p WHERE p.deleted_at IS NULL ${patientFilter}`;
 
         // Core counts
-        const [totalPatientsRows] = await db.query(`SELECT COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${patientFilter}`, patientParams);
+        const [totalPatientsRows] = await db.query(`SELECT COUNT(*) as count FROM patients p WHERE p.deleted_at IS NULL ${patientFilter}`, patientParams);
         const [totalPartnersRows] = await db.query(`SELECT COUNT(*) as count FROM partners WHERE deleted_at IS NULL`);
-        const [totalOnboardedRows] = await db.query(`SELECT COUNT(*) as count FROM patients WHERE status != 'Pending' AND deleted_at IS NULL ${patientFilter}`, patientParams);
-        const [totalInactiveRows] = await db.query(`SELECT COUNT(*) as count FROM patients WHERE status = 'Pending' AND deleted_at IS NULL ${patientFilter}`, patientParams);
+        const [totalOnboardedRows] = await db.query(`SELECT COUNT(*) as count FROM patients p WHERE p.status != 'Pending' AND p.deleted_at IS NULL ${patientFilter}`, patientParams);
+        const [totalInactiveRows] = await db.query(`SELECT COUNT(*) as count FROM patients p WHERE p.status = 'Pending' AND p.deleted_at IS NULL ${patientFilter}`, patientParams);
+
+        const [statusRows] = await db.query(
+            `
+            SELECT p.status, COUNT(*) as count
+            FROM patients p
+            WHERE p.deleted_at IS NULL ${patientFilter}
+            GROUP BY p.status
+            `,
+            patientParams
+        );
         
         // Progress counts
-        const [totalCompletedRows] = await db.query(`SELECT COUNT(DISTINCT patient_id) as count FROM goals WHERE status = 'completed' AND deleted_at IS NULL ${goalPatientScope}`, patientParams);
-        const [totalCriticalRows] = await db.query(`SELECT COUNT(DISTINCT patient_id) as count FROM goals WHERE status = 'active' AND deadline < NOW() AND deleted_at IS NULL ${goalPatientScope}`, patientParams);
-        const [totalInProgressRows] = await db.query(`SELECT COUNT(DISTINCT patient_id) as count FROM goals WHERE status = 'active' AND deadline >= NOW() AND deleted_at IS NULL ${goalPatientScope}`, patientParams);
+        const [totalCompletedRows] = await db.query(
+            `SELECT COUNT(DISTINCT g.patient_id) as count FROM goals g WHERE g.status = 'completed' AND g.deleted_at IS NULL AND g.patient_id IN (${scopedPatientsSubquery})`,
+            patientParams
+        );
+        const [totalCriticalRows] = await db.query(
+            `SELECT COUNT(DISTINCT g.patient_id) as count FROM goals g WHERE g.status = 'active' AND g.deadline < CURDATE() AND g.deleted_at IS NULL AND g.patient_id IN (${scopedPatientsSubquery})`,
+            patientParams
+        );
+        const [totalInProgressRows] = await db.query(
+            `SELECT COUNT(DISTINCT g.patient_id) as count FROM goals g WHERE g.status = 'active' AND g.deadline >= CURDATE() AND g.deleted_at IS NULL AND g.patient_id IN (${scopedPatientsSubquery})`,
+            patientParams
+        );
+
+        const [upcomingAppointmentsRows] = await db.query(
+            `
+            SELECT COUNT(*) as count
+            FROM appointments a
+            JOIN patients p ON p.id = a.patient_id
+            WHERE
+              a.deleted_at IS NULL
+              AND p.deleted_at IS NULL
+              ${patientFilter}
+              AND a.appointment_date >= NOW()
+              AND a.status IN ('scheduled','confirmed','rescheduled')
+            `,
+            patientParams
+        );
+
+        const [membersWithRecentCheckIn30dRows] = await db.query(
+            `
+            SELECT COUNT(DISTINCT a.patient_id) as count
+            FROM assessments a
+            JOIN patients p ON p.id = a.patient_id
+            WHERE
+              a.deleted_at IS NULL
+              AND p.deleted_at IS NULL
+              ${patientFilter}
+              AND a.measured_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            `,
+            patientParams
+        );
+
+        const [membersWithNoCheckIn14dRows] = await db.query(
+            `
+            SELECT COUNT(*) as count
+            FROM patients p
+            WHERE
+              p.deleted_at IS NULL
+              ${patientFilter}
+              AND p.status != 'Pending'
+              AND NOT EXISTS (
+                SELECT 1
+                FROM assessments a
+                WHERE a.patient_id = p.id
+                  AND a.deleted_at IS NULL
+                  AND a.measured_at >= DATE_SUB(NOW(), INTERVAL 14 DAY)
+              )
+            `,
+            patientParams
+        );
 
         // Distributions
-        const [genderRows] = await db.query(`SELECT IFNULL(gender, 'Not Specified') as gender, COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${patientFilter} GROUP BY gender`, patientParams);
-        const [diagnosisRows] = await db.query(`SELECT IFNULL(primary_diagnosis, 'Not Specified') as diagnosis, COUNT(*) as count FROM patients WHERE deleted_at IS NULL ${patientFilter} GROUP BY primary_diagnosis`, patientParams);
+        const [genderRows] = await db.query(`SELECT IFNULL(p.gender, 'Not Specified') as gender, COUNT(*) as count FROM patients p WHERE p.deleted_at IS NULL ${patientFilter} GROUP BY p.gender`, patientParams);
+        const [diagnosisRows] = await db.query(`SELECT IFNULL(p.primary_diagnosis, 'Not Specified') as diagnosis, COUNT(*) as count FROM patients p WHERE p.deleted_at IS NULL ${patientFilter} GROUP BY p.primary_diagnosis`, patientParams);
         
         // Age Distribution
         const [ageRows] = await db.query(`
             SELECT 
                 CASE 
-                    WHEN dob IS NULL THEN 'Not Specified'
-                    WHEN TIMESTAMPDIFF(YEAR, dob, CURDATE()) BETWEEN 18 AND 35 THEN '18-35'
-                    WHEN TIMESTAMPDIFF(YEAR, dob, CURDATE()) BETWEEN 36 AND 50 THEN '36-50'
-                    WHEN TIMESTAMPDIFF(YEAR, dob, CURDATE()) > 50 THEN 'Above 50'
+                    WHEN p.dob IS NULL THEN 'Not Specified'
+                    WHEN TIMESTAMPDIFF(YEAR, p.dob, CURDATE()) BETWEEN 18 AND 35 THEN '18-35'
+                    WHEN TIMESTAMPDIFF(YEAR, p.dob, CURDATE()) BETWEEN 36 AND 50 THEN '36-50'
+                    WHEN TIMESTAMPDIFF(YEAR, p.dob, CURDATE()) > 50 THEN 'Above 50'
                     ELSE 'Below 18'
                 END as age_group,
                 COUNT(*) as count
-            FROM patients 
-            WHERE deleted_at IS NULL ${patientFilter}
+            FROM patients p
+            WHERE p.deleted_at IS NULL ${patientFilter}
             GROUP BY age_group
         `, patientParams);
 
@@ -836,6 +1462,13 @@ export async function fetchDashboardStats(requestingUser?: User) {
             totalCompleted: (totalCompletedRows as any)[0]?.count || 0,
             totalCritical: (totalCriticalRows as any)[0]?.count || 0,
             totalInProgress: (totalInProgressRows as any)[0]?.count || 0,
+            upcomingAppointments: (upcomingAppointmentsRows as any)[0]?.count || 0,
+            membersWithRecentCheckIn30d: (membersWithRecentCheckIn30dRows as any)[0]?.count || 0,
+            membersWithNoCheckIn14d: (membersWithNoCheckIn14dRows as any)[0]?.count || 0,
+            statusDistribution: (statusRows as any[]).map((row) => ({
+                status: row.status,
+                count: Number(row.count),
+            })),
             genderDistribution: (genderRows as any[]).map(row => ({
                 gender: row.gender,
                 count: Number(row.count)

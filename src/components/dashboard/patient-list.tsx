@@ -4,12 +4,10 @@ import { useState, useEffect, useMemo } from 'react';
 import type { Patient, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
-import { DataTable } from '../ui/data-table';
-import { columns } from '../../app/dashboard/columns';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { useRouter } from 'next/navigation';
 import { isPartnerRole } from '@/lib/role-utils';
+import PatientRegistryCards from '@/components/dashboard/patient-registry-cards';
 
 export default function PatientList({
   patients: initialPatients,
@@ -21,7 +19,6 @@ export default function PatientList({
   currentUser?: User | null;
 }) {
   const [patients, setPatients] = useState(initialPatients);
-  const router = useRouter();
 
   useEffect(() => {
     setPatients(initialPatients);
@@ -56,18 +53,13 @@ export default function PatientList({
         <CardHeader className={compact ? "pb-0" : undefined}>
             {!compact && (
             <div>
-                <CardTitle className="text-foreground">Patient Registry</CardTitle>
+                <CardTitle className="text-foreground">Member Registry</CardTitle>
                 <CardDescription className="text-muted-foreground">View and manage onboarded patient records.</CardDescription>
             </div>
             )}
         </CardHeader>
         <CardContent>
-            <DataTable
-                columns={columns}
-                data={visiblePatients}
-                onRowClick={(patient) => router.push(`/dashboard/patient/${patient.id}`)}
-                toolbarActions={toolbarActions}
-            />
+            <PatientRegistryCards patients={visiblePatients} toolbarActions={toolbarActions} />
         </CardContent>
     </Card>
   );

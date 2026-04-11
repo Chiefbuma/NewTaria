@@ -34,9 +34,45 @@ export async function createAssessment(data: Partial<Assessment>): Promise<Asses
     return res.json();
 }
 
+// Patient self-monitoring (patient portal).
+export async function createPatientAssessment(data: Pick<Assessment, 'clinical_parameter_id' | 'value' | 'measured_at'> & { notes?: string | null }): Promise<Assessment> {
+    const res = await fetch('/api/patient/assessments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+export async function updatePatientAssessment(data: Pick<Assessment, 'id' | 'value' | 'measured_at'> & { notes?: string | null }): Promise<Assessment> {
+    const res = await fetch('/api/patient/assessments', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
+}
+
+export async function deletePatientAssessment(id: number): Promise<void> {
+    const res = await fetch(`/api/patient/assessments?id=${id}`, { method: 'DELETE' });
+    if (!res.ok) throw await getErrorFromResponse(res);
+}
+
 export async function deleteAssessment(id: number): Promise<void> {
     const res = await fetch(`/api/assessments?id=${id}`, { method: 'DELETE' });
     if (!res.ok) throw await getErrorFromResponse(res);
+}
+
+export async function updateAssessment(id: number, data: Partial<Assessment>): Promise<Assessment> {
+    const res = await fetch('/api/assessments', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...data })
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+    return res.json();
 }
 
 // --- Goal APIs ---

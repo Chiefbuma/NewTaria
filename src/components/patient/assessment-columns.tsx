@@ -1,18 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import { ColumnDef } from "@tanstack/react-table";
-import { MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import type { Assessment, ClinicalParameter } from "@/lib/types";
 import AddAssessmentModal from './add-assessment-modal';
+import { FileAudio, Image as ImageIcon } from 'lucide-react';
 
 interface GetAssessmentColumnsProps {
   clinicalParameters: ClinicalParameter[];
@@ -23,52 +16,28 @@ interface GetAssessmentColumnsProps {
 export const getAssessmentColumns = ({ clinicalParameters, onEdit, onDelete }: GetAssessmentColumnsProps): ColumnDef<Assessment>[] => {
   
   const EditableCell = ({ assessment, onSave }: { assessment: Assessment, onSave: (updated: Assessment) => void }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
     const parameter = clinicalParameters.find(p => p.id === assessment.clinical_parameter_id);
-
-    const handleEdit = () => {
-        setEditingAssessment(assessment);
-        setIsEditing(true);
-    };
-
-    const handleSave = (updatedData: Omit<Assessment, 'id' | 'patient_id' | 'created_at'>) => {
-        onSave({ ...assessment, ...updatedData });
-        setIsEditing(false);
-        setEditingAssessment(null);
-    }
     
     return (
-      <>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-7 w-7 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-3.5 w-3.5" />
+      <div className="flex items-center justify-end gap-1">
+        <AddAssessmentModal
+          trigger={
+            <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Edit className="h-3.5 w-3.5" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={handleEdit}>
-              <Edit className="mr-2 h-4 w-4" /> Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDelete(assessment.id)} className="text-red-500">
-              <Trash2 className="mr-2 h-4 w-4" /> Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {isEditing && parameter && (
-            <AddAssessmentModal
-                isOpen={isEditing}
-                onClose={() => setIsEditing(false)}
-                onSave={handleSave}
-                parameter={parameter}
-                existingAssessment={editingAssessment}
-                allParameters={clinicalParameters}
-            />
-        )}
-      </>
+          }
+          parameter={parameter ?? null}
+          existingAssessment={assessment}
+          allParameters={clinicalParameters}
+          onSave={(updatedData) => {
+            onSave({ ...assessment, ...updatedData });
+          }}
+          disabled={!parameter}
+        />
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => onDelete(assessment.id)}>
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
     );
   };
 
@@ -89,6 +58,32 @@ export const getAssessmentColumns = ({ clinicalParameters, onEdit, onDelete }: G
         const parameterId = row.original.clinical_parameter_id;
         const parameter = clinicalParameters.find(p => p.id === parameterId);
         const value = row.getValue("value") as string;
+        if (parameter?.type === 'image') {
+          return (
+            <a
+              href={value}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 text-xs text-primary underline-offset-2 hover:underline"
+            >
+              <ImageIcon className="h-3.5 w-3.5" />
+              View photo
+            </a>
+          );
+        }
+        if (parameter?.type === 'voice') {
+          return (
+            <a
+              href={value}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 text-xs text-primary underline-offset-2 hover:underline"
+            >
+              <FileAudio className="h-3.5 w-3.5" />
+              Play voice note
+            </a>
+          );
+        }
         return <div className="text-xs">{value} {parameter?.unit}</div>
       }
     },

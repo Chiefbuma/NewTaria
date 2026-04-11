@@ -1,16 +1,10 @@
 'use client';
 
+import type React from 'react';
 import { useState, useEffect } from 'react';
 import type { User, Partner } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -23,11 +17,9 @@ import {
 import { PasswordInput } from '@/components/ui/password-input';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { placeholderImages } from '@/lib/placeholder-images';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DataTable } from '../ui/data-table';
 import { ColumnDef } from "@tanstack/react-table";
-import { Checkbox } from "@/components/ui/checkbox";
 import { getRoleLabel, isPayerRole } from '@/lib/role-utils';
 import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
 
@@ -55,112 +47,36 @@ function normalizeRoleValue(role: User['role'] | undefined) {
 export default function UserManagement({ initialUsers, onUsersUpdate }: UserManagementProps) {
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [partners, setPartners] = useState<Partner[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentUser, setCurrentUser] = useState<Partial<User> | null>(null);
-  const [initialPassword, setInitialPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [confirmAction, setConfirmAction] = useState<null | (() => Promise<void>)>(null);
   const [confirmTitle, setConfirmTitle] = useState('');
   const [confirmDescription, setConfirmDescription] = useState('');
   const { toast } = useToast();
-  const userAvatar = placeholderImages.find(p => p.id === 'user-avatar');
+  // Keep avatars consistent across tables: initials only (no profile images/placeholders).
 
   useEffect(() => {
       fetch('/api/partners').then(res => res.json()).then(setPartners);
   }, []);
 
-  const handleOpenModal = (user?: User) => {
-    setCurrentUser(user || { ...emptyUser });
-    setInitialPassword('');
-    setConfirmPassword('');
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setCurrentUser(null);
-    setInitialPassword('');
-    setConfirmPassword('');
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!currentUser) return;
-    setCurrentUser({ ...currentUser, [e.target.name]: e.target.value });
-  };
-  
-  const handleSelectChange = (name: string, value: string) => {
-    if (!currentUser) return;
-    const val = value === 'null' ? null : value;
-    setCurrentUser({ ...currentUser, [name]: val });
-  };
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser || !currentUser.name || !currentUser.phone || !currentUser.email) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Name, phone number, and email are required.' });
-      return;
-    }
-
-    if (!currentUser.id) {
-      if (!initialPassword || !confirmPassword) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Initial password and confirmation are required.' });
-        return;
-      }
-
-      if (initialPassword.length < 8) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Initial password must be at least 8 characters.' });
-        return;
-      }
-
-      if (initialPassword !== confirmPassword) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Password confirmation does not match.' });
-        return;
-      }
-    }
-
-    setIsSubmitting(true);
-    const payload = currentUser.id
-      ? currentUser
-      : { ...currentUser, password: initialPassword };
-
-    fetch('/api/users', {
-      method: currentUser.id ? 'PUT' : 'POST',
+  const saveUser = async (data: Partial<User> & { password?: string }): Promise<User> => {
+    const res = await fetch('/api/users', {
+      method: data.id ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-      .then(async (res) => {
-        const payload = await res.json();
-        if (!res.ok) {
-          throw new Error(payload.error || 'Unable to save user.');
-        }
+      body: JSON.stringify(data),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(payload.error || 'Unable to save user.');
+    }
+    return payload as User;
+  };
 
-        let updatedUsers;
-        if (currentUser.id) {
-          updatedUsers = users.map((user) => (user.id === payload.id ? payload : user));
-        } else {
-          updatedUsers = [payload, ...users];
-          toast({
-            title: 'User created',
-            description: 'Initial password saved. User will be required to change it on first login.',
-          });
-        }
-
-        setUsers(updatedUsers);
-        onUsersUpdate(updatedUsers);
-
-        if (currentUser.id) {
-          toast({ title: 'Success', description: 'User updated successfully.' });
-        }
-
-        handleCloseModal();
-      })
-      .catch((error: any) => {
-        toast({ variant: 'destructive', title: 'Error', description: error.message });
-      })
-      .finally(() => {
-        setIsSubmitting(false);
-      });
+  const applySavedUser = (saved: User) => {
+    setUsers((prev) => {
+      const exists = prev.some((u) => u.id === saved.id);
+      const updated = exists ? prev.map((u) => (u.id === saved.id ? saved : u)) : [saved, ...prev];
+      onUsersUpdate(updated);
+      return updated;
+    });
   };
   
   const executeDelete = async (id: number) => {
@@ -186,32 +102,12 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
 
   const columns: ColumnDef<User>[] = [
     {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-    },
-    {
         accessorKey: "name",
         header: "User",
         cell: ({ row }) => (
             <div className="flex items-center gap-2.5">
                 <Avatar className="h-7 w-7">
-                    <AvatarImage src={row.original.avatarUrl || userAvatar?.imageUrl} />
-                    <AvatarFallback>{row.original.name[0]}</AvatarFallback>
+                    <AvatarFallback>{row.original.name?.[0] || 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="grid gap-0.5">
                     <p className="text-sm font-bold">{row.original.name}</p>
@@ -234,7 +130,27 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
         id: "actions",
         cell: ({ row }) => (
             <div className="flex justify-end gap-2">
-                <Button variant="ghost" size="icon" onClick={() => handleOpenModal(row.original)}><Edit className="h-4 w-4" /></Button>
+                <UserUpsertPopover
+                  user={row.original}
+                  partners={partners}
+                  saveUser={saveUser}
+                  onSaved={(saved, mode) => {
+                    applySavedUser(saved);
+                    toast({
+                      title: mode === 'create' ? 'User created' : 'Success',
+                      description:
+                        mode === 'create'
+                          ? 'Initial password saved. User will be required to change it on first login.'
+                          : 'User updated successfully.',
+                    });
+                  }}
+                  trigger={
+                    <Button variant="ghost" size="icon">
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Edit</span>
+                    </Button>
+                  }
+                />
                 <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete(row.original.id)}><Trash2 className="h-4 w-4" /></Button>
             </div>
         )
@@ -242,100 +158,31 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
   ];
 
   const toolbarActions = (
-    <Button onClick={() => handleOpenModal()} className="bg-primary hover:bg-primary/90 shadow-sm">
-      <PlusCircle className="mr-2 h-4 w-4" /> Add User
-    </Button>
+    <UserUpsertPopover
+      user={null}
+      partners={partners}
+      saveUser={saveUser}
+      onSaved={(saved, mode) => {
+        applySavedUser(saved);
+        toast({
+          title: mode === 'create' ? 'User created' : 'Success',
+          description:
+            mode === 'create'
+              ? 'Initial password saved. User will be required to change it on first login.'
+              : 'User updated successfully.',
+        });
+      }}
+      trigger={
+        <Button className="bg-primary hover:bg-primary/90 shadow-sm">
+          <PlusCircle className="mr-2 h-4 w-4" /> Add User
+        </Button>
+      }
+    />
   );
 
   return (
     <div className="space-y-4">
       <DataTable columns={columns} data={users} toolbarActions={toolbarActions} />
-
-      <Dialog
-        open={isModalOpen}
-        onOpenChange={(open) => {
-          if (open) {
-            setIsModalOpen(true);
-            return;
-          }
-          handleCloseModal();
-        }}
-      >
-        <DialogContent>
-          <DialogHeader><DialogTitle>{currentUser?.id ? 'Edit' : 'Add'} User</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-3 py-4">
-              <InlineField label="Full Name" htmlFor="name">
-                <Input id="name" name="name" value={currentUser?.name || ''} onChange={handleChange} required />
-              </InlineField>
-              <InlineField label="Email" htmlFor="email">
-                <Input id="email" name="email" type="email" value={currentUser?.email || ''} onChange={handleChange} required />
-              </InlineField>
-              <InlineField label="Phone Number" htmlFor="phone">
-                <Input id="phone" name="phone" type="tel" value={currentUser?.phone || ''} onChange={handleChange} required />
-              </InlineField>
-              {!currentUser?.id && (
-                <>
-                  <InlineField label="Initial Password" htmlFor="password">
-                    <PasswordInput
-                      id="password"
-                      name="password"
-                      value={initialPassword}
-                      onChange={(e) => setInitialPassword(e.target.value)}
-                      minLength={8}
-                      required
-                    />
-                  </InlineField>
-                  <InlineField label="Confirm Password" htmlFor="confirmPassword">
-                    <PasswordInput
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      minLength={8}
-                      required
-                    />
-                  </InlineField>
-                </>
-              )}
-              <InlineField label="Role" htmlFor="role">
-                <Select name="role" value={normalizeRoleValue(currentUser?.role as User['role'] | undefined)} onValueChange={(value) => handleSelectChange('role', value)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="navigator">Navigator</SelectItem>
-                        <SelectItem value="physician">Clinician</SelectItem>
-                        <SelectItem value="partner">Partner</SelectItem>
-                        <SelectItem value="staff">Staff</SelectItem>
-                        <SelectItem value="user">Patient</SelectItem>
-                    </SelectContent>
-                </Select>
-              </InlineField>
-              
-              {isPayerRole(currentUser?.role as User['role']) && (
-                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                    <InlineField label="Assign to Partner" htmlFor="partner_id">
-                    <Select name="partner_id" value={String(currentUser?.partner_id || 'null')} onValueChange={(value) => handleSelectChange('partner_id', value)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="null">None</SelectItem>
-                            {partners.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    </InlineField>
-                  </div>
-              )}
-            </div>
-            <DialogFooter>
-              <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {currentUser?.id ? 'Save Changes' : 'Create User'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <ConfirmActionDialog
         open={Boolean(confirmAction)}
@@ -354,6 +201,199 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
         }}
       />
     </div>
+  );
+}
+
+function UserUpsertPopover({
+  trigger,
+  user,
+  partners,
+  saveUser,
+  onSaved,
+}: {
+  trigger: React.ReactNode;
+  user: User | null;
+  partners: Partner[];
+  saveUser: (data: Partial<User> & { password?: string }) => Promise<User>;
+  onSaved: (saved: User, mode: 'create' | 'update') => void;
+}) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [role, setRole] = useState<User['role']>('navigator');
+  const [partnerId, setPartnerId] = useState<number | null>(null);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const mode: 'create' | 'update' = user?.id ? 'update' : 'create';
+  const title = user?.id ? 'Edit User' : 'Add User';
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) {
+          setName(user?.name || '');
+          setEmail(user?.email || '');
+          setPhone(user?.phone || '');
+          setRole(normalizeRoleValue(user?.role) as User['role']);
+          setPartnerId(typeof user?.partner_id === 'number' ? user.partner_id : null);
+          setPassword('');
+          setConfirmPassword('');
+        }
+      }}
+    >
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent align="end" sideOffset={10} className="w-[560px] max-w-[calc(100vw-2rem)] p-0">
+        <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
+          <div className="flex items-center justify-between bg-primary px-4 py-3 text-primary-foreground">
+            <p className="text-sm font-bold">{title}</p>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-primary-foreground/80">
+              Access
+            </span>
+          </div>
+
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+
+              if (!name.trim() || !email.trim() || !phone.trim()) {
+                toast({ variant: 'destructive', title: 'Error', description: 'Name, phone number, and email are required.' });
+                return;
+              }
+
+              if (mode === 'create') {
+                if (!password || !confirmPassword) {
+                  toast({ variant: 'destructive', title: 'Error', description: 'Initial password and confirmation are required.' });
+                  return;
+                }
+                if (password.length < 8) {
+                  toast({ variant: 'destructive', title: 'Error', description: 'Initial password must be at least 8 characters.' });
+                  return;
+                }
+                if (password !== confirmPassword) {
+                  toast({ variant: 'destructive', title: 'Error', description: 'Password confirmation does not match.' });
+                  return;
+                }
+              }
+
+              try {
+                setIsSubmitting(true);
+                const payload: Partial<User> & { password?: string } = {
+                  ...(user?.id ? { id: user.id } : null),
+                  name: name.trim(),
+                  email: email.trim(),
+                  phone: phone.trim(),
+                  role,
+                  partner_id: isPayerRole(role) ? partnerId : null,
+                };
+                if (mode === 'create') payload.password = password;
+
+                const saved = await saveUser(payload);
+                onSaved(saved, mode);
+                setOpen(false);
+              } catch (err: any) {
+                toast({ variant: 'destructive', title: 'Error', description: err?.message || 'Unable to save user.' });
+              } finally {
+                setIsSubmitting(false);
+              }
+            }}
+          >
+            <div className="space-y-3 p-4">
+              <InlineField label="Full Name" htmlFor="name">
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
+              </InlineField>
+              <InlineField label="Email" htmlFor="email">
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-8" required />
+              </InlineField>
+              <InlineField label="Phone Number" htmlFor="phone">
+                <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-8" required />
+              </InlineField>
+
+              {mode === 'create' ? (
+                <>
+                  <InlineField label="Initial Password" htmlFor="password">
+                    <PasswordInput
+                      id="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      minLength={8}
+                      required
+                    />
+                  </InlineField>
+                  <InlineField label="Confirm Password" htmlFor="confirmPassword">
+                    <PasswordInput
+                      id="confirmPassword"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      minLength={8}
+                      required
+                    />
+                  </InlineField>
+                </>
+              ) : null}
+
+              <InlineField label="Role" htmlFor="role">
+                <Select value={role} onValueChange={(value) => setRole(value as User['role'])}>
+                  <SelectTrigger className="h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="navigator">Navigator</SelectItem>
+                    <SelectItem value="physician">Clinician</SelectItem>
+                    <SelectItem value="partner">Partner</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="user">Patient</SelectItem>
+                  </SelectContent>
+                </Select>
+              </InlineField>
+
+              {isPayerRole(role) ? (
+                <InlineField label="Assign to Partner" htmlFor="partner_id">
+                  <Select
+                    value={String(partnerId ?? 'null')}
+                    onValueChange={(value) => setPartnerId(value === 'null' ? null : Number(value))}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="null">None</SelectItem>
+                      {partners.map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </InlineField>
+              ) : null}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
+              <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

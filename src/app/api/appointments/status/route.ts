@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authorizeInternalApiRequest, isAllowedForPatientMutation } from '@/lib/auth';
-import { updateAppointmentStatus } from '@/lib/data';
+import { authorizeInternalApiRequest, ensurePatientInScope, isAllowedForPatientMutation } from '@/lib/auth';
+import { fetchAppointmentById, updateAppointmentStatus } from '@/lib/data';
 
 export async function PATCH(req: Request) {
     try {
@@ -10,6 +10,10 @@ export async function PATCH(req: Request) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
         const { id, status } = await req.json();
+        const existing = await fetchAppointmentById(Number(id));
+        if (!existing) return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+        const scoped = await ensurePatientInScope(existing.patient_id, authResult);
+        if (scoped instanceof NextResponse) return scoped;
         await updateAppointmentStatus(id, status);
         return NextResponse.json({ success: true });
     } catch (error: any) {

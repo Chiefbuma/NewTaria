@@ -24,6 +24,9 @@ export type User = {
   partner_clinic_id?: number | null;
   must_change_password?: boolean;
   password_changed_at?: string | null;
+  failed_login_attempts?: number;
+  locked_until?: string | null;
+  last_login_at?: string | null;
   deleted_at?: string | null;
 };
 
@@ -52,6 +55,9 @@ export type Partner = {
   deleted_at?: string | null;
 };
 
+// Backwards-compatible alias used by some legacy UI/components.
+export type Payer = Partner;
+
 export type Clinic = {
   id: number;
   name: string;
@@ -73,10 +79,11 @@ export type Message = {
 export type ClinicalParameter = {
     id: number;
     name: string;
-    type: 'numeric' | 'text' | 'choice';
+    type: 'numeric' | 'text' | 'choice' | 'image' | 'voice';
     unit: string | null;
     options: string[] | null;
     category: 'vital_sign' | 'lab_result' | 'clinical_measurement' | 'symptom' | 'assessment';
+    allow_self_monitoring?: boolean;
     deleted_at?: string | null;
 };
 
@@ -84,6 +91,7 @@ export type Assessment = {
     id: number;
     patient_id: number;
     clinical_parameter_id: number;
+    created_by_user_id?: number | null;
     value: string;
     notes: string | null;
     is_normal: boolean | null;
@@ -100,10 +108,50 @@ export type Goal = {
   target_operator: '<' | '<=' | '=' | '>=' | '>';
   status: 'active' | 'completed' | 'cancelled';
   notes: string | null;
+  // Legacy fields used by the PDF report component.
+  discussion?: string | null;
+  goal?: string | null;
   deadline: string;
   created_at: string;
   current_value?: string;
   is_overdue?: boolean;
+  deleted_at?: string | null;
+};
+
+// Legacy report types (used by the wellness report/PDF renderer).
+export type Vital = {
+  id: number;
+  patient_id: number;
+  bp_systolic?: number | null;
+  bp_diastolic?: number | null;
+  pulse?: number | null;
+  temp?: number | null;
+  rbs?: number | null;
+  created_at?: string;
+  deleted_at?: string | null;
+};
+
+export type Nutrition = {
+  id: number;
+  patient_id: number;
+  height?: number | null;
+  weight?: number | null;
+  bmi?: number | null;
+  llw?: number | null;
+  ulw?: number | null;
+  visceral_fat?: number | null;
+  body_fat_percent?: number | null;
+  notes_nutritionist?: string | null;
+  created_at?: string;
+  deleted_at?: string | null;
+};
+
+export type Clinical = {
+  id: number;
+  patient_id: number;
+  notes_doctor?: string | null;
+  notes_psychologist?: string | null;
+  created_at?: string;
   deleted_at?: string | null;
 };
 
@@ -222,6 +270,13 @@ export type Patient = {
   payer_name?: string | null;
   clinic_id?: number | null;
   clinic_name?: string | null;
+  // List/registry rollups (from fetchPatients query)
+  total_goals?: number;
+  active_goals?: number;
+  total_assessments?: number;
+  overdue_goals?: number;
+  upcoming_appointments?: number;
+  next_appointment_date?: string | null;
   policy_number?: string | null;
   coverage_limits?: string | null;
   pre_authorization_status?: 'Not Required' | 'Pending' | 'Approved' | 'Denied' | null;
@@ -235,16 +290,46 @@ export type Patient = {
   prescriptions: Prescription[];
   appointments: Appointment[];
   reviews: Review[];
-  vitals?: any[];
-  nutrition?: any[];
-  clinicals?: any[];
+  vitals?: Vital[];
+  nutrition?: Nutrition[];
+  clinicals?: Clinical[];
   stats?: {
     totalGoals: number;
     activeGoals: number;
     totalAssessments: number;
     assessmentCoverage: number;
     needsAttention: boolean;
+    overdueGoals?: number;
+    upcomingAppointments?: number;
   };
+};
+
+export type RegistryInsights = {
+  upcomingAppointments: {
+    patient_id: number;
+    patient_name: string;
+    partner_name: string | null;
+    clinic_name: string | null;
+    title: string;
+    appointment_date: string;
+    status: string;
+  }[];
+  needsAttention: {
+    patient_id: number;
+    patient_name: string;
+    status: string;
+    overdue_goals: number;
+    last_assessment_at: string | null;
+  }[];
+  leastInteraction: {
+    patient_id: number;
+    patient_name: string;
+    partner_name: string | null;
+    clinic_name: string | null;
+    active_goals: number;
+    assessments_30d: number;
+    last_assessment_at: string | null;
+  }[];
 };
 
 export type PatientOnboardingPayload = {

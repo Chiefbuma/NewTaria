@@ -1,10 +1,13 @@
 'use client';
-import type { Patient, Appointment } from '@/lib/types';
+import { useState } from 'react';
+import type { Patient, Appointment, User } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarCheck, Clock, CalendarPlus, Edit, XCircle } from 'lucide-react';
+import { CalendarCheck, Clock, CalendarPlus, Edit, XCircle, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatAppointmentDateTime } from '@/lib/date-format';
+import { updateAppointmentStatus, upsertAppointment } from '@/lib/api-service';
+import AddAppointmentModal from '@/components/patient/add-appointment-modal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,8 +26,19 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-export default function AppointmentsCard({ patient, onSchedule, onEdit, onUpdate }: { patient: Patient, onSchedule: () => void, onEdit: (appointment: Appointment) => void, onUpdate: (appointments: Appointment[]) => void }) {
+export default function AppointmentsCard({
+  patient,
+  clinicians,
+  onUpdate,
+  readOnly = false,
+}: {
+  patient: Patient;
+  clinicians: User[];
+  onUpdate: (appointments: Appointment[]) => void;
+  readOnly?: boolean;
+}) {
     const { toast } = useToast();
+    const [pendingStatusId, setPendingStatusId] = useState<number | null>(null);
     
     const upcomingAppointments = patient.appointments
         .filter(a => new Date(a.appointment_date) > new Date() && a.status !== 'cancelled')
@@ -32,46 +46,89 @@ export default function AppointmentsCard({ patient, onSchedule, onEdit, onUpdate
     
     const nextAppointment = upcomingAppointments[0];
 
-    const handleCancel = (appointmentId: number) => {
-        const updatedAppointments = patient.appointments.map(a => 
-            a.id === appointmentId ? { ...a, status: 'cancelled' as const } : a
-        );
-        onUpdate(updatedAppointments);
-        toast({ title: "Success", description: "Appointment cancelled." });
+    const handleSave = async (appointmentData: Omit<Appointment, 'id' | 'patient_id'> & { id?: number }) => {
+      if (readOnly) return;
+      const saved = await upsertAppointment({ ...appointmentData, patient_id: patient.id });
+      const clinician = clinicians.find((c) => c.id === Number(appointmentData.clinician_id));
+      const fullAppt: Appointment = {
+        ...saved,
+        clinician: clinician ?? saved.clinician,
+      };
+
+      const updatedAppointments = appointmentData.id
+        ? patient.appointments.map((a) => (a.id === appointmentData.id ? fullAppt : a))
+        : [fullAppt, ...patient.appointments];
+
+      onUpdate(updatedAppointments);
+      toast({ title: 'Success', description: 'Appointment saved.' });
+    };
+
+    const handleCancel = async (appointmentId: number) => {
+        try {
+            setPendingStatusId(appointmentId);
+            await updateAppointmentStatus(appointmentId, 'cancelled');
+            const updatedAppointments = patient.appointments.map(a => 
+                a.id === appointmentId ? { ...a, status: 'cancelled' as const } : a
+            );
+            onUpdate(updatedAppointments);
+            toast({ title: "Success", description: "Appointment cancelled." });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e?.message || 'Failed to cancel appointment.' });
+        } finally {
+            setPendingStatusId(null);
+        }
     }
     
-    const handleConfirm = (appointmentId: number) => {
-         const updatedAppointments = patient.appointments.map(a => 
-            a.id === appointmentId ? { ...a, status: 'confirmed' as const } : a
-        );
-        onUpdate(updatedAppointments);
-        toast({ title: "Success", description: "Appointment confirmed." });
+    const handleConfirm = async (appointmentId: number) => {
+        try {
+            setPendingStatusId(appointmentId);
+            await updateAppointmentStatus(appointmentId, 'confirmed');
+            const updatedAppointments = patient.appointments.map(a => 
+                a.id === appointmentId ? { ...a, status: 'confirmed' as const } : a
+            );
+            onUpdate(updatedAppointments);
+            toast({ title: "Success", description: "Appointment confirmed." });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e?.message || 'Failed to confirm appointment.' });
+        } finally {
+            setPendingStatusId(null);
+        }
     }
 
     return (
-        <Card>
-            <CardHeader>
+        <Card className="overflow-hidden border-border/60 shadow-sm">
+            <CardHeader className="bg-muted/30 pb-4">
                 <div className="flex justify-between items-start">
                     <div>
-                        <CardTitle className="flex items-center gap-2">
-                            <CalendarCheck className="h-5 w-5" />
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <CalendarCheck className="h-4 w-4" />
                             <span>Appointments</span>
                         </CardTitle>
-                        <CardDescription>Manage upcoming appointments.</CardDescription>
+                        <CardDescription className="text-xs">Manage upcoming appointments.</CardDescription>
                     </div>
-                     <TooltipProvider>
-                        <Tooltip>
+                    <AddAppointmentModal
+                      trigger={
+                        <TooltipProvider>
+                          <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button size="icon" variant="ghost" onClick={onSchedule}>
-                                    <CalendarPlus className="h-5 w-5" />
-                                    <span className="sr-only">Schedule Appointment</span>
-                                </Button>
+                              <Button size="icon" variant="ghost" className="h-8 w-8" disabled={readOnly}>
+                                <CalendarPlus className="h-4 w-4" />
+                                <span className="sr-only">Schedule Appointment</span>
+                              </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                                <p>Schedule Appointment</p>
+                              <p>Schedule Appointment</p>
                             </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                          </Tooltip>
+                        </TooltipProvider>
+                      }
+                      onSave={handleSave}
+                      patient={patient}
+                      clinicians={clinicians}
+                      existingAppointment={null}
+                      align="end"
+                      disabled={readOnly}
+                    />
                 </div>
             </CardHeader>
             <CardContent>
@@ -85,12 +142,55 @@ export default function AppointmentsCard({ patient, onSchedule, onEdit, onUpdate
                                 <span>{formatAppointmentDateTime(nextAppointment.appointment_date)}</span>
                             </div>
                         </div>
-                        <div className="flex justify-end gap-2">
-                            {nextAppointment.status === 'scheduled' && <Button size="sm" variant="secondary" onClick={() => handleConfirm(nextAppointment.id)}>Confirm</Button>}
-                            <Button size="sm" variant="outline" onClick={() => onEdit(nextAppointment)}><Edit className="mr-2 h-3 w-3"/> Reschedule</Button>
+                        <div className="flex flex-wrap justify-end gap-2">
+                            {nextAppointment.status === 'scheduled' && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="icon"
+                                      variant="secondary"
+                                      className="h-8 w-8"
+                                      onClick={() => handleConfirm(nextAppointment.id)}
+                                      disabled={pendingStatusId === nextAppointment.id}
+                                    >
+                                      <Check className="h-4 w-4" />
+                                      <span className="sr-only">Confirm</span>
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Confirm</p></TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            <AddAppointmentModal
+                              trigger={
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button size="icon" variant="outline" className="h-8 w-8" disabled={readOnly}>
+                                        <Edit className="h-4 w-4" />
+                                        <span className="sr-only">Reschedule</span>
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Reschedule</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              }
+                              onSave={handleSave}
+                              patient={patient}
+                              clinicians={clinicians}
+                              existingAppointment={nextAppointment}
+                              align="end"
+                              disabled={readOnly}
+                            />
                              <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button size="sm" variant="destructive"><XCircle className="mr-2 h-3 w-3"/> Cancel</Button>
+                                    <Button size="icon" variant="destructive" className="h-8 w-8" disabled={pendingStatusId === nextAppointment.id}>
+                                      <XCircle className="h-4 w-4" />
+                                      <span className="sr-only">Cancel</span>
+                                    </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>

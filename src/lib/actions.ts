@@ -1,9 +1,16 @@
 'use server';
 
 import bcrypt from 'bcryptjs';
-import { createPatientOnboardingRecord, createUser, fetchPatientByUserId, getUserByEmail, getUserByPhone } from './data';
+import {
+    createUserAndPatientOnboardingRecord,
+    fetchPatientByUserId,
+    getUserByEmail,
+    getUserByPhone,
+    recordFailedLoginAttempt,
+    recordSuccessfulLogin,
+} from './data';
 import type { PatientOnboardingPayload, User } from './types';
-import { canManageOnboarding, isPatientRole } from './role-utils';
+import { canManageOnboarding, isPartnerRole, isPatientRole } from './role-utils';
 import { createUserSession, getCurrentSessionUser } from './auth';
 
 function generateTemporaryPassword(length = 10) {
@@ -33,8 +40,22 @@ export async function authenticateUser(phone: string, password: string): Promise
         const userFromDb = await getUserByPhone(phone);
         if (!userFromDb) return { success: false, error: 'Invalid phone number or password.' };
 
+        if (userFromDb.locked_until) {
+            const lockedUntil = new Date(userFromDb.locked_until);
+            if (!Number.isNaN(lockedUntil.getTime()) && lockedUntil.getTime() > Date.now()) {
+                return { success: false, error: 'Account temporarily locked. Please try again later.' };
+            }
+        }
+
         const passwordsMatch = await bcrypt.compare(password, userFromDb.password);
-        if (!passwordsMatch) return { success: false, error: 'Invalid phone number or password.' };
+        if (!passwordsMatch) {
+            const currentAttempts = Number(userFromDb.failed_login_attempts || 0);
+            const nextAttempts = currentAttempts + 1;
+            const lockAfter = 5;
+            const lockedUntil = nextAttempts >= lockAfter ? new Date(Date.now() + 15 * 60 * 1000) : null;
+            await recordFailedLoginAttempt(userFromDb.id, nextAttempts, lockedUntil);
+            return { success: false, error: 'Invalid phone number or password.' };
+        }
 
         const { password: _, ...userWithoutPassword } = userFromDb;
         const user: User & { patientId?: number } = { ...userWithoutPassword };
@@ -44,6 +65,7 @@ export async function authenticateUser(phone: string, password: string): Promise
             if (patient) user.patientId = patient.id;
         }
 
+        await recordSuccessfulLogin(user.id);
         await createUserSession(user.id, Boolean(user.must_change_password));
 
         return { success: true, user };
@@ -77,6 +99,13 @@ export async function registerPatientByStaff(
             return { success: false, error: 'You do not have permission to onboard patients.' };
         }
 
+        const effectivePartnerId = isPartnerRole(currentUser.role)
+          ? (currentUser.partner_id ?? null)
+          : (formData.partner_id ?? formData.payer_id ?? null);
+        if (isPartnerRole(currentUser.role) && !effectivePartnerId) {
+            return { success: false, error: 'Your account is not linked to a partner organization.' };
+        }
+
         const existingUser = await getUserByEmail(formData.email);
         if (existingUser) {
             return { success: false, error: 'A user with this email already exists.' };
@@ -87,19 +116,19 @@ export async function registerPatientByStaff(
         const patientIdentifier = generatePatientIdentifier();
         const portalUsername = buildPortalUsername(formData.first_name, formData.surname, patientIdentifier);
 
-        const userId = await createUser({
+        const { patientId } = await createUserAndPatientOnboardingRecord({
             name: `${formData.first_name} ${formData.surname}`.trim(),
             phone: formData.phone,
             email: formData.email,
             password: hashedPassword,
             role: 'user',
             avatarUrl: null,
-            partner_id: formData.partner_id ?? formData.payer_id ?? null,
-        });
-
-        const patientId = await createPatientOnboardingRecord(userId, patientIdentifier, {
-            ...formData,
-            portal_username: portalUsername,
+            partner_id: effectivePartnerId,
+            must_change_password: true,
+        }, patientIdentifier, {
+          ...formData,
+          partner_id: effectivePartnerId,
+          portal_username: portalUsername,
         });
 
         return {
