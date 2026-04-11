@@ -93,10 +93,6 @@
   .glass-white {
     @apply border border-white/45 bg-background/80 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.2)] backdrop-blur-xl dark:border-white/10 dark:bg-background/70;
   }
-
-  .form-header-bar {
-    @apply border-b border-border/70 text-foreground;
-  }
 }
  
 @layer base {
