@@ -181,14 +181,12 @@ function ClinicUpsertForm({
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SlideOverContent
-        className="h-full w-[440px] max-w-[calc(100vw-2rem)]  overflow-y-auto p-0"
-      >
+      <SlideOverContent className="flex flex-col p-0">
         <SheetHeader className="px-4 py-3">
             <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
           <form
-            className="flex flex-col h-full"
+            className="flex flex-1 flex-col"
             onSubmit={async (e) => {
               e.preventDefault();
               if (!name.trim()) return;
@@ -204,7 +202,7 @@ function ClinicUpsertForm({
               }
             }}
           >
-            <div className="space-y-3 p-4 flex-1">
+            <div className="flex-1 space-y-3 p-4 overflow-y-auto">
               <InlineField label="Clinic Name" htmlFor="name">
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
               </InlineField>
