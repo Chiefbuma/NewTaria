@@ -98,7 +98,7 @@
 @layer base {
   * { @apply border-border; }
   /* Reduce global typography scale across the app (Tailwind uses rem). */
-  html { font-size: 14px; }
+  html { font-size: 16px; }
   body { @apply bg-background text-foreground; font-feature-settings: "rlig" 1, "alt" 1; }
 }
 
