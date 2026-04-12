@@ -5,7 +5,7 @@ import type { Patient, Prescription, Medication } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Pill, PlusCircle, Edit } from 'lucide-react';
-import AddPrescriptionModal from './add-prescription-modal';
+import AddPrescriptionSheet from './add-prescription-sheet';
 import { useToast } from '@/hooks/use-toast';
 import { upsertPrescription as upsertPrescriptionApi, deletePrescription as deletePrescriptionApi } from '@/lib/api-service';
 import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
@@ -65,7 +65,7 @@ export default function PrescriptionManagement({ patient, prescriptions, medicat
         () =>
             getPrescriptionColumns({
                 renderEdit: (prescription) => (
-                  <AddPrescriptionModal
+                  <AddPrescriptionSheet
                     trigger={
                       <Button variant="ghost" size="icon" className="h-7 w-7">
                         <Edit className="h-4 w-4" />
@@ -96,7 +96,7 @@ export default function PrescriptionManagement({ patient, prescriptions, medicat
                             <CardDescription>Manage patient's prescriptions.</CardDescription>
                         </div>
                         {!readOnly && (
-                          <AddPrescriptionModal
+                          <AddPrescriptionSheet
                             trigger={
                               <Button size="sm" className="bg-primary hover:bg-primary/90 shadow-md">
                                 <PlusCircle className="mr-2 h-4 w-4" /> Add Prescription
