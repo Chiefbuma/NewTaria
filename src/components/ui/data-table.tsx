@@ -528,7 +528,7 @@ export function DataTable<TData, TValue>({
                           colSpan={header.colSpan}
                           className={cn(
                             headHeightClass,
-                            "font-bold uppercase text-[10px] tracking-wider text-primary-foreground",
+                            "font-bold uppercase text-[10px] tracking-wider text-muted-foreground",
                             (header.column.columnDef.meta as any)?.headerClassName
                           )}
                         >
@@ -537,7 +537,7 @@ export function DataTable<TData, TValue>({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-auto p-0 text-[10px] font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-transparent hover:text-primary-foreground"
+                            className="h-auto p-0 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-transparent hover:text-foreground"
                             onClick={() => header.column.toggleSorting(header.column.getIsSorted() === "asc")}
                           >
                             {flexRender(header.column.columnDef.header, header.getContext())}

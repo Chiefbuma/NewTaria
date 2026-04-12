@@ -26,6 +26,16 @@ export default function RegistryDashboard({
   partnerLocked?: boolean
   lockedPartnerLabel?: string
 }) {
+  const partnerFilter = !partnerLocked ? (
+    <PartnerGlobalFilter
+      partners={partners}
+      selectedPartnerId={selectedPartnerId ?? null}
+      locked={false}
+      lockedLabel={lockedPartnerLabel}
+      labelPrefix="Registry"
+    />
+  ) : null
+
   return (
     <div className="space-y-6">
       {partnerLocked ? (
@@ -34,19 +44,7 @@ export default function RegistryDashboard({
         </div>
       ) : (
         <>
-          <PartnerGlobalFilter
-            partners={partners}
-            selectedPartnerId={selectedPartnerId ?? null}
-            locked={false}
-            lockedLabel={lockedPartnerLabel}
-            labelPrefix="Registry"
-          />
-          {selectedPartnerId ? (
-            <div className="text-xs font-semibold text-muted-foreground">
-              Filtered by partner:{' '}
-              <span className="text-foreground">{partners.find((p) => p.id === selectedPartnerId)?.name || 'Partner'}</span>
-            </div>
-          ) : null}
+          {/* The partner filter is rendered in the same row as the search input for neatness. */}
         </>
       )}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px] lg:items-start">
@@ -70,6 +68,7 @@ export default function RegistryDashboard({
                 patients={patients}
                 linkToProgress={partnerLocked}
                 toolbarActions={null}
+                toolbarFilters={partnerFilter}
               />
             </CardContent>
           </Card>

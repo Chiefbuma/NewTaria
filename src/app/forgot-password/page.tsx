@@ -51,6 +51,7 @@ export default function ForgotPasswordPage() {
     <AuthShell
       title="Forgot Your Password?"
       description="Enter your email address to request a password reset link."
+      headerTone="primary"
       footer={
         <Link href="/" className="inline-flex items-center font-medium text-slate-600 hover:text-primary">
           <ArrowLeft className="mr-1 h-4 w-4" />

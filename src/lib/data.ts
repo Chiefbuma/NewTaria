@@ -16,7 +16,9 @@ import type {
     Diagnosis,
     PatientOnboardingPayload,
     PasswordResetToken,
-    RegistryInsights
+    RegistryInsights,
+    InsightsDeepDive,
+    InsightsMemberMetricsPage
 } from './types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { isPartnerRole, isPatientRole } from '@/lib/role-utils';
@@ -381,6 +383,409 @@ export async function fetchRegistryInsights(requestingUser?: User, organizationP
         console.error('fetchRegistryInsights Error:', error);
         return { upcomingAppointments: [], needsAttention: [], leastInteraction: [] };
     }
+}
+
+export async function fetchInsightsDeepDive(
+  requestingUser?: User,
+  organizationPartnerId?: number | null
+): Promise<InsightsDeepDive> {
+  noStore();
+
+  try {
+    // Keep filtering consistent with fetchDashboardStats/fetchRegistryInsights.
+    const scope = buildPatientScopeClause(requestingUser, 'p');
+    let patientFilter = scope.clause;
+    const patientParams = [...scope.params];
+
+    if (organizationPartnerId) {
+      const [orgRows] = await db.query(
+        'SELECT id, partner_type, clinic_id FROM partners WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+        [organizationPartnerId]
+      );
+      const org = (orgRows as any[])[0];
+      if (org) {
+        if (org.partner_type === 'clinic' && org.clinic_id) {
+          patientFilter += ' AND p.clinic_id = ?';
+          patientParams.push(org.clinic_id);
+        } else {
+          patientFilter += ' AND p.partner_id = ?';
+          patientParams.push(org.id);
+        }
+      }
+    }
+
+    const scopedPatientsSubquery = `SELECT p.id FROM patients p WHERE p.deleted_at IS NULL ${patientFilter}`;
+
+    const [
+      activeMembersRows,
+      membersWithActiveGoalsRows,
+      activeGoalsRows,
+      overdueGoalsRows,
+      completedGoalsRows,
+      assessments7dRows,
+      assessments30dRows,
+      reviews30dRows,
+      activePrescriptionsRows,
+      topParametersRows,
+      offTrackRows,
+    ] = await Promise.all([
+      db.query(
+        `SELECT COUNT(*) as count FROM patients p WHERE p.deleted_at IS NULL AND p.status <> 'Pending' ${patientFilter}`,
+        patientParams
+      ),
+      db.query(
+        `SELECT COUNT(DISTINCT g.patient_id) as count FROM goals g WHERE g.deleted_at IS NULL AND g.status = 'active' AND g.patient_id IN (${scopedPatientsSubquery})`,
+        patientParams
+      ),
+      db.query(
+        `SELECT COUNT(*) as count FROM goals g WHERE g.deleted_at IS NULL AND g.status = 'active' AND g.patient_id IN (${scopedPatientsSubquery})`,
+        patientParams
+      ),
+      db.query(
+        `SELECT COUNT(*) as count FROM goals g WHERE g.deleted_at IS NULL AND g.status = 'active' AND g.deadline < CURDATE() AND g.patient_id IN (${scopedPatientsSubquery})`,
+        patientParams
+      ),
+      db.query(
+        `SELECT COUNT(*) as count FROM goals g WHERE g.deleted_at IS NULL AND g.status = 'completed' AND g.patient_id IN (${scopedPatientsSubquery})`,
+        patientParams
+      ),
+      db.query(
+        `
+        SELECT COUNT(*) as count
+        FROM assessments a
+        JOIN patients p ON p.id = a.patient_id
+        WHERE a.deleted_at IS NULL
+          AND p.deleted_at IS NULL
+          ${patientFilter}
+          AND a.measured_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        `,
+        patientParams
+      ),
+      db.query(
+        `
+        SELECT COUNT(*) as count
+        FROM assessments a
+        JOIN patients p ON p.id = a.patient_id
+        WHERE a.deleted_at IS NULL
+          AND p.deleted_at IS NULL
+          ${patientFilter}
+          AND a.measured_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        `,
+        patientParams
+      ),
+      db.query(
+        `
+        SELECT COUNT(*) as count
+        FROM reviews r
+        JOIN patients p ON p.id = r.patient_id
+        WHERE r.deleted_at IS NULL
+          AND p.deleted_at IS NULL
+          ${patientFilter}
+          AND r.review_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        `,
+        patientParams
+      ),
+      db.query(
+        `
+        SELECT COUNT(*) as count
+        FROM prescriptions pr
+        JOIN patients p ON p.id = pr.patient_id
+        WHERE pr.deleted_at IS NULL
+          AND p.deleted_at IS NULL
+          ${patientFilter}
+          AND pr.status = 'active'
+        `,
+        patientParams
+      ),
+      db.query(
+        `
+        SELECT cp.name as parameter_name, COUNT(*) as total
+        FROM assessments a
+        JOIN patients p ON p.id = a.patient_id
+        JOIN clinical_parameters cp ON cp.id = a.clinical_parameter_id
+        WHERE a.deleted_at IS NULL
+          AND p.deleted_at IS NULL
+          AND cp.deleted_at IS NULL
+          ${patientFilter}
+          AND a.measured_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY cp.id
+        ORDER BY total DESC
+        LIMIT 8
+        `,
+        patientParams
+      ),
+      db.query(
+        `
+        SELECT
+          p.id as patient_id,
+          CONCAT_WS(' ', p.first_name, p.surname) as patient_name,
+          SUM(
+            CASE
+              WHEN cp.type = 'numeric'
+                AND a.id IS NOT NULL
+                AND NOT (
+                  (g.target_operator = '<'  AND CAST(a.value AS DECIMAL(10,4)) <  CAST(g.target_value AS DECIMAL(10,4))) OR
+                  (g.target_operator = '<=' AND CAST(a.value AS DECIMAL(10,4)) <= CAST(g.target_value AS DECIMAL(10,4))) OR
+                  (g.target_operator = '='  AND CAST(a.value AS DECIMAL(10,4)) =  CAST(g.target_value AS DECIMAL(10,4))) OR
+                  (g.target_operator = '>=' AND CAST(a.value AS DECIMAL(10,4)) >= CAST(g.target_value AS DECIMAL(10,4))) OR
+                  (g.target_operator = '>'  AND CAST(a.value AS DECIMAL(10,4)) >  CAST(g.target_value AS DECIMAL(10,4)))
+                )
+              THEN 1
+              ELSE 0
+            END
+          ) as off_target_goals,
+          COUNT(*) as total_active_goals,
+          MAX(a.measured_at) as last_assessment_at
+        FROM patients p
+        JOIN goals g
+          ON g.patient_id = p.id
+         AND g.deleted_at IS NULL
+         AND g.status = 'active'
+        JOIN clinical_parameters cp
+          ON cp.id = g.clinical_parameter_id
+         AND cp.deleted_at IS NULL
+        LEFT JOIN (
+          SELECT patient_id, clinical_parameter_id, MAX(measured_at) as max_measured_at
+          FROM assessments
+          WHERE deleted_at IS NULL
+          GROUP BY patient_id, clinical_parameter_id
+        ) la
+          ON la.patient_id = p.id
+         AND la.clinical_parameter_id = g.clinical_parameter_id
+        LEFT JOIN assessments a
+          ON a.patient_id = la.patient_id
+         AND a.clinical_parameter_id = la.clinical_parameter_id
+         AND a.measured_at = la.max_measured_at
+         AND a.deleted_at IS NULL
+        WHERE p.deleted_at IS NULL
+          AND p.status <> 'Pending'
+          ${patientFilter}
+        GROUP BY p.id
+        HAVING off_target_goals > 0
+        ORDER BY off_target_goals DESC, last_assessment_at ASC
+        LIMIT 8
+        `,
+        patientParams
+      ),
+    ]);
+
+    const activeMembers = Number((activeMembersRows as any)[0]?.[0]?.count ?? 0);
+    const membersWithActiveGoals = Number((membersWithActiveGoalsRows as any)[0]?.[0]?.count ?? 0);
+
+    return serialize({
+      totals: {
+        activeMembers,
+        membersWithActiveGoals,
+        membersWithNoActiveGoals: Math.max(0, activeMembers - membersWithActiveGoals),
+        activeGoals: Number((activeGoalsRows as any)[0]?.[0]?.count ?? 0),
+        overdueGoals: Number((overdueGoalsRows as any)[0]?.[0]?.count ?? 0),
+        completedGoals: Number((completedGoalsRows as any)[0]?.[0]?.count ?? 0),
+        assessments7d: Number((assessments7dRows as any)[0]?.[0]?.count ?? 0),
+        assessments30d: Number((assessments30dRows as any)[0]?.[0]?.count ?? 0),
+        reviews30d: Number((reviews30dRows as any)[0]?.[0]?.count ?? 0),
+        activePrescriptions: Number((activePrescriptionsRows as any)[0]?.[0]?.count ?? 0),
+      },
+      topParameters30d: (topParametersRows as any)[0].map((row: any) => ({
+        parameter_name: row.parameter_name,
+        total: Number(row.total),
+      })),
+      offTrackMembers: (offTrackRows as any)[0].map((row: any) => ({
+        patient_id: Number(row.patient_id),
+        patient_name: row.patient_name,
+        off_target_goals: Number(row.off_target_goals),
+        total_active_goals: Number(row.total_active_goals),
+        last_assessment_at: row.last_assessment_at ?? null,
+      })),
+    });
+  } catch (error) {
+    console.error('fetchInsightsDeepDive Error:', error);
+    return {
+      totals: {
+        activeMembers: 0,
+        membersWithActiveGoals: 0,
+        membersWithNoActiveGoals: 0,
+        activeGoals: 0,
+        overdueGoals: 0,
+        completedGoals: 0,
+        assessments7d: 0,
+        assessments30d: 0,
+        reviews30d: 0,
+        activePrescriptions: 0,
+      },
+      topParameters30d: [],
+      offTrackMembers: [],
+    };
+  }
+}
+
+export async function fetchInsightsMemberMetricsPage(
+  requestingUser?: User,
+  organizationPartnerId?: number | null,
+  page = 1,
+  pageSize = 5
+): Promise<InsightsMemberMetricsPage> {
+  noStore();
+
+  const safePage = Number.isFinite(page) ? Math.max(1, Math.floor(page)) : 1;
+  const safePageSize = Number.isFinite(pageSize) ? Math.max(1, Math.min(20, Math.floor(pageSize))) : 5;
+  const offset = (safePage - 1) * safePageSize;
+
+  try {
+    const scope = buildPatientScopeClause(requestingUser, 'p');
+    let patientFilter = scope.clause;
+    const patientParams = [...scope.params];
+
+    if (organizationPartnerId) {
+      const [orgRows] = await db.query(
+        'SELECT id, partner_type, clinic_id FROM partners WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+        [organizationPartnerId]
+      );
+      const org = (orgRows as any[])[0];
+      if (org) {
+        if (org.partner_type === 'clinic' && org.clinic_id) {
+          patientFilter += ' AND p.clinic_id = ?';
+          patientParams.push(org.clinic_id);
+        } else {
+          patientFilter += ' AND p.partner_id = ?';
+          patientParams.push(org.id);
+        }
+      }
+    }
+
+    const [totalRows] = await db.query(
+      `SELECT COUNT(*) as count FROM patients p WHERE p.deleted_at IS NULL AND p.status <> 'Pending' ${patientFilter}`,
+      patientParams
+    );
+    const total = Number((totalRows as any[])[0]?.count ?? 0);
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        p.id as patient_id,
+        CONCAT_WS(' ', p.first_name, p.surname) as patient_name,
+        p.status,
+        (
+          SELECT COUNT(*)
+          FROM goals g
+          WHERE
+            g.patient_id = p.id
+            AND g.status = 'active'
+            AND g.deadline < CURDATE()
+            AND g.deleted_at IS NULL
+        ) as overdue_goals,
+        (
+          SELECT MAX(a.measured_at)
+          FROM assessments a
+          WHERE a.patient_id = p.id AND a.deleted_at IS NULL
+        ) as last_assessment_at,
+        (
+          SELECT COUNT(*)
+          FROM assessments a
+          WHERE
+            a.patient_id = p.id
+            AND a.measured_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            AND a.deleted_at IS NULL
+        ) as assessments_30d,
+        (
+          SELECT a.appointment_date
+          FROM appointments a
+          WHERE
+            a.patient_id = p.id
+            AND a.deleted_at IS NULL
+            AND a.appointment_date >= NOW()
+            AND a.status IN ('scheduled','confirmed','rescheduled')
+          ORDER BY a.appointment_date ASC
+          LIMIT 1
+        ) as next_appointment_at,
+        (
+          SELECT a.status
+          FROM appointments a
+          WHERE
+            a.patient_id = p.id
+            AND a.deleted_at IS NULL
+            AND a.appointment_date >= NOW()
+            AND a.status IN ('scheduled','confirmed','rescheduled')
+          ORDER BY a.appointment_date ASC
+          LIMIT 1
+        ) as next_appointment_status,
+        (
+          SELECT COUNT(*)
+          FROM goals g
+          JOIN clinical_parameters cp ON cp.id = g.clinical_parameter_id AND cp.deleted_at IS NULL
+          WHERE
+            g.patient_id = p.id
+            AND g.deleted_at IS NULL
+            AND g.status = 'active'
+            AND cp.type = 'numeric'
+        ) as total_numeric_goals,
+        (
+          SELECT SUM(
+            CASE
+              WHEN a2.id IS NULL THEN 0
+              WHEN NOT (
+                (g.target_operator = '<'  AND CAST(a2.value AS DECIMAL(10,4)) <  CAST(g.target_value AS DECIMAL(10,4))) OR
+                (g.target_operator = '<=' AND CAST(a2.value AS DECIMAL(10,4)) <= CAST(g.target_value AS DECIMAL(10,4))) OR
+                (g.target_operator = '='  AND CAST(a2.value AS DECIMAL(10,4)) =  CAST(g.target_value AS DECIMAL(10,4))) OR
+                (g.target_operator = '>=' AND CAST(a2.value AS DECIMAL(10,4)) >= CAST(g.target_value AS DECIMAL(10,4))) OR
+                (g.target_operator = '>'  AND CAST(a2.value AS DECIMAL(10,4)) >  CAST(g.target_value AS DECIMAL(10,4)))
+              )
+              THEN 1
+              ELSE 0
+            END
+          )
+          FROM goals g
+          JOIN clinical_parameters cp ON cp.id = g.clinical_parameter_id AND cp.deleted_at IS NULL
+          LEFT JOIN (
+            SELECT patient_id, clinical_parameter_id, MAX(measured_at) as max_measured_at
+            FROM assessments
+            WHERE deleted_at IS NULL
+            GROUP BY patient_id, clinical_parameter_id
+          ) la
+            ON la.patient_id = g.patient_id
+           AND la.clinical_parameter_id = g.clinical_parameter_id
+          LEFT JOIN assessments a2
+            ON a2.patient_id = la.patient_id
+           AND a2.clinical_parameter_id = la.clinical_parameter_id
+           AND a2.measured_at = la.max_measured_at
+           AND a2.deleted_at IS NULL
+          WHERE
+            g.patient_id = p.id
+            AND g.deleted_at IS NULL
+            AND g.status = 'active'
+            AND cp.type = 'numeric'
+        ) as off_target_numeric_goals
+      FROM patients p
+      WHERE
+        p.deleted_at IS NULL
+        AND p.status <> 'Pending'
+        ${patientFilter}
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
+      `,
+      [...patientParams, safePageSize, offset]
+    );
+
+    return serialize({
+      total,
+      page: safePage,
+      pageSize: safePageSize,
+      rows: (rows as any[]).map((row) => ({
+        patient_id: Number(row.patient_id),
+        patient_name: row.patient_name,
+        status: row.status,
+        overdue_goals: Number(row.overdue_goals || 0),
+        last_assessment_at: row.last_assessment_at ?? null,
+        assessments_30d: Number(row.assessments_30d || 0),
+        next_appointment_at: row.next_appointment_at ?? null,
+        next_appointment_status: row.next_appointment_status ?? null,
+        off_target_numeric_goals: Number(row.off_target_numeric_goals || 0),
+        total_numeric_goals: Number(row.total_numeric_goals || 0),
+      })),
+    });
+  } catch (error) {
+    console.error('fetchInsightsMemberMetricsPage Error:', error);
+    return { total: 0, page: safePage, pageSize: safePageSize, rows: [] };
+  }
 }
 
 export async function fetchPatientById(id: string, requestingUser?: User): Promise<Patient | null> {

@@ -222,11 +222,15 @@ export default function AddAssessmentModal({
       <PopoverTrigger asChild disabled={disabled}>
         {trigger}
       </PopoverTrigger>
-      <PopoverContent align={align} sideOffset={10} className="w-[440px] max-w-[calc(100vw-2rem)] p-0">
+      <PopoverContent
+        align={align}
+        sideOffset={10}
+        className="w-[440px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-0"
+      >
         <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
-          <div className="flex items-center justify-between bg-primary px-4 py-3 text-primary-foreground">
+          <div className="form-header-bar flex items-center justify-between px-4 py-3">
             <p className="text-sm font-bold">{existingAssessment ? 'Edit Assessment' : 'Add Assessment'}</p>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-primary-foreground/80">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Record
             </span>
           </div>
@@ -307,4 +311,3 @@ function InlineField({
     </div>
   );
 }
-

@@ -332,6 +332,52 @@ export type RegistryInsights = {
   }[];
 };
 
+export type InsightsDeepDive = {
+  totals: {
+    activeMembers: number;
+    membersWithActiveGoals: number;
+    membersWithNoActiveGoals: number;
+    activeGoals: number;
+    overdueGoals: number;
+    completedGoals: number;
+    assessments7d: number;
+    assessments30d: number;
+    reviews30d: number;
+    activePrescriptions: number;
+  };
+  topParameters30d: {
+    parameter_name: string;
+    total: number;
+  }[];
+  offTrackMembers: {
+    patient_id: number;
+    patient_name: string;
+    off_target_goals: number;
+    total_active_goals: number;
+    last_assessment_at: string | null;
+  }[];
+};
+
+export type InsightsMemberMetricsRow = {
+  patient_id: number;
+  patient_name: string;
+  status: string;
+  overdue_goals: number;
+  last_assessment_at: string | null;
+  assessments_30d: number;
+  next_appointment_at: string | null;
+  next_appointment_status: string | null;
+  off_target_numeric_goals: number;
+  total_numeric_goals: number;
+};
+
+export type InsightsMemberMetricsPage = {
+  total: number;
+  page: number;
+  pageSize: number;
+  rows: InsightsMemberMetricsRow[];
+};
+
 export type PatientOnboardingPayload = {
   first_name: string;
   middle_name?: string;

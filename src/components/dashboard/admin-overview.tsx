@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import type { RegistryInsights } from '@/lib/types';
 import {
   Activity,
   BarChart3,
@@ -58,8 +59,8 @@ const VisualSection = ({ title, icon, chartData, tableData, total, note }: Visua
       </CardHeader>
 
       <CardContent className="pt-6">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <Card className="flex flex-col items-center justify-center border-border/60 bg-background shadow-sm lg:col-span-5">
+        <div className="space-y-4">
+          <Card className="flex flex-col items-center justify-center border-border/60 bg-background shadow-sm">
             <div className="w-full p-6">
               {hasData ? (
                 <div className="relative mx-auto aspect-square w-full max-w-[240px]">
@@ -67,7 +68,7 @@ const VisualSection = ({ title, icon, chartData, tableData, total, note }: Visua
                     <span className="text-3xl font-black text-foreground">{total}</span>
                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total</span>
                   </div>
-                  <ChartContainer config={{ value: { label: 'Count' } }} className="h-full w-full">
+                  <ChartContainer config={{ value: { label: 'Total' } }} className="h-full w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -98,16 +99,15 @@ const VisualSection = ({ title, icon, chartData, tableData, total, note }: Visua
             </div>
           </Card>
 
-          <Card className="overflow-hidden border-border/60 bg-background shadow-sm lg:col-span-7">
-            <div className='overflow-x-auto'>
-                <Table className='w-full'>
+          <Card className="overflow-hidden border-border/60 bg-background shadow-sm">
+            <Table className="w-full min-w-0 table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="whitespace-nowrap">Category</TableHead>
-                      <TableHead className="whitespace-nowrap text-right">Count</TableHead>
-                      <TableHead className="whitespace-nowrap text-right">Male</TableHead>
-                      <TableHead className="whitespace-nowrap text-right">Female</TableHead>
-                      <TableHead className="whitespace-nowrap text-right">%</TableHead>
+                      <TableHead className="w-[52%] whitespace-nowrap">Category</TableHead>
+                      <TableHead className="w-[76px] whitespace-nowrap text-right">Total</TableHead>
+                      <TableHead className="w-[56px] whitespace-nowrap text-right">M</TableHead>
+                      <TableHead className="w-[56px] whitespace-nowrap text-right">F</TableHead>
+                      <TableHead className="w-[56px] whitespace-nowrap text-right">%</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -119,7 +119,7 @@ const VisualSection = ({ title, icon, chartData, tableData, total, note }: Visua
                               {row.color ? (
                                 <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: row.color }} />
                               ) : null}
-                              <span className="text-foreground">{row.label}</span>
+                              <span className="truncate text-foreground">{row.label}</span>
                             </div>
                           </TableCell>
                           <TableCell className="py-2 text-right font-bold text-foreground">{row.value}</TableCell>
@@ -139,7 +139,6 @@ const VisualSection = ({ title, icon, chartData, tableData, total, note }: Visua
                     )}
                   </TableBody>
                 </Table>
-            </div>
           </Card>
         </div>
       </CardContent>
@@ -147,7 +146,57 @@ const VisualSection = ({ title, icon, chartData, tableData, total, note }: Visua
   );
 };
 
-export default function AdminOverview({ stats }: { stats: any }) {
+function TightListTable({
+  title,
+  icon,
+  headers,
+  rows,
+  emptyLabel,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  headers: string[];
+  rows: React.ReactNode;
+  emptyLabel: string;
+}) {
+  return (
+    <Card className="overflow-hidden border-border/60 bg-card shadow-[0_24px_55px_-34px_rgba(15,23,42,0.18)]">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-primary/10 p-2 text-primary">{icon}</div>
+          <div className="grid gap-0.5">
+            <h2 className="text-lg font-bold tracking-tight text-foreground">{title}</h2>
+            <p className="text-sm text-muted-foreground">Focused list for follow-up.</p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <Table className="w-full min-w-0 table-fixed">
+          <TableHeader>
+            <TableRow>
+              {headers.map((h) => (
+                <TableHead key={h} className="whitespace-nowrap">
+                  {h}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows || (
+              <TableRow>
+                <TableCell colSpan={headers.length} className="py-10 text-center text-sm italic text-muted-foreground">
+                  {emptyLabel}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function AdminOverview({ stats, insights }: { stats: any; insights?: RegistryInsights | null }) {
   if (!stats || stats.totalPatients === 0) {
     return (
       <Card className="overflow-hidden border-border/60 bg-card shadow-[0_24px_55px_-34px_rgba(15,23,42,0.18)]">
@@ -286,23 +335,112 @@ export default function AdminOverview({ stats }: { stats: any }) {
           total={Number(stats.totalPatients)}
         />
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <VisualSection
-            title="Age Distribution"
-            icon={<Calendar className="h-5 w-5" />}
-            chartData={ageChart}
-            tableData={ageTable}
-            total={Number(stats.totalPatients)}
+        <VisualSection
+          title="Age Distribution"
+          icon={<Calendar className="h-5 w-5" />}
+          chartData={ageChart}
+          tableData={ageTable}
+          total={Number(stats.totalPatients)}
+        />
+
+        <VisualSection
+          title="Gender Distribution"
+          icon={<Users className="h-5 w-5" />}
+          chartData={genderChart}
+          tableData={genderTable}
+          total={Number(stats.totalPatients)}
+        />
+      </div>
+
+      {insights ? (
+        <div className="space-y-6">
+          <TightListTable
+            title="Needs Attention"
+            icon={<ShieldAlert className="h-5 w-5" />}
+            headers={["Member", "Reason", "Overdue", "Last check-in"]}
+            emptyLabel="No members need attention right now."
+            rows={
+              insights.needsAttention.length ? (
+                <>
+                  {insights.needsAttention.map((row) => {
+                    const reason =
+                      row.status === "Critical"
+                        ? "Critical"
+                        : row.overdue_goals > 0
+                          ? "Overdue goals"
+                          : row.last_assessment_at
+                            ? "No check-in (14d)"
+                            : "No check-ins";
+                    return (
+                      <TableRow key={row.patient_id}>
+                        <TableCell className="py-2 font-medium">
+                          <span className="truncate text-foreground">{row.patient_name}</span>
+                        </TableCell>
+                        <TableCell className="py-2 text-xs text-muted-foreground">{reason}</TableCell>
+                        <TableCell className="py-2 text-right font-semibold text-foreground">{row.overdue_goals}</TableCell>
+                        <TableCell className="py-2 text-right text-xs text-muted-foreground">
+                          {row.last_assessment_at ? new Date(row.last_assessment_at).toLocaleDateString() : "Never"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </>
+              ) : null
+            }
           />
-          <VisualSection
-            title="Gender Distribution"
-            icon={<Users className="h-5 w-5" />}
-            chartData={genderChart}
-            tableData={genderTable}
-            total={Number(stats.totalPatients)}
+
+          <TightListTable
+            title="Least Interaction"
+            icon={<TrendingUp className="h-5 w-5" />}
+            headers={["Member", "Goals", "30d", "Last"]}
+            emptyLabel="No low-interaction members right now."
+            rows={
+              insights.leastInteraction.length ? (
+                <>
+                  {insights.leastInteraction.map((row) => (
+                    <TableRow key={row.patient_id}>
+                      <TableCell className="py-2 font-medium">
+                        <span className="truncate text-foreground">{row.patient_name}</span>
+                      </TableCell>
+                      <TableCell className="py-2 text-right font-semibold text-foreground">{row.active_goals}</TableCell>
+                      <TableCell className="py-2 text-right font-semibold text-foreground">{row.assessments_30d}</TableCell>
+                      <TableCell className="py-2 text-right text-xs text-muted-foreground">
+                        {row.last_assessment_at ? new Date(row.last_assessment_at).toLocaleDateString() : "Never"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </>
+              ) : null
+            }
+          />
+
+          <TightListTable
+            title="Upcoming Appointments"
+            icon={<CalendarDays className="h-5 w-5" />}
+            headers={["Member", "When", "Status"]}
+            emptyLabel="No upcoming appointments."
+            rows={
+              insights.upcomingAppointments.length ? (
+                <>
+                  {insights.upcomingAppointments.map((row) => (
+                    <TableRow key={`${row.patient_id}:${row.appointment_date}`}>
+                      <TableCell className="py-2 font-medium">
+                        <span className="truncate text-foreground">{row.patient_name}</span>
+                      </TableCell>
+                      <TableCell className="py-2 text-right text-xs text-muted-foreground">
+                        {new Date(row.appointment_date).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="py-2 text-right text-xs font-semibold text-muted-foreground">
+                        {String(row.status).replace("_", " ")}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </>
+              ) : null
+            }
           />
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import type { Patient } from "@/lib/types"
 import { Input } from "@/components/ui/input"
@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { formatAppointmentDateTime } from "@/lib/date-format"
+import { Button } from "@/components/ui/button"
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -49,14 +51,18 @@ export default function PatientRegistryCards({
   patients,
   linkToProgress = false,
   toolbarActions,
+  toolbarFilters,
   emptyLabel = "No matching patients found.",
 }: {
   patients: Patient[]
   linkToProgress?: boolean
   toolbarActions?: React.ReactNode
+  toolbarFilters?: React.ReactNode
   emptyLabel?: string
 }) {
   const [query, setQuery] = useState("")
+  const pageSize = 5
+  const [pageIndex, setPageIndex] = useState(0)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -69,6 +75,16 @@ export default function PatientRegistryCards({
     })
   }, [patients, query])
 
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const safePageIndex = Math.min(pageIndex, pageCount - 1)
+  const start = safePageIndex * pageSize
+  const paged = filtered.slice(start, start + pageSize)
+
+  useEffect(() => {
+    // Reset paging when the filter changes so results feel predictable.
+    setPageIndex(0)
+  }, [query])
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -79,13 +95,18 @@ export default function PatientRegistryCards({
             placeholder="Search patients..."
             className="h-9 w-full rounded-xl border-border/70 bg-background/80 md:max-w-[280px]"
           />
+          {toolbarFilters ? (
+            <div className="w-full md:w-auto">
+              {toolbarFilters}
+            </div>
+          ) : null}
         </div>
         {toolbarActions ? <div className="flex justify-stretch md:justify-end">{toolbarActions}</div> : null}
       </div>
 
       {filtered.length ? (
         <div className="space-y-3">
-          {filtered.map((patient) => {
+          {paged.map((patient) => {
             const name = `${patient.first_name || ""} ${patient.surname || ""}`.trim() || "Unnamed Patient"
             const initials = getInitials(name)
             const identifier = patient.patient_identifier || patient.email || patient.phone || ""
@@ -136,6 +157,64 @@ export default function PatientRegistryCards({
           {emptyLabel}
         </div>
       )}
+
+      {filtered.length ? (
+        <div className="flex flex-col gap-3 border-t border-border/70 pt-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-xs text-muted-foreground">
+            Showing <span className="font-semibold text-foreground">{start + 1}</span>-
+            <span className="font-semibold text-foreground">{Math.min(start + pageSize, filtered.length)}</span> of{" "}
+            <span className="font-semibold text-foreground">{filtered.length}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3 sm:justify-end">
+            <div className="text-xs font-medium">
+              Page <span className="font-semibold">{safePageIndex + 1}</span> of{" "}
+              <span className="font-semibold">{pageCount}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="hidden h-7 w-7 rounded-lg p-0 lg:flex"
+                onClick={() => setPageIndex(0)}
+                disabled={safePageIndex === 0}
+              >
+                <span className="sr-only">Go to first page</span>
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-7 w-7 rounded-lg p-0"
+                onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                disabled={safePageIndex === 0}
+              >
+                <span className="sr-only">Go to previous page</span>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-7 w-7 rounded-lg p-0"
+                onClick={() => setPageIndex((p) => Math.min(pageCount - 1, p + 1))}
+                disabled={safePageIndex >= pageCount - 1}
+              >
+                <span className="sr-only">Go to next page</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="hidden h-7 w-7 rounded-lg p-0 lg:flex"
+                onClick={() => setPageIndex(pageCount - 1)}
+                disabled={safePageIndex >= pageCount - 1}
+              >
+                <span className="sr-only">Go to last page</span>
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

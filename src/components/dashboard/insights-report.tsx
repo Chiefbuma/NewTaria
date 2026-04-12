@@ -1,0 +1,408 @@
+import type React from 'react';
+import { format } from 'date-fns';
+import type { InsightsDeepDive, InsightsMemberMetricsPage, RegistryInsights } from '@/lib/types';
+import ClassificationSection, { type ClassificationRow } from '@/components/dashboard/classification-section';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Triangle } from 'lucide-react';
+
+type MetricColor = 'green' | 'yellow' | 'red' | 'white';
+
+function TriangleMetric({ color, title }: { color: MetricColor; title: string }) {
+  const cls =
+    color === 'green'
+      ? 'text-emerald-500 fill-emerald-500'
+      : color === 'yellow'
+        ? 'text-amber-500 fill-amber-500'
+        : color === 'red'
+          ? 'text-rose-500 fill-rose-500'
+          : 'text-muted-foreground/35 fill-transparent';
+
+  return (
+    <span className="inline-flex items-center justify-center" title={title} aria-label={title}>
+      <Triangle className={cn('h-3.5 w-3.5', cls)} />
+    </span>
+  );
+}
+
+function buildInsightsUrl({
+  selectedPartnerId,
+  page,
+}: {
+  selectedPartnerId: number | null;
+  page: number;
+}) {
+  const params = new URLSearchParams();
+  if (selectedPartnerId) params.set('partnerId', String(selectedPartnerId));
+  params.set('page', String(page));
+  return `/dashboard/insights?${params.toString()}`;
+}
+
+function ReportTableSection({
+  index,
+  title,
+  description,
+  headers,
+  children,
+  emptyLabel,
+  className,
+}: {
+  index: number;
+  title: string;
+  description: string;
+  headers: { label: string; className?: string }[];
+  children: React.ReactNode;
+  emptyLabel: string;
+  className?: string;
+}) {
+  const hasRows = Boolean(children);
+
+  return (
+    <section
+      className={cn(
+        'rounded-[24px] border border-border/70 bg-muted/10 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.18)] transition-colors dark:bg-muted/10',
+        className
+      )}
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background text-xs font-semibold text-foreground">
+          {index}
+        </div>
+
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="space-y-1">
+            <h3 className="truncate text-[15px] font-semibold tracking-tight text-foreground sm:text-base">
+              {title}
+            </h3>
+            <p className="text-[12px] leading-5 text-muted-foreground">{description}</p>
+          </div>
+
+          <Table className="min-w-0 table-fixed">
+            <TableHeader className="bg-transparent">
+              <TableRow className="border-border/60">
+                {headers.map((h) => (
+                  <TableHead key={h.label} className={cn('whitespace-nowrap', h.className)}>
+                    {h.label}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {hasRows ? (
+                children
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={headers.length} className="py-8 text-center text-[12px] italic text-muted-foreground">
+                    {emptyLabel}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function InsightsReport({
+  stats,
+  insights,
+  deepDive,
+  memberMetrics,
+  selectedPartnerId,
+  reportTitle,
+  reportSubtitle,
+  className,
+}: {
+  stats: any;
+  insights: RegistryInsights | null;
+  deepDive: InsightsDeepDive | null;
+  memberMetrics: InsightsMemberMetricsPage | null;
+  selectedPartnerId: number | null;
+  reportTitle: string;
+  reportSubtitle?: string | null;
+  className?: string;
+}) {
+  const totalMembers = Number(stats?.totalOnboarded ?? stats?.totalPatients ?? 0);
+  const reportDateLabel = `Report Date: ${format(new Date(), 'dd MMM yyyy')}`;
+
+  const statusRows: ClassificationRow[] = (stats?.statusDistribution ?? []).map((r: any) => ({
+    label: String(r.status ?? 'Unknown'),
+    total: Number(r.count ?? 0),
+  }));
+  const diagnosisRows: ClassificationRow[] = (stats?.diagnosisDistribution ?? []).map((r: any) => ({
+    label: String(r.diagnosis ?? 'Not Specified'),
+    total: Number(r.count ?? 0),
+  }));
+  const ageRows: ClassificationRow[] = (stats?.ageDistribution ?? []).map((r: any) => ({
+    label: String(r.age_group ?? 'Not Specified'),
+    total: Number(r.count ?? 0),
+  }));
+  const genderRows: ClassificationRow[] = (stats?.genderDistribution ?? []).map((r: any) => ({
+    label: String(r.gender ?? 'Not Specified'),
+    total: Number(r.count ?? 0),
+  }));
+
+  const engagementTotal = deepDive?.totals?.activeMembers ?? totalMembers;
+  const engagementRows: ClassificationRow[] = [
+    { label: 'Checked in (7 days)', total: Number(deepDive?.totals?.assessments7d ?? 0), meta: 'Total assessments recorded' },
+    { label: 'Checked in (30 days)', total: Number(stats?.membersWithRecentCheckIn30d ?? 0), meta: 'Members with at least 1 check-in' },
+    { label: 'No check-in (14 days)', total: Number(stats?.membersWithNoCheckIn14d ?? 0), meta: 'Members overdue for follow-up' },
+  ];
+
+  const goalTotal = Math.max(
+    0,
+    Number(deepDive?.totals?.activeGoals ?? 0) + Number(deepDive?.totals?.completedGoals ?? 0)
+  );
+  const goalRows: ClassificationRow[] = [
+    { label: 'Active goals', total: Number(deepDive?.totals?.activeGoals ?? 0) },
+    { label: 'Overdue goals', total: Number(deepDive?.totals?.overdueGoals ?? 0), meta: 'Active goals past deadline' },
+    { label: 'Completed goals', total: Number(deepDive?.totals?.completedGoals ?? 0) },
+  ];
+
+  const coverageTotal = deepDive?.totals?.activeMembers ?? totalMembers;
+  const coverageRows: ClassificationRow[] = [
+    { label: 'Members with active goals', total: Number(deepDive?.totals?.membersWithActiveGoals ?? 0) },
+    { label: 'Members with no active goals', total: Number(deepDive?.totals?.membersWithNoActiveGoals ?? 0), meta: 'Potential onboarding gap' },
+    { label: 'Active prescriptions', total: Number(deepDive?.totals?.activePrescriptions ?? 0), meta: 'Prescription records marked active' },
+    { label: 'Clinical reviews (30d)', total: Number(deepDive?.totals?.reviews30d ?? 0) },
+  ];
+
+  const topParameters = deepDive?.topParameters30d ?? [];
+
+  const metricsPage = memberMetrics ?? { total: 0, page: 1, pageSize: 5, rows: [] };
+  const totalPages = metricsPage.total ? Math.max(1, Math.ceil(metricsPage.total / metricsPage.pageSize)) : 1;
+  const canPrev = metricsPage.page > 1;
+  const canNext = metricsPage.page < totalPages;
+
+  return (
+    <div
+      className={cn(
+        className ||
+          'mx-auto max-w-[1080px] space-y-8 rounded-[32px] border border-border/70 bg-card/95 p-6 text-foreground shadow-[0_28px_70px_-40px_rgba(15,23,42,0.24)] transition-colors md:p-10 dark:bg-card/95'
+      )}
+    >
+      <div className="flex flex-col items-center gap-5 border-b border-border/70 pb-8">
+        <img
+          src="/images/taria-logo.png"
+          alt="NewTaria"
+          className="h-auto w-full max-w-[300px] md:max-w-[340px]"
+        />
+        <div className="space-y-2 text-center">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">{reportTitle}</h2>
+          {reportSubtitle ? <p className="text-sm text-muted-foreground">{reportSubtitle}</p> : null}
+          <p className="text-sm text-muted-foreground">{reportDateLabel}</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-6">
+        <ClassificationSection
+          index={1}
+          title="Member Status"
+          description="Distribution across program states (active, critical, discharged, etc)."
+          rows={statusRows}
+          measuredLabel="Total members"
+          total={totalMembers}
+        />
+        <ClassificationSection
+          index={2}
+          title="Diagnosis Mix"
+          description="Primary diagnosis distribution for enrolled members."
+          rows={diagnosisRows}
+          measuredLabel="Total members"
+          total={totalMembers}
+        />
+        <ClassificationSection
+          index={3}
+          title="Engagement"
+          description="Check-in coverage signals adherence and follow-up intensity."
+          rows={engagementRows}
+          measuredLabel="Population"
+          total={Number(engagementTotal)}
+        />
+        <ClassificationSection
+          index={4}
+          title="Goal Health"
+          description="Goal workload and deadline risk across your population."
+          rows={goalRows}
+          measuredLabel="Tracked goals"
+          total={Number(goalTotal)}
+        />
+        <ClassificationSection
+          index={5}
+          title="Coverage"
+          description="How well members are set up with goals, prescriptions, and clinician reviews."
+          rows={coverageRows}
+          measuredLabel="Total members"
+          total={Number(coverageTotal)}
+        />
+
+        <ReportTableSection
+          index={6}
+          title="Member Overview"
+          description="One table across all members. Triangles highlight attention risk, interaction, upcoming appointment coverage, and off-target numeric goals."
+          headers={[
+            { label: 'Member', className: 'w-[56%]' },
+            { label: 'Attention', className: 'w-[70px] text-center' },
+            { label: 'Interaction', className: 'w-[82px] text-center' },
+            { label: 'Upcoming', className: 'w-[72px] text-center' },
+            { label: 'Off Track', className: 'w-[70px] text-center' },
+          ]}
+          emptyLabel="No members found."
+        >
+          {metricsPage.rows.length
+            ? metricsPage.rows.map((row) => {
+                const last = row.last_assessment_at ? new Date(row.last_assessment_at) : null;
+                const daysSinceLast = last ? Math.floor((Date.now() - last.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+                const attentionColor: MetricColor =
+                  row.status === 'Critical'
+                    ? 'red'
+                    : row.overdue_goals > 0
+                      ? 'red'
+                      : row.last_assessment_at === null
+                        ? 'red'
+                        : daysSinceLast !== null && daysSinceLast >= 14
+                          ? 'yellow'
+                          : 'green';
+
+                const interactionColor: MetricColor =
+                  row.last_assessment_at === null
+                    ? 'red'
+                    : row.assessments_30d === 0
+                      ? 'red'
+                      : row.assessments_30d <= 2
+                        ? 'yellow'
+                        : 'green';
+
+                const upcomingColor: MetricColor =
+                  row.next_appointment_at === null
+                    ? 'white'
+                    : row.next_appointment_status === 'confirmed'
+                      ? 'green'
+                      : 'yellow';
+
+                const offTrackColor: MetricColor =
+                  row.total_numeric_goals === 0
+                    ? 'white'
+                    : row.off_target_numeric_goals > 0
+                      ? 'red'
+                      : 'green';
+
+                const attentionTitle =
+                  row.status === 'Critical'
+                    ? 'Critical member'
+                    : row.overdue_goals > 0
+                      ? `Overdue goals: ${row.overdue_goals}`
+                      : row.last_assessment_at === null
+                        ? 'No check-ins recorded'
+                        : daysSinceLast !== null && daysSinceLast >= 14
+                          ? `Last check-in: ${format(last!, 'dd MMM')} (over 14 days)`
+                          : `Last check-in: ${format(last!, 'dd MMM')}`;
+
+                const interactionTitle =
+                  row.last_assessment_at === null
+                    ? 'No check-ins recorded'
+                    : `Assessments (30d): ${row.assessments_30d} | Last: ${format(last!, 'dd MMM')}`;
+
+                const upcomingTitle =
+                  row.next_appointment_at === null
+                    ? 'No upcoming appointment'
+                    : `Next: ${format(new Date(row.next_appointment_at), 'dd MMM')} (${String(row.next_appointment_status)})`;
+
+                const offTrackTitle =
+                  row.total_numeric_goals === 0
+                    ? 'No numeric goals tracked'
+                    : row.off_target_numeric_goals > 0
+                      ? `Off target numeric goals: ${row.off_target_numeric_goals} / ${row.total_numeric_goals}`
+                      : `On target (numeric goals: ${row.total_numeric_goals})`;
+
+                return (
+                  <TableRow key={row.patient_id} className="border-border/50">
+                    <TableCell className="py-2 font-medium text-foreground">
+                      <span className="truncate">{row.patient_name}</span>
+                    </TableCell>
+                    <TableCell className="py-2 text-center">
+                      <TriangleMetric color={attentionColor} title={attentionTitle} />
+                    </TableCell>
+                    <TableCell className="py-2 text-center">
+                      <TriangleMetric color={interactionColor} title={interactionTitle} />
+                    </TableCell>
+                    <TableCell className="py-2 text-center">
+                      <TriangleMetric color={upcomingColor} title={upcomingTitle} />
+                    </TableCell>
+                    <TableCell className="py-2 text-center">
+                      <TriangleMetric color={offTrackColor} title={offTrackTitle} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            : null}
+        </ReportTableSection>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+          <div className="text-[11px] font-semibold text-muted-foreground">
+            {metricsPage.total ? (
+              <>
+                {metricsPage.total} members • Page <span className="text-foreground">{metricsPage.page}</span> of{' '}
+                <span className="text-foreground">{totalPages}</span>
+              </>
+            ) : (
+              '0 members'
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm" disabled={!canPrev}>
+              <Link href={buildInsightsUrl({ selectedPartnerId, page: Math.max(1, metricsPage.page - 1) })}>
+                Prev
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" disabled={!canNext}>
+              <Link href={buildInsightsUrl({ selectedPartnerId, page: Math.min(totalPages, metricsPage.page + 1) })}>
+                Next
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        <ReportTableSection
+          index={7}
+          title="Top Tracked Parameters (30 days)"
+          description="Where most monitoring effort is concentrated."
+          headers={[
+            { label: 'Parameter', className: 'w-[74%]' },
+            { label: 'Total', className: 'w-[96px] text-right' },
+            { label: 'Period', className: 'w-[80px] text-right' },
+          ]}
+          emptyLabel="No assessments recorded in the last 30 days."
+        >
+          {topParameters.length
+            ? topParameters.map((row) => (
+                <TableRow key={row.parameter_name} className="border-border/50">
+                  <TableCell className="py-2 font-medium text-foreground">
+                    <span className="truncate">{row.parameter_name}</span>
+                  </TableCell>
+                  <TableCell className="py-2 text-right font-semibold text-foreground">{row.total}</TableCell>
+                  <TableCell className="py-2 text-right text-muted-foreground">30d</TableCell>
+                </TableRow>
+              ))
+            : null}
+        </ReportTableSection>
+      </div>
+
+      <div className="border-t border-border/70 pt-8">
+        <div className="rounded-[24px] border border-border/70 bg-muted/25 p-5 dark:bg-muted/20">
+          <p className="text-[11px] leading-6 text-muted-foreground">
+            These insights are computed from the latest recorded activity for members in this care program: goals,
+            check-ins (assessments), appointments, prescriptions, and clinical reviews. Use “Needs Attention” and “Off
+            Track Members” as your priority queues, then use “Top Tracked Parameters” to understand monitoring focus and
+            resourcing.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
