@@ -137,20 +137,10 @@ export default function InsightsReport({
     label: String(r.diagnosis ?? 'Not Specified'),
     total: Number(r.count ?? 0),
   }));
-  const ageRows: ClassificationRow[] = (stats?.ageDistribution ?? []).map((r: any) => ({
-    label: String(r.age_group ?? 'Not Specified'),
-    total: Number(r.count ?? 0),
-  }));
-  const genderRows: ClassificationRow[] = (stats?.genderDistribution ?? []).map((r: any) => ({
-    label: String(r.gender ?? 'Not Specified'),
-    total: Number(r.count ?? 0),
-  }));
 
-  const engagementTotal = deepDive?.totals?.activeMembers ?? totalMembers;
+  const engagementTotal = totalMembers;
   const engagementRows: ClassificationRow[] = [
-    { label: 'Checked in (7 days)', total: Number(deepDive?.totals?.assessments7d ?? 0), meta: 'Total assessments recorded' },
-    { label: 'Checked in (30 days)', total: Number(stats?.membersWithRecentCheckIn30d ?? 0), meta: 'Members with at least 1 check-in' },
-    { label: 'No check-in (14 days)', total: Number(stats?.membersWithNoCheckIn14d ?? 0), meta: 'Members overdue for follow-up' },
+    { label: 'No check-in (14+ days)', total: Number(stats?.membersWithNoCheckIn14d ?? 0), meta: 'Patients overdue for follow-up' },
   ];
 
   const goalTotal = Math.max(
@@ -165,13 +155,10 @@ export default function InsightsReport({
 
   const coverageTotal = deepDive?.totals?.activeMembers ?? totalMembers;
   const coverageRows: ClassificationRow[] = [
-    { label: 'Members with active goals', total: Number(deepDive?.totals?.membersWithActiveGoals ?? 0) },
-    { label: 'Members with no active goals', total: Number(deepDive?.totals?.membersWithNoActiveGoals ?? 0), meta: 'Potential onboarding gap' },
+    { label: 'Patients with no active goals', total: Number(deepDive?.totals?.membersWithNoActiveGoals ?? 0), meta: 'Potential onboarding gap' },
     { label: 'Active prescriptions', total: Number(deepDive?.totals?.activePrescriptions ?? 0), meta: 'Prescription records marked active' },
     { label: 'Clinical reviews (30d)', total: Number(deepDive?.totals?.reviews30d ?? 0) },
   ];
-
-  const topParameters = deepDive?.topParameters30d ?? [];
 
   const metricsPage = memberMetrics ?? { total: 0, page: 1, pageSize: 5, rows: [] };
   const totalPages = metricsPage.total ? Math.max(1, Math.ceil(metricsPage.total / metricsPage.pageSize)) : 1;
@@ -186,11 +173,6 @@ export default function InsightsReport({
       )}
     >
       <div className="flex flex-col items-center gap-5 border-b border-border/70 pb-8">
-        <img
-          src="/images/taria-logo.png"
-          alt="NewTaria"
-          className="h-auto w-full max-w-[300px] md:max-w-[340px]"
-        />
         <div className="space-y-2 text-center">
           <h2 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">{reportTitle}</h2>
           {reportSubtitle ? <p className="text-sm text-muted-foreground">{reportSubtitle}</p> : null}
@@ -201,24 +183,24 @@ export default function InsightsReport({
       <div className="flex flex-col gap-6">
         <ClassificationSection
           index={1}
-          title="Member Status"
+          title="Patient Status"
           description="Distribution across program states (active, critical, discharged, etc)."
           rows={statusRows}
-          measuredLabel="Total members"
+          measuredLabel="Total patients"
           total={totalMembers}
         />
         <ClassificationSection
           index={2}
           title="Diagnosis Mix"
-          description="Primary diagnosis distribution for enrolled members."
+          description="Primary diagnosis distribution for enrolled patients."
           rows={diagnosisRows}
-          measuredLabel="Total members"
+          measuredLabel="Total patients"
           total={totalMembers}
         />
         <ClassificationSection
           index={3}
-          title="Engagement"
-          description="Check-in coverage signals adherence and follow-up intensity."
+          title="Engagement Risks"
+          description="Patients who have not checked in recently and may require follow-up."
           rows={engagementRows}
           measuredLabel="Population"
           total={Number(engagementTotal)}
@@ -234,24 +216,24 @@ export default function InsightsReport({
         <ClassificationSection
           index={5}
           title="Coverage"
-          description="How well members are set up with goals, prescriptions, and clinician reviews."
+          description="How well patients are set up with goals, prescriptions, and clinician reviews."
           rows={coverageRows}
-          measuredLabel="Total members"
+          measuredLabel="Total patients"
           total={Number(coverageTotal)}
         />
 
         <ReportTableSection
           index={6}
-          title="Member Overview"
-          description="One table across all members. Triangles highlight attention risk, interaction, upcoming appointment coverage, and off-target numeric goals."
+          title="Patient Progress"
+          description="Triangles highlight attention risk, interaction, upcoming appointment coverage, and off-target numeric goals for each patient."
           headers={[
-            { label: 'Member', className: 'w-[56%]' },
+            { label: 'Patient', className: 'w-[56%]' },
             { label: 'Attention', className: 'w-[70px] text-center' },
             { label: 'Interaction', className: 'w-[82px] text-center' },
             { label: 'Upcoming', className: 'w-[72px] text-center' },
             { label: 'Off Track', className: 'w-[70px] text-center' },
           ]}
-          emptyLabel="No members found."
+          emptyLabel="No patients found."
         >
           {metricsPage.rows.length
             ? metricsPage.rows.map((row) => {
@@ -294,7 +276,7 @@ export default function InsightsReport({
 
                 const attentionTitle =
                   row.status === 'Critical'
-                    ? 'Critical member'
+                    ? 'Critical patient'
                     : row.overdue_goals > 0
                       ? `Overdue goals: ${row.overdue_goals}`
                       : row.last_assessment_at === null
@@ -311,7 +293,9 @@ export default function InsightsReport({
                 const upcomingTitle =
                   row.next_appointment_at === null
                     ? 'No upcoming appointment'
-                    : `Next: ${format(new Date(row.next_appointment_at), 'dd MMM')} (${String(row.next_appointment_status)})`;
+                    : `Next: ${format(new Date(row.next_appointment_at), 'dd MMM')} (${String(
+                        row.next_appointment_status
+                      )})`;
 
                 const offTrackTitle =
                   row.total_numeric_goals === 0
@@ -347,11 +331,11 @@ export default function InsightsReport({
           <div className="text-[11px] font-semibold text-muted-foreground">
             {metricsPage.total ? (
               <>
-                {metricsPage.total} members • Page <span className="text-foreground">{metricsPage.page}</span> of{' '}
+                {metricsPage.total} patients • Page <span className="text-foreground">{metricsPage.page}</span> of{' '}
                 <span className="text-foreground">{totalPages}</span>
               </>
             ) : (
-              '0 members'
+              '0 patients'
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -367,39 +351,14 @@ export default function InsightsReport({
             </Button>
           </div>
         </div>
-
-        <ReportTableSection
-          index={7}
-          title="Top Tracked Parameters (30 days)"
-          description="Where most monitoring effort is concentrated."
-          headers={[
-            { label: 'Parameter', className: 'w-[74%]' },
-            { label: 'Total', className: 'w-[96px] text-right' },
-            { label: 'Period', className: 'w-[80px] text-right' },
-          ]}
-          emptyLabel="No assessments recorded in the last 30 days."
-        >
-          {topParameters.length
-            ? topParameters.map((row) => (
-                <TableRow key={row.parameter_name} className="border-border/50">
-                  <TableCell className="py-2 font-medium text-foreground">
-                    <span className="truncate">{row.parameter_name}</span>
-                  </TableCell>
-                  <TableCell className="py-2 text-right font-semibold text-foreground">{row.total}</TableCell>
-                  <TableCell className="py-2 text-right text-muted-foreground">30d</TableCell>
-                </TableRow>
-              ))
-            : null}
-        </ReportTableSection>
       </div>
 
       <div className="border-t border-border/70 pt-8">
         <div className="rounded-[24px] border border-border/70 bg-muted/25 p-5 dark:bg-muted/20">
           <p className="text-[11px] leading-6 text-muted-foreground">
-            These insights are computed from the latest recorded activity for members in this care program: goals,
-            check-ins (assessments), appointments, prescriptions, and clinical reviews. Use “Needs Attention” and “Off
-            Track Members” as your priority queues, then use “Top Tracked Parameters” to understand monitoring focus and
-            resourcing.
+            These insights are computed from the latest recorded activity for patients in this care program: goals,
+            check-ins (assessments), appointments, and prescriptions. Use the “Attention” and “Off Track” columns to
+            prioritize patient outreach.
           </p>
         </div>
       </div>
