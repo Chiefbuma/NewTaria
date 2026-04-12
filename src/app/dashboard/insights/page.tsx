@@ -40,16 +40,25 @@ export default async function InsightsPage({
     ? (selectedPartnerId ? (partners.find((p) => p.id === selectedPartnerId)?.name ?? null) : null)
     : (currentUser.partner_name ?? null);
 
+  const partnerName = (currentUser.partner_name || 'Partner').toUpperCase();
+  const reportTitle = filterLabel ? filterLabel : 'All Partners';
+
+  const filterComponent = isPartner ? null : (
+    <PartnerGlobalFilter
+      partners={partners}
+      selectedPartnerId={selectedPartnerId}
+      locked={false}
+      lockedLabel={currentUser.partner_name || 'Your Partner'}
+      labelPrefix="Dashboard"
+    />
+  );
+
   return (
     <div className="space-y-6">
-      {isPartner ? null : (
-        <PartnerGlobalFilter
-          partners={partners}
-          selectedPartnerId={selectedPartnerId}
-          locked={false}
-          lockedLabel={currentUser.partner_name || 'Your Partner'}
-          labelPrefix="Dashboard"
-        />
+      {isPartner && (
+        <div className="text-center text-sm font-bold tracking-[0.18em] text-foreground">
+          {partnerName}
+        </div>
       )}
       <InsightsReport
         stats={stats}
@@ -57,8 +66,8 @@ export default async function InsightsPage({
         deepDive={deepDive}
         memberMetrics={memberMetrics}
         selectedPartnerId={selectedPartnerId}
-        reportTitle={filterLabel ? filterLabel : 'All Partners'}
-        reportSubtitle={filterLabel ? 'Care Program Insights (Filtered)' : 'Care Program Insights'}
+        reportTitle={reportTitle}
+        filterComponent={filterComponent}
       />
     </div>
   );
