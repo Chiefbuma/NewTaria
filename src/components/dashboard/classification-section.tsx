@@ -118,7 +118,7 @@ export default function ClassificationSection({
           </div>
           <div className="flex flex-col md:flex-row md:gap-6 md:items-center">
             <div className="flex items-center justify-center">
-              <ChartContainer config={{}} className="h-36 w-36">
+              <ChartContainer config={{}} className="h-44 w-44">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -127,8 +127,8 @@ export default function ClassificationSection({
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      innerRadius="60%"
-                      outerRadius="90%"
+                      innerRadius="55%"
+                      outerRadius="95%"
                       paddingAngle={5}
                       stroke="none"
                     >
