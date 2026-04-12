@@ -4,7 +4,8 @@ import type React from 'react';
 import { useState, useEffect } from 'react';
 import type { Medication } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
+import { SlideOver, SlideOverContent } from '@/components/ui/slide-over';
+import { SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -81,7 +82,7 @@ export default function MedicationManagement() {
         id: "actions",
         cell: ({ row }) => (
             <div className="flex justify-end gap-2">
-                <MedicationUpsertSheet
+                <MedicationUpsertForm
                   medication={row.original}
                   saveMedication={saveMedication}
                   onSaved={(saved) => {
@@ -102,7 +103,7 @@ export default function MedicationManagement() {
   ];
 
   const toolbarActions = (
-    <MedicationUpsertSheet
+    <MedicationUpsertForm
       saveMedication={saveMedication}
       onSaved={(saved) => {
         applySavedMedication(saved);
@@ -152,7 +153,7 @@ export default function MedicationManagement() {
   );
 }
 
-function MedicationUpsertSheet({
+function MedicationUpsertForm({
   trigger,
   medication,
   saveMedication,
@@ -172,7 +173,7 @@ function MedicationUpsertSheet({
   const title = medication?.id ? 'Edit Medication' : 'Add Medication';
 
   return (
-    <Sheet
+    <SlideOver
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
@@ -183,7 +184,7 @@ function MedicationUpsertSheet({
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent
+      <SlideOverContent
         className="h-full w-[440px] max-w-[calc(100vw-2rem)] overflow-y-auto p-0"
       >
         <SheetHeader className="px-4 py-3">
@@ -233,8 +234,8 @@ function MedicationUpsertSheet({
               </Button>
             </SheetFooter>
           </form>
-      </SheetContent>
-    </Sheet>
+      </SlideOverContent>
+    </SlideOver>
   );
 }
 

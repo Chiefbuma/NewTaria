@@ -4,7 +4,8 @@ import type React from 'react';
 import { useState, useEffect } from 'react';
 import type { User, Partner } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
+import { SlideOver, SlideOverContent } from '@/components/ui/slide-over';
+import { SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -130,7 +131,7 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
         id: "actions",
         cell: ({ row }) => (
             <div className="flex justify-end gap-2">
-                <UserUpsertSheet
+                <UserUpsertForm
                   user={row.original}
                   partners={partners}
                   saveUser={saveUser}
@@ -158,7 +159,7 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
   ];
 
   const toolbarActions = (
-    <UserUpsertSheet
+    <UserUpsertForm
       user={null}
       partners={partners}
       saveUser={saveUser}
@@ -212,7 +213,7 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
   );
 }
 
-function UserUpsertSheet({
+function UserUpsertForm({
   trigger,
   user,
   partners,
@@ -241,7 +242,7 @@ function UserUpsertSheet({
   const title = user?.id ? 'Edit User' : 'Add User';
 
   return (
-    <Sheet
+    <SlideOver
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
@@ -257,7 +258,7 @@ function UserUpsertSheet({
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent className="h-full w-[420px] max-w-[calc(100vw-2rem)] p-0">
+      <SlideOverContent className="h-full w-[420px] max-w-[calc(100vw-2rem)] p-0">
         <SheetHeader className="px-4 py-3">
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
@@ -396,8 +397,8 @@ function UserUpsertSheet({
               </Button>
             </SheetFooter>
           </form>
-      </SheetContent>
-    </Sheet>
+      </SlideOverContent>
+    </SlideOver>
   );
 }
 

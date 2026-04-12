@@ -4,7 +4,8 @@ import type React from 'react';
 import { useState } from 'react';
 import type { Partner } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
+import { SlideOver, SlideOverContent } from '@/components/ui/slide-over';
+import { SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -73,7 +74,7 @@ export default function PartnerManagement({ initialPartners, onPartnersUpdate }:
         id: "actions",
         cell: ({ row }) => (
             <div className="flex justify-end gap-2">
-                <PartnerUpsertSheet
+                <PartnerUpsertForm
                   partner={row.original}
                   savePartner={savePartner}
                   onSaved={(saved) => {
@@ -94,7 +95,7 @@ export default function PartnerManagement({ initialPartners, onPartnersUpdate }:
   ];
 
   const toolbarActions = (
-    <PartnerUpsertSheet
+    <PartnerUpsertForm
       savePartner={savePartner}
       onSaved={(saved) => {
         applySavedPartner(saved);
@@ -140,7 +141,7 @@ export default function PartnerManagement({ initialPartners, onPartnersUpdate }:
   );
 }
 
-function PartnerUpsertSheet({
+function PartnerUpsertForm({
   trigger,
   partner,
   savePartner,
@@ -159,7 +160,7 @@ function PartnerUpsertSheet({
   const title = partner?.id ? 'Edit Payer' : 'Add Payer';
 
   return (
-    <Sheet
+    <SlideOver
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
@@ -169,7 +170,7 @@ function PartnerUpsertSheet({
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent
+      <SlideOverContent
         className="h-full w-[440px] max-w-[calc(100vw-2rem)] overflow-y-auto p-0"
       >
         <SheetHeader className="px-4 py-3">
@@ -212,8 +213,8 @@ function PartnerUpsertSheet({
               </Button>
             </SheetFooter>
           </form>
-      </SheetContent>
-    </Sheet>
+      </SlideOverContent>
+    </SlideOver>
   );
 }
 
