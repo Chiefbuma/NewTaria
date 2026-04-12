@@ -6,26 +6,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Triangle } from 'lucide-react';
-
-type MetricColor = 'green' | 'yellow' | 'red' | 'white';
-
-function TriangleMetric({ color, title }: { color: MetricColor; title: string }) {
-  const cls =
-    color === 'green'
-      ? 'text-emerald-500 fill-emerald-500'
-      : color === 'yellow'
-        ? 'text-amber-500 fill-amber-500'
-        : color === 'red'
-          ? 'text-rose-500 fill-rose-500'
-          : 'text-muted-foreground/35 fill-transparent';
-
-  return (
-    <span className="inline-flex items-center justify-center" title={title} aria-label={title}>
-      <Triangle className={cn('h-3.5 w-3.5', cls)} />
-    </span>
-  );
-}
 
 function buildInsightsUrl({
   selectedPartnerId,
@@ -140,7 +120,11 @@ export default function InsightsReport({
 
   const engagementTotal = totalMembers;
   const engagementRows: ClassificationRow[] = [
-    { label: 'No check-in (14+ days)', total: Number(stats?.membersWithNoCheckIn14d ?? 0), meta: 'Patients overdue for follow-up' },
+    {
+      label: 'No check-in (14+ days)',
+      total: Number(stats?.membersWithNoCheckIn14d ?? 0),
+      meta: 'Patients overdue for follow-up',
+    },
   ];
 
   const goalTotal = Math.max(
@@ -155,8 +139,16 @@ export default function InsightsReport({
 
   const coverageTotal = deepDive?.totals?.activeMembers ?? totalMembers;
   const coverageRows: ClassificationRow[] = [
-    { label: 'Patients with no active goals', total: Number(deepDive?.totals?.membersWithNoActiveGoals ?? 0), meta: 'Potential onboarding gap' },
-    { label: 'Active prescriptions', total: Number(deepDive?.totals?.activePrescriptions ?? 0), meta: 'Prescription records marked active' },
+    {
+      label: 'Patients with no active goals',
+      total: Number(deepDive?.totals?.membersWithNoActiveGoals ?? 0),
+      meta: 'Potential onboarding gap',
+    },
+    {
+      label: 'Active prescriptions',
+      total: Number(deepDive?.totals?.activePrescriptions ?? 0),
+      meta: 'Prescription records marked active',
+    },
     { label: 'Clinical reviews (30d)', total: Number(deepDive?.totals?.reviews30d ?? 0) },
   ];
 
@@ -225,13 +217,13 @@ export default function InsightsReport({
         <ReportTableSection
           index={6}
           title="Patient Progress"
-          description="Triangles highlight attention risk, interaction, upcoming appointment coverage, and off-target numeric goals for each patient."
+          description="A patient-wise summary of key progress and risk indicators."
           headers={[
-            { label: 'Patient', className: 'w-[56%]' },
-            { label: 'Attention', className: 'w-[70px] text-center' },
-            { label: 'Interaction', className: 'w-[82px] text-center' },
-            { label: 'Upcoming', className: 'w-[72px] text-center' },
-            { label: 'Off Track', className: 'w-[70px] text-center' },
+            { label: 'Patient', className: 'w-[40%]' },
+            { label: 'Attention', className: 'w-[15%] text-center' },
+            { label: 'Interaction', className: 'w-[15%] text-center' },
+            { label: 'Goals', className: 'w-[15%] text-center' },
+            { label: 'Progress', className: 'w-[15%] text-center' },
           ]}
           emptyLabel="No patients found."
         >
@@ -240,86 +232,69 @@ export default function InsightsReport({
                 const last = row.last_assessment_at ? new Date(row.last_assessment_at) : null;
                 const daysSinceLast = last ? Math.floor((Date.now() - last.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
-                const attentionColor: MetricColor =
-                  row.status === 'Critical'
-                    ? 'red'
-                    : row.overdue_goals > 0
-                      ? 'red'
-                      : row.last_assessment_at === null
-                        ? 'red'
-                        : daysSinceLast !== null && daysSinceLast >= 14
-                          ? 'yellow'
-                          : 'green';
+                const attentionStatus = row.status ?? 'Unknown';
 
-                const interactionColor: MetricColor =
-                  row.last_assessment_at === null
-                    ? 'red'
-                    : row.assessments_30d === 0
-                      ? 'red'
-                      : row.assessments_30d <= 2
-                        ? 'yellow'
-                        : 'green';
+                let interactionStatus = 'Active';
+                if (row.last_assessment_at === null) {
+                  interactionStatus = 'No Check-ins';
+                } else if (daysSinceLast !== null && daysSinceLast >= 14) {
+                  interactionStatus = 'Inactive (14+ days)';
+                }
 
-                const upcomingColor: MetricColor =
-                  row.next_appointment_at === null
-                    ? 'white'
-                    : row.next_appointment_status === 'confirmed'
-                      ? 'green'
-                      : 'yellow';
+                let goalStatus = 'No Active Goals';
+                // @ts-expect-error
+                if (row.overdue_goals > 0) {
+                  goalStatus = 'Overdue';
+                  // @ts-expect-error
+                } else if (row.active_goals > 0) {
+                  goalStatus = 'Active';
+                }
 
-                const offTrackColor: MetricColor =
-                  row.total_numeric_goals === 0
-                    ? 'white'
-                    : row.off_target_numeric_goals > 0
-                      ? 'red'
-                      : 'green';
-
-                const attentionTitle =
-                  row.status === 'Critical'
-                    ? 'Critical patient'
-                    : row.overdue_goals > 0
-                      ? `Overdue goals: ${row.overdue_goals}`
-                      : row.last_assessment_at === null
-                        ? 'No check-ins recorded'
-                        : daysSinceLast !== null && daysSinceLast >= 14
-                          ? `Last check-in: ${format(last!, 'dd MMM')} (over 14 days)`
-                          : `Last check-in: ${format(last!, 'dd MMM')}`;
-
-                const interactionTitle =
-                  row.last_assessment_at === null
-                    ? 'No check-ins recorded'
-                    : `Assessments (30d): ${row.assessments_30d} | Last: ${format(last!, 'dd MMM')}`;
-
-                const upcomingTitle =
-                  row.next_appointment_at === null
-                    ? 'No upcoming appointment'
-                    : `Next: ${format(new Date(row.next_appointment_at), 'dd MMM')} (${String(
-                        row.next_appointment_status
-                      )})`;
-
-                const offTrackTitle =
-                  row.total_numeric_goals === 0
-                    ? 'No numeric goals tracked'
-                    : row.off_target_numeric_goals > 0
-                      ? `Off target numeric goals: ${row.off_target_numeric_goals} / ${row.total_numeric_goals}`
-                      : `On target (numeric goals: ${row.total_numeric_goals})`;
+                let progressStatus = 'N/A';
+                // @ts-expect-error
+                if (row.total_numeric_goals > 0) {
+                  // @ts-expect-error
+                  if (row.off_target_numeric_goals > 0) {
+                    progressStatus = 'Off Track';
+                  } else {
+                    progressStatus = 'On Track';
+                  }
+                }
 
                 return (
                   <TableRow key={row.patient_id} className="border-border/50">
                     <TableCell className="py-2 font-medium text-foreground">
                       <span className="truncate">{row.patient_name}</span>
                     </TableCell>
-                    <TableCell className="py-2 text-center">
-                      <TriangleMetric color={attentionColor} title={attentionTitle} />
+                    <TableCell
+                      className={cn('py-2 text-center font-semibold', {
+                        'text-red-500': attentionStatus === 'Critical',
+                      })}
+                    >
+                      {attentionStatus}
                     </TableCell>
-                    <TableCell className="py-2 text-center">
-                      <TriangleMetric color={interactionColor} title={interactionTitle} />
+                    <TableCell
+                      className={cn('py-2 text-center', {
+                        'text-red-500': interactionStatus === 'No Check-ins',
+                        'text-amber-500': interactionStatus === 'Inactive (14+ days)',
+                      })}
+                    >
+                      {interactionStatus}
                     </TableCell>
-                    <TableCell className="py-2 text-center">
-                      <TriangleMetric color={upcomingColor} title={upcomingTitle} />
+                    <TableCell
+                      className={cn('py-2 text-center', {
+                        'text-red-500': goalStatus === 'Overdue',
+                      })}
+                    >
+                      {goalStatus}
                     </TableCell>
-                    <TableCell className="py-2 text-center">
-                      <TriangleMetric color={offTrackColor} title={offTrackTitle} />
+                    <TableCell
+                      className={cn('py-2 text-center font-semibold', {
+                        'text-red-500': progressStatus === 'Off Track',
+                        'text-emerald-500': progressStatus === 'On Track',
+                      })}
+                    >
+                      {progressStatus}
                     </TableCell>
                   </TableRow>
                 );
@@ -357,7 +332,7 @@ export default function InsightsReport({
         <div className="rounded-[24px] border border-border/70 bg-muted/25 p-5 dark:bg-muted/20">
           <p className="text-[11px] leading-6 text-muted-foreground">
             These insights are computed from the latest recorded activity for patients in this care program: goals,
-            check-ins (assessments), appointments, and prescriptions. Use the “Attention” and “Off Track” columns to
+            check-ins (assessments), and prescriptions. Use the “Attention”, “Interaction”, and “Progress” columns to
             prioritize patient outreach.
           </p>
         </div>
