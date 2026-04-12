@@ -5,7 +5,7 @@ import Link from "next/link"
 import type { Patient } from "@/lib/types"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { formatAppointmentDateTime } from "@/lib/date-format"
 import { Button } from "@/components/ui/button"
@@ -122,6 +122,8 @@ export default function PatientRegistryCards({
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-3">
                     <Avatar className="h-10 w-10 rounded-xl">
+                      {/* @ts-expect-error - patient.avatar_url is not in the type definition but is expected from the API. */}
+                      <AvatarImage src={patient.avatar_url} />
                       <AvatarFallback className="rounded-xl text-xs font-bold">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">

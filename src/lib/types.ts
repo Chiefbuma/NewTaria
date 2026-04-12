@@ -285,6 +285,7 @@ export type Patient = {
   corporate_name?: string;
   navigator_name?: string;
   partner_name?: string;
+  avatar_url?: string;
   assessments: Assessment[];
   goals: Goal[];
   prescriptions: Prescription[];
