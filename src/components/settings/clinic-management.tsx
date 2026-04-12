@@ -2,7 +2,7 @@
 
 import type React from 'react';
 import { useState, useEffect } from 'react';
-import type { Medication } from '@/lib/types';
+import type { Clinic } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
@@ -13,19 +13,19 @@ import { DataTable } from '../ui/data-table';
 import { ColumnDef } from "@tanstack/react-table";
 import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
 
-export default function MedicationManagement() {
-  const [medications, setMedications] = useState<Medication[]>([]);
+export default function ClinicManagement() {
+  const [clinics, setClinics] = useState<Clinic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [confirmAction, setConfirmAction] = useState<null | (() => Promise<void>)>(null);
   const [confirmTitle, setConfirmTitle] = useState('');
   const [confirmDescription, setConfirmDescription] = useState('');
   const { toast } = useToast();
 
-  const loadMedications = async () => {
+  const loadClinics = async () => {
       try {
-          const res = await fetch('/api/medications');
+          const res = await fetch('/api/clinics');
           const data = await res.json();
-          setMedications(data);
+          setClinics(data);
       } catch (e) {
           console.error(e);
       } finally {
@@ -33,60 +33,59 @@ export default function MedicationManagement() {
       }
   };
 
-  useEffect(() => { loadMedications(); }, []);
+  useEffect(() => { loadClinics(); }, []);
 
-  const saveMedication = async (data: Partial<Medication>): Promise<Medication> => {
-    if (!data.name) throw new Error('Medication name is required.');
+  const saveClinic = async (data: Partial<Clinic>): Promise<Clinic> => {
+    if (!data.name) throw new Error('Clinic name is required.');
     const method = data.id ? 'PUT' : 'POST';
-    const res = await fetch('/api/medications', {
+    const res = await fetch('/api/clinics', {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}));
-      throw new Error(payload?.error || 'Failed to save medication.');
+      throw new Error(payload?.error || 'Failed to save clinic.');
     }
     return res.json();
   };
 
-  const applySavedMedication = (saved: Medication) => {
-    setMedications((prev) => {
-      const exists = prev.some((m) => m.id === saved.id);
-      return exists ? prev.map((m) => (m.id === saved.id ? saved : m)) : [saved, ...prev];
+  const applySavedClinic = (saved: Clinic) => {
+    setClinics((prev) => {
+      const exists = prev.some((c) => c.id === saved.id);
+      return exists ? prev.map((c) => (c.id === saved.id ? saved : c)) : [saved, ...prev];
     });
   };
 
   const executeDelete = async (id: number) => {
       try {
-          const res = await fetch(`/api/medications?id=${id}`, { method: 'DELETE' });
+          const res = await fetch(`/api/clinics?id=${id}`, { method: 'DELETE' });
           if (!res.ok) throw new Error('Failed to delete');
-          setMedications(prev => prev.filter(m => m.id !== id));
-          toast({ title: 'Success', description: 'Medication deactivated.' });
+          setClinics(prev => prev.filter(c => c.id !== id));
+          toast({ title: 'Success', description: 'Clinic deactivated.' });
       } catch (e: any) {
           toast({ variant: 'destructive', title: 'Error', description: e.message });
       }
   };
 
   const handleDelete = (id: number) => {
-      setConfirmTitle('Deactivate medication?');
-      setConfirmDescription('This will soft-delete the medication and remove it from active medication catalogs.');
+      setConfirmTitle('Deactivate clinic?');
+      setConfirmDescription('This will soft-delete the clinic and remove it from active clinic lists.');
       setConfirmAction(() => () => executeDelete(id));
   };
 
-  const columns: ColumnDef<Medication>[] = [
+  const columns: ColumnDef<Clinic>[] = [
     { accessorKey: "name", header: "Name" },
-    { accessorKey: "dosage", header: "Default Dosage" },
     {
         id: "actions",
         cell: ({ row }) => (
             <div className="flex justify-end gap-2">
-                <MedicationUpsertSheet
-                  medication={row.original}
-                  saveMedication={saveMedication}
+                <ClinicUpsertSheet
+                  clinic={row.original}
+                  saveClinic={saveClinic}
                   onSaved={(saved) => {
-                    applySavedMedication(saved);
-                    toast({ title: 'Success', description: 'Medication saved successfully.' });
+                    applySavedClinic(saved);
+                    toast({ title: 'Success', description: 'Clinic saved successfully.' });
                   }}
                   trigger={
                     <Button variant="ghost" size="icon">
@@ -102,15 +101,15 @@ export default function MedicationManagement() {
   ];
 
   const toolbarActions = (
-    <MedicationUpsertSheet
-      saveMedication={saveMedication}
+    <ClinicUpsertSheet
+      saveClinic={saveClinic}
       onSaved={(saved) => {
-        applySavedMedication(saved);
-        toast({ title: 'Success', description: 'Medication saved successfully.' });
+        applySavedClinic(saved);
+        toast({ title: 'Success', description: 'Clinic saved successfully.' });
       }}
       trigger={
         <Button className="bg-primary hover:bg-primary/90 shadow-sm">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Medication
+          <PlusCircle className="mr-2 h-4 w-4" /> Add Clinic
         </Button>
       }
     />
@@ -120,15 +119,15 @@ export default function MedicationManagement() {
     <div className="flex gap-8 items-start">
         <div className="w-64 flex-shrink-0 space-y-4">
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Medications</p>
-                <p className="text-3xl font-bold tracking-tight">{medications.length}</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Clinics</p>
+                <p className="text-3xl font-bold tracking-tight">{clinics.length}</p>
             </div>
         </div>
         <div className="flex-1 space-y-4">
             {isLoading ? (
                 <div className="flex justify-center rounded-md border border-primary/10 p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
             ) : (
-                <DataTable columns={columns} data={medications} toolbarActions={toolbarActions} />
+                <DataTable columns={columns} data={clinics} toolbarActions={toolbarActions} />
             )}
         </div>
 
@@ -152,24 +151,23 @@ export default function MedicationManagement() {
   );
 }
 
-function MedicationUpsertSheet({
+function ClinicUpsertSheet({
   trigger,
-  medication,
-  saveMedication,
+  clinic,
+  saveClinic,
   onSaved,
 }: {
   trigger: React.ReactNode;
-  medication?: Medication;
-  saveMedication: (data: Partial<Medication>) => Promise<Medication>;
-  onSaved: (saved: Medication) => void;
+  clinic?: Clinic;
+  saveClinic: (data: Partial<Clinic>) => Promise<Clinic>;
+  onSaved: (saved: Clinic) => void;
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState('');
-  const [dosage, setDosage] = useState('');
 
-  const title = medication?.id ? 'Edit Medication' : 'Add Medication';
+  const title = clinic?.id ? 'Edit Clinic' : 'Add Clinic';
 
   return (
     <Sheet
@@ -177,8 +175,7 @@ function MedicationUpsertSheet({
       onOpenChange={(next) => {
         setOpen(next);
         if (next) {
-          setName(medication?.name || '');
-          setDosage(medication?.dosage || '');
+          setName(clinic?.name || '');
         }
       }}
     >
@@ -189,7 +186,7 @@ function MedicationUpsertSheet({
         <SheetHeader className="px-4 py-3">
             <SheetTitle>{title}</SheetTitle>
             <SheetDescription>
-                {medication?.id ? 'Update the details for this medication.' : 'Add a new medication to the catalog.'}
+                {clinic?.id ? 'Update the details for this clinic.' : 'Add a new clinic to the system.'}
             </SheetDescription>
         </SheetHeader>
           <form
@@ -198,26 +195,19 @@ function MedicationUpsertSheet({
               if (!name.trim()) return;
               try {
                 setIsSubmitting(true);
-                const saved = await saveMedication({
-                  id: medication?.id,
-                  name: name.trim(),
-                  dosage: dosage.trim(),
-                });
+                const saved = await saveClinic({ id: clinic?.id, name: name.trim() });
                 onSaved(saved);
                 setOpen(false);
               } catch (err: any) {
-                toast({ variant: 'destructive', title: 'Error', description: err?.message || 'Unable to save medication.' });
+                toast({ variant: 'destructive', title: 'Error', description: err?.message || 'Unable to save clinic.' });
               } finally {
                 setIsSubmitting(false);
               }
             }}
           >
             <div className="space-y-3 p-4">
-              <InlineField label="Medication Name" htmlFor="name">
+              <InlineField label="Clinic Name" htmlFor="name">
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
-              </InlineField>
-              <InlineField label="Typical Dosage" htmlFor="dosage">
-                <Input id="dosage" value={dosage} onChange={(e) => setDosage(e.target.value)} className="h-8" />
               </InlineField>
             </div>
             <SheetFooter className="px-4 py-3">

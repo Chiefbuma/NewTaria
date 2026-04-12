@@ -127,17 +127,20 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
   );
 
   return (
-    <div className="space-y-4">
-       <div className="rounded-lg border bg-muted/30 p-4">
-        <p className="text-sm text-muted-foreground">
-          Manage the clinical parameters that can be tracked for patients. These parameters are used to monitor patient health and progress.
-        </p>
-      </div>
-      {isLoading ? (
-          <div className="flex justify-center rounded-md border border-primary/10 p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-      ) : (
-          <DataTable columns={columns} data={parameters} toolbarActions={toolbarActions} />
-      )}
+    <div className="flex gap-8 items-start">
+        <div className="w-64 flex-shrink-0 space-y-4">
+            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4">
+                <p className="text-sm font-medium text-muted-foreground">Total Parameters</p>
+                <p className="text-3xl font-bold tracking-tight">{parameters.length}</p>
+            </div>
+        </div>
+        <div className="flex-1 space-y-4">
+            {isLoading ? (
+                <div className="flex justify-center rounded-md border border-primary/10 p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+            ) : (
+                <DataTable columns={columns} data={parameters} toolbarActions={toolbarActions} />
+            )}
+        </div>
 
       <ConfirmActionDialog
         open={Boolean(confirmAction)}

@@ -11,12 +11,15 @@ import {
     Building2, 
     Activity, 
     Pill,
-    Layers
+    Layers,
+    Stethoscope
 } from 'lucide-react';
 import ClinicalParameters from './clinical-parameters';
 import UserManagement from './user-management';
 import PartnerManagement from './partner-management';
 import MedicationManagement from './medication-management';
+import ClinicManagement from './clinic-management';
+import DiagnosisManagement from './diagnosis-management';
 
 interface SettingsViewProps {
   clinicalParameters: ClinicalParameter[];
@@ -25,7 +28,7 @@ interface SettingsViewProps {
   onUsersUpdate: (updatedUsers: User[]) => void;
 }
 
-type SettingsSection = 'parameters' | 'partners' | 'users' | 'medications';
+type SettingsSection = 'parameters' | 'partners' | 'users' | 'medications' | 'clinics' | 'diagnoses';
 
 export default function SettingsView({
   clinicalParameters,
@@ -51,6 +54,8 @@ export default function SettingsView({
       { id: 'parameters', label: 'Clinical Parameters', icon: <Activity className="h-4 w-4" /> },
       { id: 'partners', label: 'Partners', icon: <Building2 className="h-4 w-4" /> },
       { id: 'medications', label: 'Medications', icon: <Pill className="h-4 w-4" /> },
+      { id: 'clinics', label: 'Clinics', icon: <Building2 className="h-4 w-4" /> },
+      { id: 'diagnoses', label: 'Diagnoses', icon: <Stethoscope className="h-4 w-4" /> },
       ...(isAdmin ? [{ id: 'users', label: 'User Management', icon: <Users className="h-4 w-4" /> }] : []),
   ];
 
@@ -114,6 +119,30 @@ export default function SettingsView({
                         </CardHeader>
                         <CardContent className="pt-6">
                             <MedicationManagement />
+                        </CardContent>
+                    </Card>
+                )}
+
+                {activeSection === 'clinics' && (
+                    <Card className="border-primary/10 shadow-sm overflow-hidden">
+                        <CardHeader className="bg-muted/30">
+                            <CardTitle className="text-xl flex items-center gap-2"><Building2 className="h-5 w-5 text-primary" />Clinic Management</CardTitle>
+                            <CardDescription>Manage your clinics.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            <ClinicManagement />
+                        </CardContent>
+                    </Card>
+                )}
+
+                {activeSection === 'diagnoses' && (
+                    <Card className="border-primary/10 shadow-sm overflow-hidden">
+                        <CardHeader className="bg-muted/30">
+                            <CardTitle className="text-xl flex items-center gap-2"><Stethoscope className="h-5 w-5 text-primary" />Diagnosis Management</CardTitle>
+                            <CardDescription>Manage your diagnoses.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            <DiagnosisManagement />
                         </CardContent>
                     </Card>
                 )}

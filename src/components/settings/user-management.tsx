@@ -180,13 +180,16 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
   );
 
   return (
-    <div className="space-y-4">
-       <div className="rounded-lg border bg-muted/30 p-4">
-        <p className="text-sm text-muted-foreground">
-          Manage users and their roles within the system. You can add new users, edit existing user information, and assign roles to control access to different features.
-        </p>
-      </div>
-      <DataTable columns={columns} data={users} toolbarActions={toolbarActions} />
+    <div className="flex gap-8 items-start">
+        <div className="w-64 flex-shrink-0 space-y-4">
+            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4">
+                <p className="text-sm font-medium text-muted-foreground">Total Users</p>
+                <p className="text-3xl font-bold tracking-tight">{users.length}</p>
+            </div>
+        </div>
+        <div className="flex-1 space-y-4">
+            <DataTable columns={columns} data={users} toolbarActions={toolbarActions} />
+        </div>
 
       <ConfirmActionDialog
         open={Boolean(confirmAction)}
