@@ -184,15 +184,13 @@ function DiagnosisUpsertSheet({
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
-        className="w-[440px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-0"
+        className="h-full w-[440px] max-w-[calc(100vw-2rem)] overflow-y-auto p-0"
       >
         <SheetHeader className="px-4 py-3">
             <SheetTitle>{title}</SheetTitle>
-            <SheetDescription>
-                {diagnosis?.id ? 'Update the details for this diagnosis.' : 'Add a new diagnosis to the catalog.'}
-            </SheetDescription>
         </SheetHeader>
           <form
+            className="flex flex-col h-full"
             onSubmit={async (e) => {
               e.preventDefault();
               if (!name.trim() || !code.trim()) return;
@@ -212,7 +210,7 @@ function DiagnosisUpsertSheet({
               }
             }}
           >
-            <div className="space-y-3 p-4">
+            <div className="space-y-3 p-4 flex-1">
               <InlineField label="Diagnosis Name" htmlFor="name">
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
               </InlineField>
@@ -220,7 +218,7 @@ function DiagnosisUpsertSheet({
                 <Input id="code" value={code} onChange={(e) => setCode(e.target.value)} className="h-8" required />
               </InlineField>
             </div>
-            <SheetFooter className="px-4 py-3">
+            <SheetFooter className="px-4 py-3 bg-muted/20 border-t">
               <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
@@ -251,7 +249,7 @@ function InlineField({
 }) {
   return (
     <div className="grid grid-cols-[132px_minmax(0,1fr)] items-center gap-3">
-      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
         {label}
       </Label>
       <div>{children}</div>

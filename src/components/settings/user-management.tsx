@@ -22,6 +22,7 @@ import { DataTable } from '../ui/data-table';
 import { ColumnDef } from "@tanstack/react-table";
 import { getRoleLabel, isPayerRole } from '@/lib/role-utils';
 import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
+import { cn } from '@/lib/utils';
 
 interface UserManagementProps {
   initialUsers: User[];
@@ -238,7 +239,6 @@ function UserUpsertSheet({
 
   const mode: 'create' | 'update' = user?.id ? 'update' : 'create';
   const title = user?.id ? 'Edit User' : 'Add User';
-  const description = user?.id ? 'Update the details for this user.' : 'Add a new user to the system.';
 
   return (
     <Sheet
@@ -257,12 +257,9 @@ function UserUpsertSheet({
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent
-        className="w-[560px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-0"
-      >
-        <SheetHeader className="px-4 py-3">
+      <SheetContent className="w-[420px] max-w-[calc(100vw-2rem)] p-0">
+        <SheetHeader className="form-header-bar flex items-center justify-between px-4 py-3">
           <SheetTitle>{title}</SheetTitle>
-          <SheetDescription>{description}</SheetDescription>
         </SheetHeader>
 
           <form
@@ -383,7 +380,7 @@ function UserUpsertSheet({
               ) : null}
             </div>
 
-            <SheetFooter className="px-4 py-3">
+            <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
               <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
@@ -396,7 +393,7 @@ function UserUpsertSheet({
                   'Save'
                 )}
               </Button>
-            </SheetFooter>
+            </div>
           </form>
       </SheetContent>
     </Sheet>
@@ -407,14 +404,16 @@ function InlineField({
   label,
   htmlFor,
   children,
+  alignStart = false,
 }: {
   label: string;
   htmlFor: string;
   children: React.ReactNode;
+  alignStart?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-[132px_minmax(0,1fr)] items-center gap-3">
-      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+    <div className={cn('grid grid-cols-[120px_minmax(0,1fr)] gap-3', alignStart ? 'items-start' : 'items-center')}>
+      <Label htmlFor={htmlFor} className={cn('text-[11px] font-bold uppercase tracking-wider text-muted-foreground', alignStart ? 'pt-2' : null)}>
         {label}
       </Label>
       <div>{children}</div>
