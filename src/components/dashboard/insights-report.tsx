@@ -237,13 +237,13 @@ export default function InsightsReport({
         <ReportTableSection
           index={6}
           title="Patient Progress"
-          description="Triangles highlight attention risk, interaction, upcoming appointment coverage, and off-target numeric goals for each patient."
+          description="A patient-wise summary of key progress and risk indicators. Hover over the symbols for details."
           headers={[
-            { label: 'Patient', className: 'w-[56%]' },
-            { label: 'Attention', className: 'w-[70px] text-center' },
-            { label: 'Interaction', className: 'w-[82px] text-center' },
-            { label: 'Upcoming', className: 'w-[72px] text-center' },
-            { label: 'Off Track', className: 'w-[70px] text-center' },
+            { label: 'Patient', className: 'w-[40%]' },
+            { label: 'Attention', className: 'w-[15%] text-center' },
+            { label: 'Interaction', className: 'w-[15%] text-center' },
+            { label: 'Goals', className: 'w-[15%] text-center' },
+            { label: 'Progress', className: 'w-[15%] text-center' },
           ]}
           emptyLabel="No patients found."
         >
@@ -253,63 +253,34 @@ export default function InsightsReport({
                 const daysSinceLast = last ? Math.floor((Date.now() - last.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
                 const attentionColor: MetricColor =
-                  row.status === 'Critical'
-                    ? 'red'
-                    : row.overdue_goals > 0
-                      ? 'red'
-                      : row.last_assessment_at === null
-                        ? 'red'
-                        : daysSinceLast !== null && daysSinceLast >= 14
-                          ? 'yellow'
-                          : 'green';
+                  row.status === 'Critical' ? 'red' : row.status === 'Active' ? 'green' : 'yellow';
+                const attentionTitle = `Patient Status: ${row.status ?? 'Unknown'}`;
 
                 const interactionColor: MetricColor =
-                  row.last_assessment_at === null
-                    ? 'red'
-                    : row.assessments_30d === 0
-                      ? 'red'
-                      : row.assessments_30d <= 2
-                        ? 'yellow'
-                        : 'green';
-
-                const upcomingColor: MetricColor =
-                  row.next_appointment_at === null
-                    ? 'white'
-                    : row.next_appointment_status === 'confirmed'
-                      ? 'green'
-                      : 'yellow';
-
-                const offTrackColor: MetricColor =
-                  row.total_numeric_goals === 0
-                    ? 'white'
-                    : row.off_target_numeric_goals > 0
-                      ? 'red'
-                      : 'green';
-
-                const attentionTitle =
-                  row.status === 'Critical'
-                    ? 'Critical patient'
-                    : row.overdue_goals > 0
-                      ? `Overdue goals: ${row.overdue_goals}`
-                      : row.last_assessment_at === null
-                        ? 'No check-ins recorded'
-                        : daysSinceLast !== null && daysSinceLast >= 14
-                          ? `Last check-in: ${format(last!, 'dd MMM')} (over 14 days)`
-                          : `Last check-in: ${format(last!, 'dd MMM')}`;
-
+                  daysSinceLast === null ? 'red' : daysSinceLast >= 14 ? 'yellow' : 'green';
                 const interactionTitle =
-                  row.last_assessment_at === null
+                  daysSinceLast === null
                     ? 'No check-ins recorded'
-                    : `Assessments (30d): ${row.assessments_30d} | Last: ${format(last!, 'dd MMM')}`;
+                    : daysSinceLast >= 14
+                      ? `Last check-in: ${format(last!, 'dd MMM')} (over 14 days)`
+                      : `Last check-in: ${format(last!, 'dd MMM')}`;
 
-                const upcomingTitle =
-                  row.next_appointment_at === null
-                    ? 'No upcoming appointment'
-                    : `Next: ${format(new Date(row.next_appointment_at), 'dd MMM')} (${String(
-                        row.next_appointment_status
-                      )})`;
+                // @ts-expect-error - active_goals is not in the type definition but is expected from the API
+                const hasActiveGoals = row.active_goals > 0;
+                const hasOverdueGoals = row.overdue_goals > 0;
 
-                const offTrackTitle =
+                const goalsColor: MetricColor = hasOverdueGoals ? 'red' : hasActiveGoals ? 'green' : 'yellow';
+                const goalsTitle = hasOverdueGoals
+                  ? `Overdue goals: ${row.overdue_goals}`
+                  : hasActiveGoals
+                    // @ts-expect-error
+                    ? `Active goals: ${row.active_goals}`
+                    : 'No active goals';
+
+                const progressColor: MetricColor =
+                  row.total_numeric_goals === 0 ? 'white' : row.off_target_numeric_goals > 0 ? 'red' : 'green';
+
+                const progressTitle =
                   row.total_numeric_goals === 0
                     ? 'No numeric goals tracked'
                     : row.off_target_numeric_goals > 0
@@ -328,10 +299,10 @@ export default function InsightsReport({
                       <TriangleMetric color={interactionColor} title={interactionTitle} />
                     </TableCell>
                     <TableCell className="py-2 text-center">
-                      <TriangleMetric color={upcomingColor} title={upcomingTitle} />
+                      <TriangleMetric color={goalsColor} title={goalsTitle} />
                     </TableCell>
                     <TableCell className="py-2 text-center">
-                      <TriangleMetric color={offTrackColor} title={offTrackTitle} />
+                      <TriangleMetric color={progressColor} title={progressTitle} />
                     </TableCell>
                   </TableRow>
                 );
@@ -369,8 +340,8 @@ export default function InsightsReport({
         <div className="rounded-[24px] border border-border/70 bg-muted/25 p-5 dark:bg-muted/20">
           <p className="text-[11px] leading-6 text-muted-foreground">
             These insights are computed from the latest recorded activity for patients in this care program: goals,
-            check-ins (assessments), appointments, and prescriptions. Use the “Attention” and “Off Track” columns to
-            prioritize patient outreach.
+            check-ins (assessments), and prescriptions. Use the “Attention”, “Interaction”, “Goals”, and “Progress”
+            columns to prioritize patient outreach.
           </p>
         </div>
       </div>
