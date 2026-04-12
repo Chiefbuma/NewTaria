@@ -155,11 +155,10 @@ export function AppSidebar({ user }: { user: User & { patientId?: number } }) {
         <div className="flex items-center gap-3 px-2 py-1">
           <Link href="/dashboard" className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
             <div className="flex h-9 w-9 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-accent">
-              <div className="h-3.5 w-3.5 rounded-full bg-sidebar-primary" />
+               <img src="/images/taria-logo.png" alt="Taria Health Logo" className="h-auto w-24" />
             </div>
             <div className="leading-none group-data-[collapsible=icon]:hidden">
-              <p className="text-sm font-semibold tracking-wide text-sidebar-foreground">NewTaria</p>
-              <p className="text-[10px] uppercase tracking-[0.25em] text-sidebar-foreground/70">Care Program</p>
+               <img src="/images/taria-logo.png" alt="Taria Health Logo" className="h-auto w-24" />
             </div>
           </Link>
         </div>

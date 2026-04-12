@@ -46,7 +46,7 @@ export default function DashboardShell({
       <div className="flex min-h-screen w-full flex-col">
         <header className="glass-white flex h-14 shrink-0 items-center gap-4 border-b px-4 text-foreground shadow-sm lg:h-[60px] lg:px-6">
           <Link href="/dashboard" className="flex items-center font-semibold text-foreground md:hidden">
-            <span className="text-sm font-black uppercase tracking-[0.3em]">NewTaria</span>
+            <img src="/images/taria-logo.png" alt="Taria Health Logo" className="logo" />
           </Link>
           <div className="w-full flex-1" />
           <Header user={user} />

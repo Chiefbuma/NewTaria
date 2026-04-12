@@ -52,9 +52,6 @@ export default function ForgotPasswordPage() {
     <>
       <header className="absolute left-0 right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-border/60 bg-background/95 px-6 backdrop-blur-sm">
         <Logo className="h-12 w-auto" />
-        <Link href="/help" className="text-sm font-medium text-muted-foreground hover:text-primary">
-          Need help?
-        </Link>
       </header>
       <AuthShell
         title="Forgot Your Password?"
