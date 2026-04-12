@@ -79,28 +79,30 @@ function ReportTableSection({
             <p className="text-[12px] leading-5 text-muted-foreground">{description}</p>
           </div>
 
-          <Table className="min-w-0 table-fixed">
-            <TableHeader className="bg-transparent">
-              <TableRow className="border-border/60">
-                {headers.map((h) => (
-                  <TableHead key={h.label} className={cn('whitespace-nowrap', h.className)}>
-                    {h.label}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {hasRows ? (
-                children
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={headers.length} className="py-8 text-center text-[12px] italic text-muted-foreground">
-                    {emptyLabel}
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table className="min-w-full table-fixed">
+              <TableHeader className="bg-transparent">
+                <TableRow className="border-border/60">
+                  {headers.map((h) => (
+                    <TableHead key={h.label} className={cn('whitespace-nowrap', h.className)}>
+                      {h.label}
+                    </TableHead>
+                  ))}
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {hasRows ? (
+                  children
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={headers.length} className="py-8 text-center text-[12px] italic text-muted-foreground">
+                      {emptyLabel}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
     </section>
@@ -204,6 +206,27 @@ export default function InsightsReport({
     },
   ];
 
+  const adherenceRows: ClassificationRow[] = [
+    {
+      label: 'Good Adherence',
+      total: Number(deepDive?.totals?.medicationAdherenceGood ?? 0),
+      male: Number(deepDive?.totals?.medicationAdherenceGoodMale ?? 0),
+      female: Number(deepDive?.totals?.medicationAdherenceGoodFemale ?? 0),
+    },
+    {
+      label: 'Partial Adherence',
+      total: Number(deepDive?.totals?.medicationAdherencePartial ?? 0),
+      male: Number(deepDive?.totals?.medicationAdherencePartialMale ?? 0),
+      female: Number(deepDive?.totals?.medicationAdherencePartialFemale ?? 0),
+    },
+    {
+      label: 'Poor Adherence',
+      total: Number(deepDive?.totals?.medicationAdherencePoor ?? 0),
+      male: Number(deepDive?.totals?.medicationAdherencePoorMale ?? 0),
+      female: Number(deepDive?.totals?.medicationAdherencePoorFemale ?? 0),
+    },
+  ];
+
   const metricsPage = memberMetrics ?? { total: 0, page: 1, pageSize: 5, rows: [] };
   const totalPages = metricsPage.total ? Math.max(1, Math.ceil(metricsPage.total / metricsPage.pageSize)) : 1;
   const canPrev = metricsPage.page > 1;
@@ -265,17 +288,26 @@ export default function InsightsReport({
           measuredLabel="Total patients"
           total={Number(coverageTotal)}
         />
+        <ClassificationSection
+          index={6}
+          title="Medication Adherence"
+          description="Adherence to prescribed medications."
+          rows={adherenceRows}
+          measuredLabel="Total patients"
+          total={totalMembers}
+        />
 
         <ReportTableSection
-          index={6}
+          index={7}
           title="Patient Progress"
           description="A patient-wise summary of key progress and risk indicators. Hover over the symbols for details."
           headers={[
-            { label: 'Patient', className: 'w-[40%]' },
-            { label: 'Attention', className: 'w-[15%] text-center' },
-            { label: 'Interaction', className: 'w-[15%] text-center' },
-            { label: 'Goals', className: 'w-[15%] text-center' },
-            { label: 'Progress', className: 'w-[15%] text-center' },
+            { label: 'Patient', className: 'w-[30%]' },
+            { label: 'Attention', className: 'w-[14%] text-center' },
+            { label: 'Interaction', className: 'w-[14%] text-center' },
+            { label: 'Goals', className: 'w-[14%] text-center' },
+            { label: 'Progress', className: 'w-[14%] text-center' },
+            { label: 'Medication', className: 'w-[14%] text-center' },
           ]}
           emptyLabel="No patients found."
         >
@@ -319,6 +351,20 @@ export default function InsightsReport({
                       ? `Off target numeric goals: ${row.off_target_numeric_goals} / ${row.total_numeric_goals}`
                       : `On target (numeric goals: ${row.total_numeric_goals})`;
 
+                // @ts-expect-error - medication_adherence is not on type
+                const adherence = row.medication_adherence as 'Good' | 'Partial' | 'Poor' | null | undefined;
+                const adherenceColor: MetricColor =
+                  adherence === 'Poor'
+                    ? 'red'
+                    : adherence === 'Partial'
+                      ? 'yellow'
+                      : adherence === 'Good'
+                        ? 'green'
+                        : 'white';
+                const adherenceTitle = adherence
+                  ? `Medication Adherence: ${adherence}`
+                  : 'No tracked medications';
+
                 return (
                   <TableRow key={row.patient_id} className="border-border/50">
                     <TableCell className="py-2 font-medium text-foreground">
@@ -335,6 +381,9 @@ export default function InsightsReport({
                     </TableCell>
                     <TableCell className="py-2 text-center">
                       <TriangleMetric color={progressColor} title={progressTitle} />
+                    </TableCell>
+                    <TableCell className="py-2 text-center">
+                      <TriangleMetric color={adherenceColor} title={adherenceTitle} />
                     </TableCell>
                   </TableRow>
                 );
@@ -372,8 +421,8 @@ export default function InsightsReport({
         <div className="rounded-[24px] border border-border/70 bg-muted/25 p-5 dark:bg-muted/20">
           <p className="text-[11px] leading-6 text-muted-foreground">
             These insights are computed from the latest recorded activity for patients in this care program: goals,
-            check-ins (assessments), and prescriptions. Use the “Attention”, “Interaction”, “Goals”, and “Progress”
-            columns to prioritize patient outreach.
+            check-ins (assessments), and prescriptions. Use the “Attention”, “Interaction”, “Goals”, “Progress”, and
+            “Medication Adherence” columns to prioritize patient outreach.
           </p>
         </div>
       </div>
