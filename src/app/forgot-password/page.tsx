@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import AuthShell from '@/components/auth/auth-shell';
+import Logo from '@/components/logo';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -48,44 +49,52 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <AuthShell
-      title="Forgot Your Password?"
-      description="Enter your email address to request a password reset link."
-      headerTone="primary"
-      footer={
-        <Link href="/" className="inline-flex items-center font-medium text-slate-600 hover:text-primary">
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to Login
+    <>
+      <header className="absolute left-0 right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-border/60 bg-background/95 px-6 backdrop-blur-sm">
+        <Logo className="h-12 w-auto" />
+        <Link href="/help" className="text-sm font-medium text-muted-foreground hover:text-primary">
+          Need help?
         </Link>
-      }
-    >
-      <form onSubmit={handleSubmit}>
-        <div className="space-y-3">
-          <InlineField label="Email" htmlFor="email">
-            <Input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-            />
-          </InlineField>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Request Reset Link'}
-          </Button>
-        </div>
-      </form>
-
-      {resetUrl && (
-        <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
-          <p className="font-semibold text-foreground">Development reset link</p>
-          <Link href={resetUrl} className="break-all text-primary underline">
-            {resetUrl}
+      </header>
+      <AuthShell
+        title="Forgot Your Password?"
+        description="Enter your email address to request a password reset link."
+        headerTone="primary"
+        footer={
+          <Link href="/" className="inline-flex items-center font-medium text-slate-600 hover:text-primary">
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Back to Login
           </Link>
-        </div>
-      )}
-    </AuthShell>
+        }
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-3">
+            <InlineField label="Email" htmlFor="email">
+              <Input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+              />
+            </InlineField>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Request Reset Link'}
+            </Button>
+          </div>
+        </form>
+
+        {resetUrl && (
+          <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
+            <p className="font-semibold text-foreground">Development reset link</p>
+            <Link href={resetUrl} className="break-all text-primary underline">
+              {resetUrl}
+            </Link>
+          </div>
+        )}
+      </AuthShell>
+    </>
   );
 }
 

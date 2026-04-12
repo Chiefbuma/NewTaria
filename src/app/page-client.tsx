@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Sora } from 'next/font/google';
+import { Poppins } from 'next/font/google';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +16,7 @@ import AuthShell from '@/components/auth/auth-shell';
 import { cn } from '@/lib/utils';
 import Logo from '@/components/logo';
 
-const authFont = Sora({
+const authFont = Poppins({
   subsets: ['latin'],
   weight: ['400', '600', '700'],
 });
@@ -56,7 +56,7 @@ export default function LoginPageClient() {
 
   return (
     <>
-      <header className="absolute left-0 right-0 top-0 z-50 flex h-16 items-center justify-between px-6">
+      <header className="absolute left-0 right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-border/60 bg-background/95 px-6 backdrop-blur-sm">
         <Logo className="h-12 w-auto" />
         <Link href="/help" className="text-sm font-medium text-muted-foreground hover:text-primary">
           Need help?
@@ -83,7 +83,7 @@ export default function LoginPageClient() {
           animate="show"
         >
           <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
-            <Label htmlFor="phone" className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+            <Label htmlFor="phone" className="mb-1.5 block text-sm font-semibold text-muted-foreground">
               Phone Number
             </Label>
             <Input
@@ -99,7 +99,7 @@ export default function LoginPageClient() {
 
           <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
             <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="text-xs font-semibold text-muted-foreground">
+              <Label htmlFor="password" className="text-sm font-semibold text-muted-foreground">
                 Password
               </Label>
               <Link href="/forgot-password" className="text-xs font-semibold text-primary hover:underline">
