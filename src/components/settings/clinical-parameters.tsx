@@ -4,7 +4,8 @@ import type React from 'react';
 import { useState, useEffect } from 'react';
 import type { ClinicalParameter } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
+import { SlideOver, SlideOverContent } from '@/components/ui/slide-over';
+import { SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -98,7 +99,7 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
         id: "actions",
         cell: ({ row }) => (
             <div className="flex justify-end gap-2">
-                <ClinicalParameterUpsertSheet
+                <ClinicalParameterUpsertForm
                   parameter={row.original}
                   onSave={saveParameter}
                   trigger={
@@ -115,7 +116,7 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
   ];
 
   const toolbarActions = (
-    <ClinicalParameterUpsertSheet
+    <ClinicalParameterUpsertForm
       parameter={null}
       onSave={saveParameter}
       trigger={
@@ -162,7 +163,7 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
   );
 }
 
-function ClinicalParameterUpsertSheet({
+function ClinicalParameterUpsertForm({
   trigger,
   parameter,
   onSave,
@@ -180,7 +181,7 @@ function ClinicalParameterUpsertSheet({
   const title = parameter?.id ? 'Edit Clinical Parameter' : 'Add Clinical Parameter';
 
   return (
-    <Sheet
+    <SlideOver
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
@@ -192,17 +193,15 @@ function ClinicalParameterUpsertSheet({
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent
-        className="w-[520px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-0"
+      <SlideOverContent
+        className="h-full w-[520px] max-w-[calc(100vw-2rem)] overflow-y-auto p-0"
       >
         <SheetHeader className="px-4 py-3">
           <SheetTitle>{title}</SheetTitle>
-          <SheetDescription>
-            {parameter?.id ? 'Update the details for this parameter.' : 'Add a new clinical parameter to the system.'}
-          </SheetDescription>
         </SheetHeader>
 
           <form
+            className="flex flex-col h-full"
             onSubmit={async (e) => {
               e.preventDefault();
               if (!draft.name?.trim()) {
@@ -237,7 +236,7 @@ function ClinicalParameterUpsertSheet({
               }
             }}
           >
-            <div className="space-y-3 p-4">
+            <div className="space-y-3 p-4 flex-1">
               <InlineField label="Parameter Name" htmlFor="name">
                 <Input
                   id="name"
@@ -323,7 +322,7 @@ function ClinicalParameterUpsertSheet({
               ) : null}
             </div>
 
-            <SheetFooter className="px-4 py-3">
+            <SheetFooter className="px-4 py-3 bg-muted/20 border-t">
               <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
@@ -338,8 +337,8 @@ function ClinicalParameterUpsertSheet({
               </Button>
             </SheetFooter>
           </form>
-      </SheetContent>
-    </Sheet>
+      </SlideOverContent>
+    </SlideOver>
   );
 }
 
@@ -354,7 +353,7 @@ function InlineField({
 }) {
   return (
     <div className="grid grid-cols-[132px_minmax(0,1fr)] items-center gap-3">
-      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
+      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
         {label}
       </Label>
       <div>{children}</div>

@@ -257,12 +257,13 @@ function UserUpsertSheet({
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent className="w-[420px] max-w-[calc(100vw-2rem)] p-0">
-        <SheetHeader className="form-header-bar flex items-center justify-between px-4 py-3">
+      <SheetContent className="h-full w-[420px] max-w-[calc(100vw-2rem)] p-0">
+        <SheetHeader className="px-4 py-3">
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
 
           <form
+            className="flex flex-col h-full"
             onSubmit={async (e) => {
               e.preventDefault();
 
@@ -308,7 +309,7 @@ function UserUpsertSheet({
               }
             }}
           >
-            <div className="space-y-3 p-4">
+            <div className="space-y-3 p-4 flex-1">
               <InlineField label="Full Name" htmlFor="name">
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
               </InlineField>
@@ -380,7 +381,7 @@ function UserUpsertSheet({
               ) : null}
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
+            <SheetFooter className="px-4 py-3 bg-muted/20 border-t">
               <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
@@ -393,7 +394,7 @@ function UserUpsertSheet({
                   'Save'
                 )}
               </Button>
-            </div>
+            </SheetFooter>
           </form>
       </SheetContent>
     </Sheet>

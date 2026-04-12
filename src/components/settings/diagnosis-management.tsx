@@ -4,7 +4,8 @@ import type React from 'react';
 import { useState, useEffect } from 'react';
 import type { Diagnosis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
+import { SlideOver, SlideOverContent } from '@/components/ui/slide-over';
+import { SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -81,7 +82,7 @@ export default function DiagnosisManagement() {
         id: "actions",
         cell: ({ row }) => (
             <div className="flex justify-end gap-2">
-                <DiagnosisUpsertSheet
+                <DiagnosisUpsertForm
                   diagnosis={row.original}
                   saveDiagnosis={saveDiagnosis}
                   onSaved={(saved) => {
@@ -102,7 +103,7 @@ export default function DiagnosisManagement() {
   ];
 
   const toolbarActions = (
-    <DiagnosisUpsertSheet
+    <DiagnosisUpsertForm
       saveDiagnosis={saveDiagnosis}
       onSaved={(saved) => {
         applySavedDiagnosis(saved);
@@ -152,7 +153,7 @@ export default function DiagnosisManagement() {
   );
 }
 
-function DiagnosisUpsertSheet({
+function DiagnosisUpsertForm({
   trigger,
   diagnosis,
   saveDiagnosis,
@@ -172,7 +173,7 @@ function DiagnosisUpsertSheet({
   const title = diagnosis?.id ? 'Edit Diagnosis' : 'Add Diagnosis';
 
   return (
-    <Sheet
+    <SlideOver
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
@@ -183,7 +184,7 @@ function DiagnosisUpsertSheet({
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent
+      <SlideOverContent
         className="h-full w-[440px] max-w-[calc(100vw-2rem)] overflow-y-auto p-0"
       >
         <SheetHeader className="px-4 py-3">
@@ -233,8 +234,8 @@ function DiagnosisUpsertSheet({
               </Button>
             </SheetFooter>
           </form>
-      </SheetContent>
-    </Sheet>
+      </SlideOverContent>
+    </SlideOver>
   );
 }
 

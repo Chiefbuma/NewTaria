@@ -42,7 +42,7 @@ const slideOverVariants = cva(
         left:
           'inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm',
         right:
-          'inset-y-0 right-0 h-full w-3/4  border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm',
+          'inset-y-0 right-0 h-full w-full border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
       },
     },
     defaultVariants: {
@@ -59,14 +59,6 @@ const SlideOverContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SlideOverContentProps
 >(({ side = 'right', className, children, ...props }, ref) => {
-  React.useEffect(() => {
-    if (props.open) {
-      document.body.style.paddingRight = '420px';
-    } else {
-      document.body.style.paddingRight = '0px';
-    }
-  }, [props.open]);
-
   return (
     <SlideOverPortal>
       <SlideOverOverlay />

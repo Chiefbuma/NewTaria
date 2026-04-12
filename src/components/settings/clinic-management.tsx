@@ -4,7 +4,8 @@ import type React from 'react';
 import { useState, useEffect } from 'react';
 import type { Clinic } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
+import { SlideOver, SlideOverContent } from '@/components/ui/slide-over';
+import { SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -80,7 +81,7 @@ export default function ClinicManagement() {
         id: "actions",
         cell: ({ row }) => (
             <div className="flex justify-end gap-2">
-                <ClinicUpsertSheet
+                <ClinicUpsertForm
                   clinic={row.original}
                   saveClinic={saveClinic}
                   onSaved={(saved) => {
@@ -101,7 +102,7 @@ export default function ClinicManagement() {
   ];
 
   const toolbarActions = (
-    <ClinicUpsertSheet
+    <ClinicUpsertForm
       saveClinic={saveClinic}
       onSaved={(saved) => {
         applySavedClinic(saved);
@@ -151,7 +152,7 @@ export default function ClinicManagement() {
   );
 }
 
-function ClinicUpsertSheet({
+function ClinicUpsertForm({
   trigger,
   clinic,
   saveClinic,
@@ -170,7 +171,7 @@ function ClinicUpsertSheet({
   const title = clinic?.id ? 'Edit Clinic' : 'Add Clinic';
 
   return (
-    <Sheet
+    <SlideOver
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
@@ -180,7 +181,7 @@ function ClinicUpsertSheet({
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent
+      <SlideOverContent
         className="h-full w-[440px] max-w-[calc(100vw-2rem)]  overflow-y-auto p-0"
       >
         <SheetHeader className="px-4 py-3">
@@ -223,8 +224,8 @@ function ClinicUpsertSheet({
               </Button>
             </SheetFooter>
           </form>
-      </SheetContent>
-    </Sheet>
+      </SlideOverContent>
+    </SlideOver>
   );
 }
 
