@@ -117,7 +117,31 @@ export default function ClassificationSection({
             </div>
           </div>
           <div className="flex flex-col md:flex-row md:gap-6 md:items-center">
-            <div className="md:w-2/3 overflow-x-auto">
+            <div className="flex items-center justify-center">
+              <ChartContainer config={{}} className="h-32 w-32">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius="60%"
+                      outerRadius="80%"
+                      paddingAngle={5}
+                      stroke="none"
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<ChartTooltipContent hideLabel />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </div>
+            <div className="flex-1 overflow-x-auto mt-6 md:mt-0">
               <Table className="min-w-full table-auto">
                 <TableHeader className="bg-transparent">
                   <TableRow className="border-border/60">
@@ -158,30 +182,6 @@ export default function ClassificationSection({
                   )}
                 </TableBody>
               </Table>
-            </div>
-            <div className="md:w-1/3 flex items-center justify-center mt-6 md:mt-0">
-              <ChartContainer config={{}} className="min-h-[150px] w-full max-w-[250px] aspect-square">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius="60%"
-                      outerRadius="80%"
-                      paddingAngle={5}
-                      stroke="none"
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<ChartTooltipContent hideLabel />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </ChartContainer>
             </div>
           </div>
         </div>
