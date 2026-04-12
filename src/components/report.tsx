@@ -53,7 +53,7 @@ export default function Report({ patient, corporate }: ReportProps) {
   return (
     <div className="report-body-container bg-white text-gray-800">
       <div className="header">
-          <img src="/images/taria-logo.png" alt="Taria Health Logo" className="logo" />
+          <img src="/images/taria-logo-2.png" alt="Taria Health Logo" className="logo" />
       </div>
       <div className="content-wrapper">
         <div className="content-area">
