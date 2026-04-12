@@ -3,7 +3,13 @@
 import type React from 'react';
 import { useState, useEffect } from 'react';
 import type { Appointment, Patient, User } from '@/lib/types';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  SlideOver,
+  SlideOverContent,
+  SlideOverHeader,
+  SlideOverTitle,
+  SlideOverTrigger,
+} from '@/components/ui/slide-over';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,14 +27,13 @@ const getLocalDateTimeString = (date: Date) => {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
-export default function AddAppointmentModal({
+export default function AddAppointmentSheet({
   trigger,
   onSave,
   patient,
   clinicians,
   existingAppointment,
   disabled = false,
-  align = 'end',
 }: {
   trigger: React.ReactNode;
   onSave: (appointment: Omit<Appointment, 'id' | 'patient_id'> & { id?: number }) => Promise<void> | void;
@@ -36,7 +41,6 @@ export default function AddAppointmentModal({
   clinicians: User[];
   existingAppointment?: Appointment | null;
   disabled?: boolean;
-  align?: 'start' | 'center' | 'end';
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -121,101 +125,95 @@ export default function AddAppointmentModal({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild disabled={disabled}>
+    <SlideOver open={open} onOpenChange={setOpen}>
+      <SlideOverTrigger asChild disabled={disabled}>
         {trigger}
-      </PopoverTrigger>
-      <PopoverContent
-        align={align}
-        sideOffset={10}
-        className="w-[520px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-0"
-      >
-        <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
-          <div className="form-header-bar flex items-center justify-between px-4 py-3">
-            <p className="text-sm font-bold">
-              {existingAppointment ? 'Edit Appointment' : 'Schedule Appointment'}
-            </p>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {patient.first_name}
-            </span>
-          </div>
+      </SlideOverTrigger>
+      <SlideOverContent className="w-[520px] max-w-[calc(100vw-2rem)] p-0" open={open}>
+        <SlideOverHeader className="form-header-bar flex items-center justify-between px-4 py-3">
+          <SlideOverTitle>
+            {existingAppointment ? 'Edit Appointment' : 'Schedule Appointment'}
+          </SlideOverTitle>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            {patient.first_name}
+          </span>
+        </SlideOverHeader>
 
-          <form
-            onSubmit={(e) => {
-              if (isSubmitting) return;
-              handleSubmit(e);
-            }}
-          >
-            <div className="space-y-3 p-4">
-              <InlineField label="Title" htmlFor="title">
-                <Input id="title" className="h-8" value={formData.title} onChange={handleInputChange} required />
-              </InlineField>
-              <InlineField label="Start Time" htmlFor="appointment_date">
-                <Input
-                  id="appointment_date"
-                  type="datetime-local"
-                  className="h-8"
-                  value={formData.appointment_date}
-                  onChange={handleInputChange}
-                  required
-                />
-              </InlineField>
-              <InlineField label="End Time" htmlFor="end_date">
-                <Input
-                  id="end_date"
-                  type="datetime-local"
-                  className="h-8"
-                  value={formData.end_date}
-                  onChange={handleInputChange}
-                />
-              </InlineField>
-              <InlineField label="Clinician" htmlFor="clinician_id">
-                <Select
-                  value={String(formData.clinician_id)}
-                  onValueChange={(value) => handleSelectChange('clinician_id', value)}
-                  required
-                >
-                  <SelectTrigger className="h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clinicians.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </InlineField>
-              <InlineField label="Status" htmlFor="status">
-                <Select value={formData.status} onValueChange={(value) => handleSelectChange('status', value)}>
-                  <SelectTrigger className="h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="scheduled">Scheduled</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </InlineField>
-              <InlineField label="Notes" htmlFor="description" alignStart>
-                <Textarea id="description" value={formData.description} onChange={handleInputChange} className="min-h-20" />
-              </InlineField>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
-              <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
-                Cancel
-              </Button>
-              <Button type="submit" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving…' : 'Save'}
-              </Button>
-            </div>
-          </form>
-        </div>
-      </PopoverContent>
-    </Popover>
+        <form
+          onSubmit={(e) => {
+            if (isSubmitting) return;
+            handleSubmit(e);
+          }}
+        >
+          <div className="space-y-3 p-4">
+            <InlineField label="Title" htmlFor="title">
+              <Input id="title" className="h-8" value={formData.title} onChange={handleInputChange} required />
+            </InlineField>
+            <InlineField label="Start Time" htmlFor="appointment_date">
+              <Input
+                id="appointment_date"
+                type="datetime-local"
+                className="h-8"
+                value={formData.appointment_date}
+                onChange={handleInputChange}
+                required
+              />
+            </InlineField>
+            <InlineField label="End Time" htmlFor="end_date">
+              <Input
+                id="end_date"
+                type="datetime-local"
+                className="h-8"
+                value={formData.end_date}
+                onChange={handleInputChange}
+              />
+            </InlineField>
+            <InlineField label="Clinician" htmlFor="clinician_id">
+              <Select
+                value={String(formData.clinician_id)}
+                onValueChange={(value) => handleSelectChange('clinician_id', value)}
+                required
+              >
+                <SelectTrigger className="h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {clinicians.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </InlineField>
+            <InlineField label="Status" htmlFor="status">
+              <Select value={formData.status} onValueChange={(value) => handleSelectChange('status', value)}>
+                <SelectTrigger className="h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </InlineField>
+            <InlineField label="Notes" htmlFor="description" alignStart>
+              <Textarea id="description" value={formData.description} onChange={handleInputChange} className="min-h-20" />
+            </InlineField>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
+            <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button type="submit" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </form>
+      </SlideOverContent>
+    </SlideOver>
   );
 }
 

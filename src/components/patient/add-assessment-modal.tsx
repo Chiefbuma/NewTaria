@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Assessment, ClinicalParameter } from '@/lib/types';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +31,6 @@ export default function AddAssessmentModal({
   existingAssessment,
   allParameters,
   disabled = false,
-  align = 'end',
 }: {
   trigger: React.ReactNode;
   onSave: (assessment: Omit<Assessment, 'id' | 'patient_id' | 'created_at'> & { id?: number }) => void;
@@ -31,7 +38,6 @@ export default function AddAssessmentModal({
   existingAssessment?: Assessment | null;
   allParameters?: ClinicalParameter[];
   disabled?: boolean;
-  align?: 'start' | 'center' | 'end';
 }) {
   const [open, setOpen] = useState(false);
   const [selectedParamId, setSelectedParamId] = useState<string | undefined>(parameter?.id.toString());
@@ -50,8 +56,8 @@ export default function AddAssessmentModal({
     selectedParameter?.type === 'image'
       ? 'Photo'
       : selectedParameter?.type === 'voice'
-        ? 'Voice Note'
-        : `Value${selectedParameter?.unit ? ` (${selectedParameter.unit})` : ''}`;
+      ? 'Voice Note'
+      : `Value${selectedParameter?.unit ? ` (${selectedParameter.unit})` : ''}`;
 
   useEffect(() => {
     if (!open) return;
@@ -218,76 +224,69 @@ export default function AddAssessmentModal({
   const isMultiline = selectedParameter?.type === 'text' || selectedParameter?.type === 'image' || selectedParameter?.type === 'voice';
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild disabled={disabled}>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild disabled={disabled}>
         {trigger}
-      </PopoverTrigger>
-      <PopoverContent
-        align={align}
-        sideOffset={10}
-        className="w-[440px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-0"
-      >
-        <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
-          <div className="form-header-bar flex items-center justify-between px-4 py-3">
-            <p className="text-sm font-bold">{existingAssessment ? 'Edit Assessment' : 'Add Assessment'}</p>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Record
-            </span>
+      </SheetTrigger>
+      <SheetContent className="w-[440px] max-w-[calc(100vw-2rem)]" side="right">
+        <SheetHeader>
+          <SheetTitle>{existingAssessment ? 'Edit Assessment' : 'Add Assessment'}</SheetTitle>
+          <SheetDescription>
+            Record a new clinical measurement for the patient.
+          </SheetDescription>
+        </SheetHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-3 py-4">
+            {!parameter && allParameters ? (
+              <InlineField label="Parameter" htmlFor="parameter">
+                <Select onValueChange={setSelectedParamId} value={selectedParamId}>
+                  <SelectTrigger id="parameter" className="h-8">
+                    <SelectValue placeholder="Select parameter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allParameters.map((p) => (
+                      <SelectItem key={p.id} value={p.id.toString()}>
+                        {p.name} {p.unit ? `(${p.unit})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </InlineField>
+            ) : null}
+
+            {selectedParamId ? (
+              <>
+                <InlineField label={valueLabel} htmlFor="value" alignStart={Boolean(isMultiline)}>
+                  {renderInput()}
+                </InlineField>
+                <InlineField label="Notes" htmlFor="notes" alignStart>
+                  <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-20" />
+                </InlineField>
+                <InlineField label="Date" htmlFor="measuredAt">
+                  <Input
+                    id="measuredAt"
+                    type="date"
+                    value={measuredAt}
+                    onChange={(e) => setMeasuredAt(e.target.value)}
+                    required
+                    className="h-8"
+                  />
+                </InlineField>
+              </>
+            ) : null}
           </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-3 p-4">
-              {!parameter && allParameters ? (
-                <InlineField label="Parameter" htmlFor="parameter">
-                  <Select onValueChange={setSelectedParamId} value={selectedParamId}>
-                    <SelectTrigger id="parameter" className="h-8">
-                      <SelectValue placeholder="Select parameter" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allParameters.map((p) => (
-                        <SelectItem key={p.id} value={p.id.toString()}>
-                          {p.name} {p.unit ? `(${p.unit})` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </InlineField>
-              ) : null}
-
-              {selectedParamId ? (
-                <>
-                  <InlineField label={valueLabel} htmlFor="value" alignStart={Boolean(isMultiline)}>
-                    {renderInput()}
-                  </InlineField>
-                  <InlineField label="Notes" htmlFor="notes" alignStart>
-                    <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-20" />
-                  </InlineField>
-                  <InlineField label="Date" htmlFor="measuredAt">
-                    <Input
-                      id="measuredAt"
-                      type="date"
-                      value={measuredAt}
-                      onChange={(e) => setMeasuredAt(e.target.value)}
-                      required
-                      className="h-8"
-                    />
-                  </InlineField>
-                </>
-              ) : null}
-            </div>
-
-            <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
-              <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isUploading}>
-                Cancel
-              </Button>
-              <Button type="submit" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90" disabled={isUploading}>
-                Save
-              </Button>
-            </div>
-          </form>
-        </div>
-      </PopoverContent>
-    </Popover>
+          <SheetFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isUploading}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isUploading}>
+              Save
+            </Button>
+          </SheetFooter>
+        </form>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -304,7 +303,7 @@ function InlineField({
 }) {
   return (
     <div className={cn('grid grid-cols-[132px_minmax(0,1fr)] gap-3', alignStart ? 'items-start' : 'items-center')}>
-      <Label htmlFor={htmlFor} className={cn('text-[11px] font-bold uppercase tracking-wider text-muted-foreground', alignStart ? 'pt-2' : null)}>
+      <Label htmlFor={htmlFor} className={cn('text-right text-sm text-muted-foreground', alignStart ? 'pt-2' : '')}>
         {label}
       </Label>
       <div>{children}</div>

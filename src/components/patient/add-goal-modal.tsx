@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { ClinicalParameter, Goal } from '@/lib/types';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,20 +17,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-export default function AddGoalModal({
+export default function AddGoalSheet({
   trigger,
   onSave,
   clinicalParameters,
   existingGoal,
   disabled = false,
-  align = 'end',
 }: {
   trigger: React.ReactNode;
   onSave: (goal: Omit<Goal, 'id' | 'patient_id' | 'created_at'> & { id?: number }) => void;
   clinicalParameters: ClinicalParameter[];
   existingGoal?: Goal | null;
   disabled?: boolean;
-  align?: 'start' | 'center' | 'end';
 }) {
   const [open, setOpen] = useState(false);
   const [clinicalParameterId, setClinicalParameterId] = useState('');
@@ -126,85 +130,79 @@ export default function AddGoalModal({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild disabled={disabled}>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild disabled={disabled}>
         {trigger}
-      </PopoverTrigger>
-      <PopoverContent
-        align={align}
-        sideOffset={10}
-        className="w-[420px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-0"
-      >
-        <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
-          <div className="form-header-bar flex items-center justify-between px-4 py-3">
-            <p className="text-sm font-bold">{existingGoal ? 'Edit Goal' : 'Add Goal'}</p>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Goal setup
-            </span>
+      </SheetTrigger>
+      <SheetContent className="w-[420px] max-w-[calc(100vw-2rem)] p-0">
+        <SheetHeader className="form-header-bar flex items-center justify-between px-4 py-3">
+          <SheetTitle>{existingGoal ? 'Edit Goal' : 'Add Goal'}</SheetTitle>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Goal setup
+          </span>
+        </SheetHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-3 p-4">
+            <InlineField label="Parameter" htmlFor="parameter">
+              <Select onValueChange={setClinicalParameterId} value={clinicalParameterId} required>
+                <SelectTrigger id="parameter" className="h-8">
+                  <SelectValue placeholder="Select parameter" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clinicalParameters.map((p) => (
+                    <SelectItem key={p.id} value={p.id.toString()}>
+                      {p.name} {p.unit ? `(${p.unit})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </InlineField>
+
+            <InlineField label="Target" htmlFor="targetValue">
+              {renderTargetInput()}
+            </InlineField>
+
+            <InlineField label="Operator" htmlFor="operator">
+              <Select onValueChange={(v) => setTargetOperator(v as any)} value={targetOperator}>
+                <SelectTrigger id="operator" className="h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="=">Equal to</SelectItem>
+                  <SelectItem value="<=">At or below</SelectItem>
+                  <SelectItem value="<">Below</SelectItem>
+                  <SelectItem value=">=">At or above</SelectItem>
+                  <SelectItem value=">">Above</SelectItem>
+                </SelectContent>
+              </Select>
+            </InlineField>
+
+            <InlineField label="Deadline" htmlFor="deadline">
+              <Input
+                id="deadline"
+                type="date"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                required
+                className="h-8"
+              />
+            </InlineField>
+
+            <InlineField label="Notes" htmlFor="notes" alignStart>
+              <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-16" />
+            </InlineField>
           </div>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-3 p-4">
-              <InlineField label="Parameter" htmlFor="parameter">
-                <Select onValueChange={setClinicalParameterId} value={clinicalParameterId} required>
-                  <SelectTrigger id="parameter" className="h-8">
-                    <SelectValue placeholder="Select parameter" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clinicalParameters.map((p) => (
-                      <SelectItem key={p.id} value={p.id.toString()}>
-                        {p.name} {p.unit ? `(${p.unit})` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </InlineField>
-
-              <InlineField label="Target" htmlFor="targetValue">
-                {renderTargetInput()}
-              </InlineField>
-
-              <InlineField label="Operator" htmlFor="operator">
-                <Select onValueChange={(v) => setTargetOperator(v as any)} value={targetOperator}>
-                  <SelectTrigger id="operator" className="h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="=">Equal to</SelectItem>
-                    <SelectItem value="<=">At or below</SelectItem>
-                    <SelectItem value="<">Below</SelectItem>
-                    <SelectItem value=">=">At or above</SelectItem>
-                    <SelectItem value=">">Above</SelectItem>
-                  </SelectContent>
-                </Select>
-              </InlineField>
-
-              <InlineField label="Deadline" htmlFor="deadline">
-                <Input
-                  id="deadline"
-                  type="date"
-                  value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
-                  required
-                  className="h-8"
-                />
-              </InlineField>
-
-              <InlineField label="Notes" htmlFor="notes" alignStart>
-                <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-16" />
-              </InlineField>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
-              <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90">
-                Save
-              </Button>
-            </div>
-          </form>
-        </div>
-      </PopoverContent>
-    </Popover>
+          <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
+            <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90">
+              Save
+            </Button>
+          </div>
+        </form>
+      </SheetContent>
+    </Sheet>
   );
 }
 
