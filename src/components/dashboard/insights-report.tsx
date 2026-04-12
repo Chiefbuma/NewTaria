@@ -116,7 +116,7 @@ export default function InsightsReport({
   memberMetrics,
   selectedPartnerId,
   reportTitle,
-  reportSubtitle,
+  filterComponent,
   className,
 }: {
   stats: any;
@@ -125,11 +125,10 @@ export default function InsightsReport({
   memberMetrics: InsightsMemberMetricsPage | null;
   selectedPartnerId: number | null;
   reportTitle: string;
-  reportSubtitle?: string | null;
+  filterComponent?: React.ReactNode;
   className?: string;
 }) {
   const totalMembers = Number(stats?.totalOnboarded ?? stats?.totalPatients ?? 0);
-  const reportDateLabel = `Report Date: ${format(new Date(), 'dd MMM yyyy')}`;
 
   const statusRows: ClassificationRow[] = (stats?.statusDistribution ?? []).map((r: any) => ({
     label: String(r.status ?? 'Unknown'),
@@ -239,12 +238,9 @@ export default function InsightsReport({
           'mx-auto max-w-[1080px] space-y-8 rounded-[32px] border border-border/70 bg-card/95 p-6 text-foreground shadow-[0_28px_70px_-40px_rgba(15,23,42,0.24)] transition-colors md:p-10 dark:bg-card/95'
       )}
     >
-      <div className="flex flex-col items-center gap-5 border-b border-border/70 pb-8">
-        <div className="space-y-2 text-center">
-          <h2 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">{reportTitle}</h2>
-          {reportSubtitle ? <p className="text-sm text-muted-foreground">{reportSubtitle}</p> : null}
-          <p className="text-sm text-muted-foreground">{reportDateLabel}</p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-6">
+        <h2 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">{reportTitle}</h2>
+        {filterComponent}
       </div>
 
       <div className="flex flex-col gap-6">
