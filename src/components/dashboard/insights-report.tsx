@@ -132,10 +132,15 @@ export default function InsightsReport({
   const statusRows: ClassificationRow[] = (stats?.statusDistribution ?? []).map((r: any) => ({
     label: String(r.status ?? 'Unknown'),
     total: Number(r.count ?? 0),
+    male: Number(r.male ?? 0),
+    female: Number(r.female ?? 0),
   }));
+
   const diagnosisRows: ClassificationRow[] = (stats?.diagnosisDistribution ?? []).map((r: any) => ({
     label: String(r.diagnosis ?? 'Not Specified'),
     total: Number(r.count ?? 0),
+    male: Number(r.male ?? 0),
+    female: Number(r.female ?? 0),
   }));
 
   const engagementTotal = totalMembers;
@@ -143,6 +148,8 @@ export default function InsightsReport({
     {
       label: 'No check-in (14+ days)',
       total: Number(stats?.membersWithNoCheckIn14d ?? 0),
+      male: Number(stats?.membersWithNoCheckIn14dMale ?? 0),
+      female: Number(stats?.membersWithNoCheckIn14dFemale ?? 0),
       meta: 'Patients overdue for follow-up',
     },
   ];
@@ -152,9 +159,25 @@ export default function InsightsReport({
     Number(deepDive?.totals?.activeGoals ?? 0) + Number(deepDive?.totals?.completedGoals ?? 0)
   );
   const goalRows: ClassificationRow[] = [
-    { label: 'Active goals', total: Number(deepDive?.totals?.activeGoals ?? 0) },
-    { label: 'Overdue goals', total: Number(deepDive?.totals?.overdueGoals ?? 0), meta: 'Active goals past deadline' },
-    { label: 'Completed goals', total: Number(deepDive?.totals?.completedGoals ?? 0) },
+    {
+      label: 'Active goals',
+      total: Number(deepDive?.totals?.activeGoals ?? 0),
+      male: Number(deepDive?.totals?.activeGoalsMale ?? 0),
+      female: Number(deepDive?.totals?.activeGoalsFemale ?? 0),
+    },
+    {
+      label: 'Overdue goals',
+      total: Number(deepDive?.totals?.overdueGoals ?? 0),
+      male: Number(deepDive?.totals?.overdueGoalsMale ?? 0),
+      female: Number(deepDive?.totals?.overdueGoalsFemale ?? 0),
+      meta: 'Active goals past deadline',
+    },
+    {
+      label: 'Completed goals',
+      total: Number(deepDive?.totals?.completedGoals ?? 0),
+      male: Number(deepDive?.totals?.completedGoalsMale ?? 0),
+      female: Number(deepDive?.totals?.completedGoalsFemale ?? 0),
+    },
   ];
 
   const coverageTotal = deepDive?.totals?.activeMembers ?? totalMembers;
@@ -162,14 +185,23 @@ export default function InsightsReport({
     {
       label: 'Patients with no active goals',
       total: Number(deepDive?.totals?.membersWithNoActiveGoals ?? 0),
+      male: Number(deepDive?.totals?.membersWithNoActiveGoalsMale ?? 0),
+      female: Number(deepDive?.totals?.membersWithNoActiveGoalsFemale ?? 0),
       meta: 'Potential onboarding gap',
     },
     {
       label: 'Active prescriptions',
       total: Number(deepDive?.totals?.activePrescriptions ?? 0),
+      male: Number(deepDive?.totals?.activePrescriptionsMale ?? 0),
+      female: Number(deepDive?.totals?.activePrescriptionsFemale ?? 0),
       meta: 'Prescription records marked active',
     },
-    { label: 'Clinical reviews (30d)', total: Number(deepDive?.totals?.reviews30d ?? 0) },
+    {
+      label: 'Clinical reviews (30d)',
+      total: Number(deepDive?.totals?.reviews30d ?? 0),
+      male: Number(deepDive?.totals?.reviews30dMale ?? 0),
+      female: Number(deepDive?.totals?.reviews30dFemale ?? 0),
+    },
   ];
 
   const metricsPage = memberMetrics ?? { total: 0, page: 1, pageSize: 5, rows: [] };

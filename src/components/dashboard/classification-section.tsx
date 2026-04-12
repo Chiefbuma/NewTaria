@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils';
 export type ClassificationRow = {
   label: string;
   total: number;
+  male: number;
+  female: number;
   meta?: string | null;
 };
 
@@ -51,45 +53,50 @@ export default function ClassificationSection({
             </div>
           </div>
 
-          <Table className="min-w-0 table-fixed">
-            <TableHeader className="bg-transparent">
-              <TableRow className="border-border/60">
-                <TableHead className="w-[60%]">Category</TableHead>
-                <TableHead className="w-[90px] text-right">Total</TableHead>
-                <TableHead className="w-[70px] text-right">Share</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length ? (
-                rows.map((row) => {
-                  const pct = total > 0 ? Math.round((row.total / total) * 100) : 0;
-                  return (
-                    <TableRow key={row.label} className="border-border/50">
-                      <TableCell className="py-2 font-medium text-foreground">
-                        <div className="min-w-0">
-                          <div className="truncate">{row.label}</div>
-                          {row.meta ? (
-                            <div className="truncate text-[11px] font-normal text-muted-foreground">{row.meta}</div>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-2 text-right font-semibold text-foreground">{row.total}</TableCell>
-                      <TableCell className="py-2 text-right text-muted-foreground">{pct}%</TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={3} className="py-8 text-center text-[12px] italic text-muted-foreground">
-                    No records found.
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table className="min-w-full table-fixed">
+              <TableHeader className="bg-transparent">
+                <TableRow className="border-border/60">
+                  <TableHead className="w-[45%]">Category</TableHead>
+                  <TableHead className="w-[15%] text-right">Total</TableHead>
+                  <TableHead className="w-[15%] text-right">M</TableHead>
+                  <TableHead className="w-[15%] text-right">F</TableHead>
+                  <TableHead className="w-[10%] text-right">Share</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {rows.length ? (
+                  rows.map((row) => {
+                    const pct = total > 0 ? Math.round((row.total / total) * 100) : 0;
+                    return (
+                      <TableRow key={row.label} className="border-border/50">
+                        <TableCell className="py-2 font-medium text-foreground">
+                          <div className="min-w-0">
+                            <div className="truncate">{row.label}</div>
+                            {row.meta ? (
+                              <div className="truncate text-[11px] font-normal text-muted-foreground">{row.meta}</div>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2 text-right font-semibold text-foreground">{row.total}</TableCell>
+                        <TableCell className="py-2 text-right text-muted-foreground">{row.male}</TableCell>
+                        <TableCell className="py-2 text-right text-muted-foreground">{row.female}</TableCell>
+                        <TableCell className="py-2 text-right text-muted-foreground">{pct}%</TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-8 text-center text-[12px] italic text-muted-foreground">
+                      No records found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
     </section>
   );
 }
-
