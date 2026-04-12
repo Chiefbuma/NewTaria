@@ -7,7 +7,7 @@ import { CalendarCheck, Clock, CalendarPlus, Edit, XCircle, Check } from 'lucide
 import { useToast } from '@/hooks/use-toast';
 import { formatAppointmentDateTime } from '@/lib/date-format';
 import { updateAppointmentStatus, upsertAppointment } from '@/lib/api-service';
-import AddAppointmentModal from '@/components/patient/add-appointment-modal';
+import AddAppointmentSheet from '@/components/patient/add-appointment-sheet';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -106,7 +106,7 @@ export default function AppointmentsCard({
                         </CardTitle>
                         <CardDescription className="text-xs">Manage upcoming appointments.</CardDescription>
                     </div>
-                    <AddAppointmentModal
+                    <AddAppointmentSheet
                       trigger={
                         <TooltipProvider>
                           <Tooltip>
@@ -162,7 +162,7 @@ export default function AppointmentsCard({
                                 </Tooltip>
                               </TooltipProvider>
                             )}
-                            <AddAppointmentModal
+                            <AddAppointmentSheet
                               trigger={
                                 <TooltipProvider>
                                   <Tooltip>
