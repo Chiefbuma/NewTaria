@@ -128,6 +128,11 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
 
   return (
     <div className="space-y-4">
+       <div className="rounded-lg border bg-muted/30 p-4">
+        <p className="text-sm text-muted-foreground">
+          Manage the clinical parameters that can be tracked for patients. These parameters are used to monitor patient health and progress.
+        </p>
+      </div>
       {isLoading ? (
           <div className="flex justify-center rounded-md border border-primary/10 p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
       ) : (

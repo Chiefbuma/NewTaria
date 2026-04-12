@@ -181,6 +181,11 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
 
   return (
     <div className="space-y-4">
+       <div className="rounded-lg border bg-muted/30 p-4">
+        <p className="text-sm text-muted-foreground">
+          Manage users and their roles within the system. You can add new users, edit existing user information, and assign roles to control access to different features.
+        </p>
+      </div>
       <DataTable columns={columns} data={users} toolbarActions={toolbarActions} />
 
       <ConfirmActionDialog

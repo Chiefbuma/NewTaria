@@ -118,6 +118,11 @@ export default function MedicationManagement() {
 
   return (
     <div className="space-y-4">
+      <div className="rounded-lg border bg-muted/30 p-4">
+        <p className="text-sm text-muted-foreground">
+          Manage the medications that can be prescribed to patients. This catalog is used to create and manage patient medication plans.
+        </p>
+      </div>
       {isLoading ? (
           <div className="flex justify-center rounded-md border border-primary/10 p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
       ) : (

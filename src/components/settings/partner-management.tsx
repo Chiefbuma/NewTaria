@@ -110,6 +110,11 @@ export default function PartnerManagement({ initialPartners, onPartnersUpdate }:
 
   return (
     <div className="space-y-4">
+      <div className="rounded-lg border bg-muted/30 p-4">
+        <p className="text-sm text-muted-foreground">
+          Manage the list of payers that your organization works with. Payers can be assigned to patients to track coverage and billing.
+        </p>
+      </div>
       <DataTable columns={columns} data={partners} toolbarActions={toolbarActions} />
 
       <ConfirmActionDialog
