@@ -4,7 +4,7 @@ import type React from 'react';
 import { useState, useEffect } from 'react';
 import type { User, Partner } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -51,7 +51,6 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
   const [confirmTitle, setConfirmTitle] = useState('');
   const [confirmDescription, setConfirmDescription] = useState('');
   const { toast } = useToast();
-  // Keep avatars consistent across tables: initials only (no profile images/placeholders).
 
   useEffect(() => {
       fetch('/api/partners').then(res => res.json()).then(setPartners);
@@ -130,7 +129,7 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
         id: "actions",
         cell: ({ row }) => (
             <div className="flex justify-end gap-2">
-                <UserUpsertPopover
+                <UserUpsertSheet
                   user={row.original}
                   partners={partners}
                   saveUser={saveUser}
@@ -158,7 +157,7 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
   ];
 
   const toolbarActions = (
-    <UserUpsertPopover
+    <UserUpsertSheet
       user={null}
       partners={partners}
       saveUser={saveUser}
@@ -204,7 +203,7 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
   );
 }
 
-function UserUpsertPopover({
+function UserUpsertSheet({
   trigger,
   user,
   partners,
@@ -231,9 +230,10 @@ function UserUpsertPopover({
 
   const mode: 'create' | 'update' = user?.id ? 'update' : 'create';
   const title = user?.id ? 'Edit User' : 'Add User';
+  const description = user?.id ? 'Update the details for this user.' : 'Add a new user to the system.';
 
   return (
-    <Popover
+    <Sheet
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
@@ -248,19 +248,14 @@ function UserUpsertPopover({
         }
       }}
     >
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent
-        align="end"
-        sideOffset={10}
+      <SheetTrigger asChild>{trigger}</SheetTrigger>
+      <SheetContent
         className="w-[560px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-0"
       >
-        <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
-          <div className="form-header-bar flex items-center justify-between px-4 py-3">
-            <p className="text-sm font-bold">{title}</p>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Access
-            </span>
-          </div>
+        <SheetHeader className="px-4 py-3">
+          <SheetTitle>{title}</SheetTitle>
+          <SheetDescription>{description}</SheetDescription>
+        </SheetHeader>
 
           <form
             onSubmit={async (e) => {
@@ -380,7 +375,7 @@ function UserUpsertPopover({
               ) : null}
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
+            <SheetFooter className="px-4 py-3">
               <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
@@ -393,11 +388,10 @@ function UserUpsertPopover({
                   'Save'
                 )}
               </Button>
-            </div>
+            </SheetFooter>
           </form>
-        </div>
-      </PopoverContent>
-    </Popover>
+      </SheetContent>
+    </Sheet>
   );
 }
 

@@ -1,11 +1,10 @@
-
 'use client';
 
 import type React from 'react';
 import { useState, useEffect } from 'react';
 import type { ClinicalParameter } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -99,7 +98,7 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
         id: "actions",
         cell: ({ row }) => (
             <div className="flex justify-end gap-2">
-                <ClinicalParameterUpsertPopover
+                <ClinicalParameterUpsertSheet
                   parameter={row.original}
                   onSave={saveParameter}
                   trigger={
@@ -116,7 +115,7 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
   ];
 
   const toolbarActions = (
-    <ClinicalParameterUpsertPopover
+    <ClinicalParameterUpsertSheet
       parameter={null}
       onSave={saveParameter}
       trigger={
@@ -155,7 +154,7 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
   );
 }
 
-function ClinicalParameterUpsertPopover({
+function ClinicalParameterUpsertSheet({
   trigger,
   parameter,
   onSave,
@@ -173,7 +172,7 @@ function ClinicalParameterUpsertPopover({
   const title = parameter?.id ? 'Edit Clinical Parameter' : 'Add Clinical Parameter';
 
   return (
-    <Popover
+    <Sheet
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
@@ -184,19 +183,16 @@ function ClinicalParameterUpsertPopover({
         }
       }}
     >
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent
-        align="end"
-        sideOffset={10}
+      <SheetTrigger asChild>{trigger}</SheetTrigger>
+      <SheetContent
         className="w-[520px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-0"
       >
-        <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
-          <div className="form-header-bar flex items-center justify-between px-4 py-3">
-            <p className="text-sm font-bold">{title}</p>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Setup
-            </span>
-          </div>
+        <SheetHeader className="px-4 py-3">
+          <SheetTitle>{title}</SheetTitle>
+          <SheetDescription>
+            {parameter?.id ? 'Update the details for this parameter.' : 'Add a new clinical parameter to the system.'}
+          </SheetDescription>
+        </SheetHeader>
 
           <form
             onSubmit={async (e) => {
@@ -319,7 +315,7 @@ function ClinicalParameterUpsertPopover({
               ) : null}
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
+            <SheetFooter className="px-4 py-3">
               <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
@@ -332,11 +328,10 @@ function ClinicalParameterUpsertPopover({
                   'Save'
                 )}
               </Button>
-            </div>
+            </SheetFooter>
           </form>
-        </div>
-      </PopoverContent>
-    </Popover>
+      </SheetContent>
+    </Sheet>
   );
 }
 

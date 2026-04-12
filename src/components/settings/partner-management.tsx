@@ -4,7 +4,7 @@ import type React from 'react';
 import { useState } from 'react';
 import type { Partner } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -73,7 +73,7 @@ export default function PartnerManagement({ initialPartners, onPartnersUpdate }:
         id: "actions",
         cell: ({ row }) => (
             <div className="flex justify-end gap-2">
-                <PartnerUpsertPopover
+                <PartnerUpsertSheet
                   partner={row.original}
                   savePartner={savePartner}
                   onSaved={(saved) => {
@@ -94,7 +94,7 @@ export default function PartnerManagement({ initialPartners, onPartnersUpdate }:
   ];
 
   const toolbarActions = (
-    <PartnerUpsertPopover
+    <PartnerUpsertSheet
       savePartner={savePartner}
       onSaved={(saved) => {
         applySavedPartner(saved);
@@ -132,7 +132,7 @@ export default function PartnerManagement({ initialPartners, onPartnersUpdate }:
   );
 }
 
-function PartnerUpsertPopover({
+function PartnerUpsertSheet({
   trigger,
   partner,
   savePartner,
@@ -151,7 +151,7 @@ function PartnerUpsertPopover({
   const title = partner?.id ? 'Edit Payer' : 'Add Payer';
 
   return (
-    <Popover
+    <Sheet
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
@@ -160,17 +160,16 @@ function PartnerUpsertPopover({
         }
       }}
     >
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent
-        align="end"
-        sideOffset={10}
+      <SheetTrigger asChild>{trigger}</SheetTrigger>
+      <SheetContent
         className="w-[440px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-0"
       >
-        <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
-          <div className="form-header-bar flex items-center justify-between px-4 py-3">
-            <p className="text-sm font-bold">{title}</p>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Setup</span>
-          </div>
+        <SheetHeader className="px-4 py-3">
+          <SheetTitle>{title}</SheetTitle>
+          <SheetDescription>
+             {partner?.id ? 'Update the details for this payer.' : 'Add a new payer to the system.'}
+          </SheetDescription>
+        </SheetHeader>
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -192,7 +191,7 @@ function PartnerUpsertPopover({
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
               </InlineField>
             </div>
-            <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
+            <SheetFooter className="px-4 py-3">
               <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
@@ -205,11 +204,10 @@ function PartnerUpsertPopover({
                   'Save'
                 )}
               </Button>
-            </div>
+            </SheetFooter>
           </form>
-        </div>
-      </PopoverContent>
-    </Popover>
+      </SheetContent>
+    </Sheet>
   );
 }
 
