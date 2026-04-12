@@ -6,8 +6,8 @@ const Logo = ({ className = '', ...props }: React.HTMLAttributes<HTMLImageElemen
     <Image
         src="/images/taria-logo.png"
         alt="Taria Logo"
-        width={115}
-        height={24}
+        width={230}
+        height={48}
         priority
         className={cn(className)}
         {...props}

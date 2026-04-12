@@ -57,7 +57,7 @@ export default function LoginPageClient() {
   return (
     <>
       <header className="absolute left-0 right-0 top-0 z-50 flex h-16 items-center justify-between px-6">
-        <Logo className="h-8 w-auto" />
+        <Logo className="h-12 w-auto" />
         <Link href="/help" className="text-sm font-medium text-muted-foreground hover:text-primary">
           Need help?
         </Link>
