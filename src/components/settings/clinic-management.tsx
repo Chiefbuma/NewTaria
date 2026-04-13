@@ -1,4 +1,4 @@
-'use client';
+''''use client';
 
 import type React from 'react';
 import { useState, useEffect } from 'react';
@@ -117,20 +117,12 @@ export default function ClinicManagement() {
   );
 
   return (
-    <div className="flex gap-8 items-start">
-        <div className="w-64 flex-shrink-0 space-y-4">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Clinics</p>
-                <p className="text-3xl font-bold tracking-tight">{clinics.length}</p>
-            </div>
-        </div>
-        <div className="flex-1 space-y-4">
-            {isLoading ? (
-                <div className="flex justify-center rounded-md border border-primary/10 p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-            ) : (
-                <DataTable columns={columns} data={clinics} toolbarActions={toolbarActions} />
-            )}
-        </div>
+    <div className="space-y-4">
+        {isLoading ? (
+            <div className="flex justify-center rounded-md border border-primary/10 p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+        ) : (
+            <DataTable columns={columns} data={clinics} toolbarActions={toolbarActions} />
+        )}
 
       <ConfirmActionDialog
         open={Boolean(confirmAction)}
@@ -181,12 +173,14 @@ function ClinicUpsertForm({
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SlideOverContent className="flex flex-col p-0">
+      <SlideOverContent
+        className="h-full w-[440px] max-w-[calc(100vw-2rem)] overflow-y-auto p-0"
+      >
         <SheetHeader className="px-4 py-3">
             <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
           <form
-            className="flex flex-1 flex-col"
+            className="flex flex-col"
             onSubmit={async (e) => {
               e.preventDefault();
               if (!name.trim()) return;
@@ -202,7 +196,7 @@ function ClinicUpsertForm({
               }
             }}
           >
-            <div className="flex-1 space-y-3 p-4 overflow-y-auto">
+            <div className="space-y-3 p-4">
               <InlineField label="Clinic Name" htmlFor="name">
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
               </InlineField>
@@ -245,3 +239,4 @@ function InlineField({
     </div>
   );
 }
+'''

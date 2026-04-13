@@ -1,4 +1,4 @@
-'use client';
+''''use client';
 
 import type React from 'react';
 import { useState, useEffect } from 'react';
@@ -128,20 +128,12 @@ export default function ClinicalParameters({ initialParameters, onParametersUpda
   );
 
   return (
-    <div className="flex gap-8 items-start">
-        <div className="w-64 flex-shrink-0 space-y-4">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Parameters</p>
-                <p className="text-3xl font-bold tracking-tight">{parameters.length}</p>
-            </div>
-        </div>
-        <div className="flex-1 space-y-4">
-            {isLoading ? (
-                <div className="flex justify-center rounded-md border border-primary/10 p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-            ) : (
-                <DataTable columns={columns} data={parameters} toolbarActions={toolbarActions} />
-            )}
-        </div>
+    <div className="space-y-4">
+        {isLoading ? (
+            <div className="flex justify-center rounded-md border border-primary/10 p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+        ) : (
+            <DataTable columns={columns} data={parameters} toolbarActions={toolbarActions} />
+        )}
 
       <ConfirmActionDialog
         open={Boolean(confirmAction)}
@@ -194,14 +186,14 @@ function ClinicalParameterUpsertForm({
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SlideOverContent
-        className="h-full w-[520px] max-w-[calc(100vw-2rem)] overflow-y-auto p-0"
+        className="h-full w-[520px] max-w-[calc(100vw-2rem)] flex flex-col p-0"
       >
         <SheetHeader className="px-4 py-3">
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
 
           <form
-            className="flex flex-col h-full"
+            className="flex-1 flex flex-col"
             onSubmit={async (e) => {
               e.preventDefault();
               if (!draft.name?.trim()) {
@@ -236,7 +228,7 @@ function ClinicalParameterUpsertForm({
               }
             }}
           >
-            <div className="space-y-3 p-4 flex-1">
+            <div className="flex-1 p-4 overflow-y-auto space-y-3">
               <InlineField label="Parameter Name" htmlFor="name">
                 <Input
                   id="name"
@@ -360,3 +352,4 @@ function InlineField({
     </div>
   );
 }
+'''

@@ -1,4 +1,4 @@
-'use client';
+''''use client';
 
 import type React from 'react';
 import { useState, useEffect } from 'react';
@@ -182,16 +182,8 @@ export default function UserManagement({ initialUsers, onUsersUpdate }: UserMana
   );
 
   return (
-    <div className="flex gap-8 items-start">
-        <div className="w-64 flex-shrink-0 space-y-4">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Users</p>
-                <p className="text-3xl font-bold tracking-tight">{users.length}</p>
-            </div>
-        </div>
-        <div className="flex-1 space-y-4">
-            <DataTable columns={columns} data={users} toolbarActions={toolbarActions} />
-        </div>
+    <div className="space-y-4">
+        <DataTable columns={columns} data={users} toolbarActions={toolbarActions} />
 
       <ConfirmActionDialog
         open={Boolean(confirmAction)}
@@ -258,13 +250,13 @@ function UserUpsertForm({
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SlideOverContent className="h-full w-[420px] max-w-[calc(100vw-2rem)] p-0">
+      <SlideOverContent className="h-full w-[420px] max-w-[calc(100vw-2rem)] flex flex-col p-0">
         <SheetHeader className="px-4 py-3">
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
 
           <form
-            className="flex flex-col h-full"
+            className="flex-1 flex flex-col"
             onSubmit={async (e) => {
               e.preventDefault();
 
@@ -310,7 +302,7 @@ function UserUpsertForm({
               }
             }}
           >
-            <div className="space-y-3 p-4 flex-1">
+            <div className="flex-1 space-y-3 p-4 overflow-y-auto">
               <InlineField label="Full Name" htmlFor="name">
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
               </InlineField>
@@ -422,3 +414,4 @@ function InlineField({
     </div>
   );
 }
+'''

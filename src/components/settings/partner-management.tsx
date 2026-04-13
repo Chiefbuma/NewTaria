@@ -1,4 +1,4 @@
-'use client';
+''''use client';
 
 import type React from 'react';
 import { useState } from 'react';
@@ -110,16 +110,8 @@ export default function PartnerManagement({ initialPartners, onPartnersUpdate }:
   );
 
   return (
-    <div className="flex gap-8 items-start">
-      <div className="w-64 flex-shrink-0 space-y-4">
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4">
-            <p className="text-sm font-medium text-muted-foreground">Total Payers</p>
-            <p className="text-3xl font-bold tracking-tight">{partners.length}</p>
-        </div>
-      </div>
-      <div className="flex-1 space-y-4">
+    <div className="space-y-4">
         <DataTable columns={columns} data={partners} toolbarActions={toolbarActions} />
-      </div>
 
       <ConfirmActionDialog
         open={Boolean(confirmAction)}
@@ -177,7 +169,7 @@ function PartnerUpsertForm({
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
           <form
-            className="flex flex-col h-full"
+            className="flex flex-col"
             onSubmit={async (e) => {
               e.preventDefault();
               if (!name.trim()) return;
@@ -193,7 +185,7 @@ function PartnerUpsertForm({
               }
             }}
           >
-            <div className="space-y-3 p-4 flex-1">
+            <div className="space-y-3 p-4">
               <InlineField label="Payer Name" htmlFor="name">
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
               </InlineField>
@@ -236,3 +228,4 @@ function InlineField({
     </div>
   );
 }
+'''

@@ -1,4 +1,4 @@
-'use client';
+''''use client';
 
 import type React from 'react';
 import { useState, useEffect } from 'react';
@@ -118,20 +118,12 @@ export default function DiagnosisManagement() {
   );
 
   return (
-    <div className="flex gap-8 items-start">
-        <div className="w-64 flex-shrink-0 space-y-4">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Diagnoses</p>
-                <p className="text-3xl font-bold tracking-tight">{diagnoses.length}</p>
-            </div>
-        </div>
-        <div className="flex-1 space-y-4">
-            {isLoading ? (
-                <div className="flex justify-center rounded-md border border-primary/10 p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-            ) : (
-                <DataTable columns={columns} data={diagnoses} toolbarActions={toolbarActions} />
-            )}
-        </div>
+    <div className="space-y-4">
+        {isLoading ? (
+            <div className="flex justify-center rounded-md border border-primary/10 p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+        ) : (
+            <DataTable columns={columns} data={diagnoses} toolbarActions={toolbarActions} />
+        )}
 
       <ConfirmActionDialog
         open={Boolean(confirmAction)}
@@ -191,7 +183,7 @@ function DiagnosisUpsertForm({
             <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
           <form
-            className="flex flex-col h-full"
+            className="flex flex-col"
             onSubmit={async (e) => {
               e.preventDefault();
               if (!name.trim() || !code.trim()) return;
@@ -211,7 +203,7 @@ function DiagnosisUpsertForm({
               }
             }}
           >
-            <div className="space-y-3 p-4 flex-1">
+            <div className="space-y-3 p-4">
               <InlineField label="Diagnosis Name" htmlFor="name">
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
               </InlineField>
@@ -257,3 +249,4 @@ function InlineField({
     </div>
   );
 }
+'''
