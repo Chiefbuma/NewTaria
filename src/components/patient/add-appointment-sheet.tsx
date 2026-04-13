@@ -2,134 +2,106 @@
 
 import type React from 'react';
 import { useState, useEffect } from 'react';
-import type { Appointment, Patient, User } from '@/lib/types';
+import type { Patient, Appointment, User } from '@/lib/types';
+import { Button } from '@/components/ui/button';
 import {
   SlideOver,
   SlideOverContent,
   SlideOverHeader,
   SlideOverTitle,
-  SlideOverTrigger,
 } from '@/components/ui/slide-over';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-
-const getLocalDateTimeString = (date: Date) => {
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    const year = date.getFullYear();
-    const month = pad(date.getMonth() + 1);
-    const day = pad(date.getDate());
-    const hours = pad(date.getHours());
-    const minutes = pad(date.getMinutes());
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-};
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Loader2 } from 'lucide-react';
 
 export default function AddAppointmentSheet({
-  trigger,
-  onSave,
+  open,
+  onOpenChange,
   patient,
   clinicians,
+  onSave,
   existingAppointment,
-  disabled = false,
 }: {
-  trigger: React.ReactNode;
-  onSave: (appointment: Omit<Appointment, 'id' | 'patient_id'> & { id?: number }) => Promise<void> | void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   patient: Patient;
   clinicians: User[];
-  existingAppointment?: Appointment | null;
-  disabled?: boolean;
+  onSave: (data: any) => Promise<void>;
+  existingAppointment: Appointment | null;
 }) {
-  const { toast } = useToast();
-  const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const getInitialState = () => {
-      const defaultStartDate = new Date();
-      defaultStartDate.setHours(defaultStartDate.getHours() + 1, 0, 0, 0); // Next hour
-      const defaultEndDate = new Date(defaultStartDate.getTime() + 30 * 60000); // 30 mins later
-      
-      if (existingAppointment) {
-          return {
-              id: existingAppointment.id,
-              title: existingAppointment.title,
-              description: existingAppointment.description || '',
-              clinician_id: String(existingAppointment.clinician_id),
-              appointment_date: getLocalDateTimeString(new Date(existingAppointment.appointment_date)),
-              end_date: existingAppointment.end_date ? getLocalDateTimeString(new Date(existingAppointment.end_date)) : '',
-              status: existingAppointment.status,
-          };
-      }
-      return {
-          id: undefined,
-          title: 'Follow-up',
-          description: '',
-          clinician_id: clinicians.length > 0 ? String(clinicians[0].id) : '',
-          appointment_date: getLocalDateTimeString(defaultStartDate),
-          end_date: getLocalDateTimeString(defaultEndDate),
-          status: 'scheduled' as const,
-      };
-  };
 
-  const [formData, setFormData] = useState(getInitialState());
+  const [title, setTitle] = useState('');
+  const [clinicianId, setClinicianId] = useState('');
+  const [appointmentDate, setAppointmentDate] = useState('');
+  const [appointmentTime, setAppointmentTime] = useState('');
+  const [notes, setNotes] = useState('');
 
   useEffect(() => {
     if (open) {
-        setFormData(getInitialState());
+      if (existingAppointment) {
+        const localDate = new Date(existingAppointment.appointment_date);
+        const yyyy = localDate.getFullYear();
+        const mm = String(localDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(localDate.getDate()).padStart(2, '0');
+        const hh = String(localDate.getHours()).padStart(2, '0');
+        const mins = String(localDate.getMinutes()).padStart(2, '0');
+
+        setTitle(existingAppointment.title);
+        setClinicianId(String(existingAppointment.clinician_id));
+        setAppointmentDate(`${yyyy}-${mm}-${dd}`);
+        setAppointmentTime(`${hh}:${mins}`);
+        setNotes(existingAppointment.notes || '');
+      } else {
+        setTitle('Follow-up Consultation');
+        setClinicianId(String(patient.primary_clinician_id || ''));
+        setAppointmentDate('');
+        setAppointmentTime('');
+        setNotes('');
+      }
     }
-  }, [open, existingAppointment, clinicians]);
+  }, [open, existingAppointment, patient]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.id]: e.target.value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.appointment_date || !formData.clinician_id) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Title, Clinician and Appointment Date are required.' });
+    if (isSubmitting) return;
+
+    if (!title || !clinicianId || !appointmentDate || !appointmentTime) {
       return;
     }
-    
-    const payload = {
-      id: formData.id,
-      title: formData.title,
-      description: formData.description,
-      appointment_date: new Date(formData.appointment_date).toISOString(),
-      end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
-      clinician_id: Number(formData.clinician_id),
-      status: formData.status,
-      cancellation_reason: null,
-    } satisfies Omit<Appointment, 'id' | 'patient_id'> & { id?: number };
 
-    (async () => {
-      try {
-        setIsSubmitting(true);
-        await onSave(payload);
-        setOpen(false);
-      } catch (err: any) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: err?.message || 'Failed to save appointment.',
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-    })();
+    const [h, m] = appointmentTime.split(':');
+    const combinedDateTime = new Date(appointmentDate);
+    combinedDateTime.setHours(parseInt(h, 10), parseInt(m, 10));
+
+    setIsSubmitting(true);
+    try {
+      await onSave({
+        id: existingAppointment?.id,
+        title,
+        clinician_id: Number(clinicianId),
+        appointment_date: combinedDateTime.toISOString(),
+        notes,
+      });
+      onOpenChange(false);
+    } catch (error) {
+      // The parent component will show a toast notification.
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <SlideOver open={open} onOpenChange={setOpen}>
-      <SlideOverTrigger asChild disabled={disabled}>
-        {trigger}
-      </SlideOverTrigger>
-      <SlideOverContent className="w-[520px] max-w-[calc(100vw-2rem)] p-0" open={open}>
+    <SlideOver open={open} onOpenChange={onOpenChange}>
+      <SlideOverContent className="w-[520px] max-w-[calc(100vw-2rem)] p-0">
         <SlideOverHeader className="form-header-bar flex items-center justify-between px-4 py-3">
           <SlideOverTitle>
             {existingAppointment ? 'Edit Appointment' : 'Schedule Appointment'}
@@ -138,44 +110,26 @@ export default function AddAppointmentSheet({
             {patient.first_name}
           </span>
         </SlideOverHeader>
-
-        <form
-          onSubmit={(e) => {
-            if (isSubmitting) return;
-            handleSubmit(e);
-          }}
-        >
-          <div className="space-y-3 p-4">
-            <InlineField label="Title" htmlFor="title">
-              <Input id="title" className="h-8" value={formData.title} onChange={handleInputChange} required />
-            </InlineField>
-            <InlineField label="Start Time" htmlFor="appointment_date">
+        <form onSubmit={handleSubmit} className="flex h-full flex-col">
+          <div className="flex-1 space-y-4 overflow-y-auto p-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="title">Title</Label>
               <Input
-                id="appointment_date"
-                type="datetime-local"
-                className="h-8"
-                value={formData.appointment_date}
-                onChange={handleInputChange}
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 required
               />
-            </InlineField>
-            <InlineField label="End Time" htmlFor="end_date">
-              <Input
-                id="end_date"
-                type="datetime-local"
-                className="h-8"
-                value={formData.end_date}
-                onChange={handleInputChange}
-              />
-            </InlineField>
-            <InlineField label="Clinician" htmlFor="clinician_id">
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="clinicianId">Clinician</Label>
               <Select
-                value={String(formData.clinician_id)}
-                onValueChange={(value) => handleSelectChange('clinician_id', value)}
+                value={clinicianId}
+                onValueChange={setClinicianId}
                 required
               >
-                <SelectTrigger className="h-8">
-                  <SelectValue />
+                <SelectTrigger id="clinicianId">
+                  <SelectValue placeholder="Select a clinician" />
                 </SelectTrigger>
                 <SelectContent>
                   {clinicians.map((c) => (
@@ -185,55 +139,58 @@ export default function AddAppointmentSheet({
                   ))}
                 </SelectContent>
               </Select>
-            </InlineField>
-            <InlineField label="Status" htmlFor="status">
-              <Select value={formData.status} onValueChange={(value) => handleSelectChange('status', value)}>
-                <SelectTrigger className="h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </InlineField>
-            <InlineField label="Notes" htmlFor="description" alignStart>
-              <Textarea id="description" value={formData.description} onChange={handleInputChange} className="min-h-20" />
-            </InlineField>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="appointmentDate">Date</Label>
+                <Input
+                  id="appointmentDate"
+                  type="date"
+                  value={appointmentDate}
+                  onChange={(e) => setAppointmentDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="appointmentTime">Time</Label>
+                <Input
+                  id="appointmentTime"
+                  type="time"
+                  value={appointmentTime}
+                  onChange={(e) => setAppointmentTime(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="notes">Notes (optional)</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="min-h-24"
+              />
+            </div>
           </div>
-          <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
-            <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
+          <div className="form-footer-bar mt-auto flex justify-end gap-2 border-t px-4 py-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button type="submit" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving…' : 'Save'}
+            <Button
+              type="submit"
+              disabled={isSubmitting || !title || !clinicianId || !appointmentDate || !appointmentTime}
+            >
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Appointment
             </Button>
           </div>
         </form>
       </SlideOverContent>
     </SlideOver>
-  );
-}
-
-function InlineField({
-  label,
-  htmlFor,
-  children,
-  alignStart = false,
-}: {
-  label: string;
-  htmlFor: string;
-  children: React.ReactNode;
-  alignStart?: boolean;
-}) {
-  return (
-    <div className={`grid grid-cols-[132px_minmax(0,1fr)] gap-3 ${alignStart ? 'items-start' : 'items-center'}`}>
-      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white">
-        {label}
-      </Label>
-      <div>{children}</div>
-    </div>
   );
 }

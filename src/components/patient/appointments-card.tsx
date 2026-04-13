@@ -39,7 +39,9 @@ export default function AppointmentsCard({
 }) {
     const { toast } = useToast();
     const [pendingStatusId, setPendingStatusId] = useState<number | null>(null);
-    
+    const [sheetOpen, setSheetOpen] = useState(false);
+    const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+
     const upcomingAppointments = patient.appointments
         .filter(a => new Date(a.appointment_date) > new Date() && a.status !== 'cancelled')
         .sort((a, b) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime());
@@ -94,8 +96,21 @@ export default function AppointmentsCard({
             setPendingStatusId(null);
         }
     }
+    
+    const openSheetForNew = () => {
+      if (readOnly) return;
+      setEditingAppointment(null);
+      setSheetOpen(true);
+    }
+
+    const openSheetForEdit = (appointment: Appointment) => {
+      if (readOnly) return;
+      setEditingAppointment(appointment);
+      setSheetOpen(true);
+    }
 
     return (
+      <>
         <Card className="overflow-hidden border-border/60 shadow-sm">
             <CardHeader className="bg-muted/30 pb-4">
                 <div className="flex justify-between items-start">
@@ -106,29 +121,19 @@ export default function AppointmentsCard({
                         </CardTitle>
                         <CardDescription>Manage upcoming appointments.</CardDescription>
                     </div>
-                    <AddAppointmentSheet
-                      trigger={
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button size="icon" variant="ghost" className="h-8 w-8" disabled={readOnly}>
-                                <CalendarPlus className="h-4 w-4" />
-                                <span className="sr-only">Schedule Appointment</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Schedule Appointment</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      }
-                      onSave={handleSave}
-                      patient={patient}
-                      clinicians={clinicians}
-                      existingAppointment={null}
-                      align="end"
-                      disabled={readOnly}
-                    />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" disabled={readOnly} onClick={openSheetForNew}>
+                            <CalendarPlus className="h-4 w-4" />
+                            <span className="sr-only">Schedule Appointment</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Schedule Appointment</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                 </div>
             </CardHeader>
             <CardContent className="pt-4">
@@ -162,35 +167,32 @@ export default function AppointmentsCard({
                                 </Tooltip>
                               </TooltipProvider>
                             )}
-                            <AddAppointmentSheet
-                              trigger={
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button size="icon" variant="outline" className="h-8 w-8" disabled={readOnly}>
-                                        <Edit className="h-4 w-4" />
-                                        <span className="sr-only">Reschedule</span>
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Reschedule</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              }
-                              onSave={handleSave}
-                              patient={patient}
-                              clinicians={clinicians}
-                              existingAppointment={nextAppointment}
-                              align="end"
-                              disabled={readOnly}
-                            />
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button size="icon" variant="outline" className="h-8 w-8" disabled={readOnly} onClick={() => openSheetForEdit(nextAppointment)}>
+                                    <Edit className="h-4 w-4" />
+                                    <span className="sr-only">Reschedule</span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Reschedule</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                              <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button size="icon" variant="destructive" className="h-8 w-8" disabled={pendingStatusId === nextAppointment.id}>
-                                      <XCircle className="h-4 w-4" />
-                                      <span className="sr-only">Cancel</span>
-                                    </Button>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button size="icon" variant="destructive" className="h-8 w-8" disabled={pendingStatusId === nextAppointment.id}>
+                                          <XCircle className="h-4 w-4" />
+                                          <span className="sr-only">Cancel</span>
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent><p>Cancel</p></TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
@@ -210,9 +212,20 @@ export default function AppointmentsCard({
                         </div>
                     </div>
                 ) : (
-                    <p className="text-center text-muted-foreground py-4">No upcoming appointments.</p>
+                  <div className="text-center text-muted-foreground py-4">
+                    <p>No upcoming appointments.</p>
+                  </div>
                 )}
             </CardContent>
         </Card>
+        <AddAppointmentSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          patient={patient}
+          clinicians={clinicians}
+          onSave={handleSave}
+          existingAppointment={editingAppointment}
+        />
+      </>
     );
 }
