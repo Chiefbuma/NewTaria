@@ -101,7 +101,7 @@ export default function AddAppointmentSheet({
 
   return (
     <SlideOver open={open} onOpenChange={onOpenChange}>
-      <SlideOverContent className="w-[520px] max-w-[calc(100vw-2rem)] p-0">
+      <SlideOverContent className="w-[520px] max-w-[calc(100vw-2rem)] p-0 flex flex-col">
         <SlideOverHeader className="form-header-bar flex items-center justify-between px-4 py-3">
           <SlideOverTitle>
             {existingAppointment ? 'Edit Appointment' : 'Schedule Appointment'}
@@ -110,7 +110,7 @@ export default function AddAppointmentSheet({
             {patient.first_name}
           </span>
         </SlideOverHeader>
-        <form onSubmit={handleSubmit} className="flex h-full flex-col">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 space-y-4 overflow-y-auto p-4">
             <div className="space-y-1.5">
               <Label htmlFor="title">Title</Label>
@@ -172,7 +172,7 @@ export default function AddAppointmentSheet({
               />
             </div>
           </div>
-          <div className="form-footer-bar mt-auto flex justify-end gap-2 border-t px-4 py-3">
+          <div className="form-footer-bar flex justify-end gap-2 border-t px-4 py-3">
             <Button
               type="button"
               variant="outline"
