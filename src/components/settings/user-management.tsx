@@ -414,4 +414,3 @@ function InlineField({
     </div>
   );
 }
-'''
