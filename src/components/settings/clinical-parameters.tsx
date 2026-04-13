@@ -191,9 +191,9 @@ function ClinicalParameterUpsertForm({
         <SheetHeader className="px-4 py-3">
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
-
+        <div className="p-4 flex-1">
           <form
-            className="flex-1 flex flex-col"
+            className="border rounded-md flex flex-col h-full overflow-hidden"
             onSubmit={async (e) => {
               e.preventDefault();
               if (!draft.name?.trim()) {
@@ -228,7 +228,7 @@ function ClinicalParameterUpsertForm({
               }
             }}
           >
-            <div className="flex-1 p-4 overflow-y-auto space-y-3">
+            <div className="p-4 flex-1 overflow-y-auto space-y-3">
               <InlineField label="Parameter Name" htmlFor="name">
                 <Input
                   id="name"
@@ -329,6 +329,7 @@ function ClinicalParameterUpsertForm({
               </Button>
             </SheetFooter>
           </form>
+        </div>
       </SlideOverContent>
     </SlideOver>
   );

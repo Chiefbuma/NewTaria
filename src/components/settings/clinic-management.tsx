@@ -179,8 +179,9 @@ function ClinicUpsertForm({
         <SheetHeader className="px-4 py-3">
             <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
+        <div className="p-4 flex-1">
           <form
-            className="flex flex-col"
+            className="border rounded-md flex flex-col h-full overflow-hidden"
             onSubmit={async (e) => {
               e.preventDefault();
               if (!name.trim()) return;
@@ -196,7 +197,7 @@ function ClinicUpsertForm({
               }
             }}
           >
-            <div className="space-y-3 p-4">
+            <div className="p-4 flex-1 overflow-y-auto space-y-3">
               <InlineField label="Clinic Name" htmlFor="name">
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
               </InlineField>
@@ -216,6 +217,7 @@ function ClinicUpsertForm({
               </Button>
             </SheetFooter>
           </form>
+        </div>
       </SlideOverContent>
     </SlideOver>
   );
