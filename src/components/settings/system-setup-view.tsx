@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import type { Clinic, ClinicalParameter, Diagnosis, Partner, User } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import PartnerManagement from '@/components/settings/partner-management';
+import ClinicManagement from '@/components/settings/clinic-management';
 import MedicationManagement from '@/components/settings/medication-management';
 import UserManagement from '@/components/settings/user-management';
 import ReferenceCatalogManagement from '@/components/settings/reference-catalog-management';
@@ -48,21 +49,7 @@ export default function SystemSetupView({
       return <PartnerManagement initialPartners={payers} onPartnersUpdate={() => undefined} />;
     }
     if (activeSection === 'clinics') {
-      return (
-        <ReferenceCatalogManagement
-          title="Clinics"
-          addLabel="Add Clinic"
-          singularLabel="Clinic"
-          initialItems={clinics}
-          fields={[
-            { key: 'name', label: 'Clinic Name', required: true },
-            { key: 'location', label: 'Location' },
-          ]}
-          saveItem={upsertClinic}
-          deleteItem={deleteClinic}
-          bulkDeleteItems={bulkDeleteClinics}
-        />
-      );
+      return <ClinicManagement />;
     }
     if (activeSection === 'diagnoses') {
         return <DiagnosisManagement initialDiagnoses={diagnoses} onDiagnosesUpdate={onDiagnosesUpdate} />;
@@ -79,7 +66,7 @@ export default function SystemSetupView({
       );
     }
     return <UserManagement initialUsers={users} onUsersUpdate={onUsersUpdate} />;
-  }, [activeSection, clinicalParameters, clinics, diagnoses, onDiagnosesUpdate, onUsersUpdate, payers, users]);
+  }, [activeSection, clinicalParameters, diagnoses, onDiagnosesUpdate, onUsersUpdate, payers, users]);
 
   return (
     <div className="space-y-8">
