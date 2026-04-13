@@ -19,12 +19,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip"
 
 export default function AppointmentsCard({
   patient,
@@ -100,27 +94,18 @@ export default function AppointmentsCard({
             <CardHeader className="bg-muted/30 pb-4">
                 <div className="flex justify-between items-start">
                     <div>
-                        <CardTitle className="flex items-center gap-2 text-base">
-                            <CalendarCheck className="h-4 w-4" />
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                            <CalendarCheck className="h-5 w-5" />
                             <span>Appointments</span>
                         </CardTitle>
-                        <CardDescription className="text-xs">Manage upcoming appointments.</CardDescription>
+                        <CardDescription>Manage upcoming appointments.</CardDescription>
                     </div>
                     <AddAppointmentSheet
                       trigger={
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button size="icon" variant="ghost" className="h-8 w-8" disabled={readOnly}>
-                                <CalendarPlus className="h-4 w-4" />
-                                <span className="sr-only">Schedule Appointment</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Schedule Appointment</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <Button size="sm" variant="default" className="ml-auto" disabled={readOnly}>
+                            <CalendarPlus className="mr-2 h-4 w-4" />
+                            Schedule Appointment
+                        </Button>
                       }
                       onSave={handleSave}
                       patient={patient}
@@ -131,7 +116,7 @@ export default function AppointmentsCard({
                     />
                 </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
                 {nextAppointment ? (
                     <div className="p-3 bg-muted/50 rounded-lg space-y-3">
                         <div>
@@ -144,39 +129,22 @@ export default function AppointmentsCard({
                         </div>
                         <div className="flex flex-wrap justify-end gap-2">
                             {nextAppointment.status === 'scheduled' && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      size="icon"
-                                      variant="secondary"
-                                      className="h-8 w-8"
-                                      onClick={() => handleConfirm(nextAppointment.id)}
-                                      disabled={pendingStatusId === nextAppointment.id}
-                                    >
-                                      <Check className="h-4 w-4" />
-                                      <span className="sr-only">Confirm</span>
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent><p>Confirm</p></TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                                <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => handleConfirm(nextAppointment.id)}
+                                    disabled={pendingStatusId === nextAppointment.id}
+                                >
+                                    <Check className="mr-2 h-4 w-4" />
+                                    Confirm
+                                </Button>
                             )}
                             <AddAppointmentSheet
                               trigger={
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button size="icon" variant="outline" className="h-8 w-8" disabled={readOnly}>
-                                        <Edit className="h-4 w-4" />
-                                        <span className="sr-only">Reschedule</span>
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Reschedule</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                                <Button size="sm" variant="outline" disabled={readOnly}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Reschedule
+                                </Button>
                               }
                               onSave={handleSave}
                               patient={patient}
@@ -187,9 +155,9 @@ export default function AppointmentsCard({
                             />
                              <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button size="icon" variant="destructive" className="h-8 w-8" disabled={pendingStatusId === nextAppointment.id}>
-                                      <XCircle className="h-4 w-4" />
-                                      <span className="sr-only">Cancel</span>
+                                    <Button size="sm" variant="destructive" disabled={pendingStatusId === nextAppointment.id}>
+                                      <XCircle className="mr-2 h-4 w-4" />
+                                      Cancel
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
