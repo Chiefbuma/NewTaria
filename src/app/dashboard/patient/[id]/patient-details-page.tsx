@@ -29,6 +29,11 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import {
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import {
   Activity,
@@ -854,51 +859,46 @@ export default function PatientDetailsPage({
 	                              </Button>
                               </SlideOverTrigger>
                               <SlideOverContent
-                                className="w-[520px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-0"
+                                className="h-full w-[520px] max-w-[calc(100vw-2rem)] flex flex-col p-0"
                               >
-                                <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
-                                  <div className="form-header-bar flex items-center justify-between px-4 py-3">
-                                    <p className="text-sm font-bold">Add Clinical Review</p>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                      Review
-                                    </span>
-                                  </div>
-                                  <div className="space-y-3 p-4">
-                                    <InlineField label="Review Date" htmlFor="review_date">
-                                      <Input
-                                        id="review_date"
-                                        type="date"
-                                        className="h-8"
-                                        value={reviewData.review_date}
-                                        onChange={(e) => setReviewData((p) => ({ ...p, review_date: e.target.value }))}
-                                        required
-                                      />
-                                    </InlineField>
-                                    <InlineField label="Clinical Review" htmlFor="clinical_review" alignStart>
-                                      <Textarea
-                                        id="clinical_review"
-                                        className="min-h-28"
-                                        value={reviewData.clinical_review}
-                                        onChange={(e) => setReviewData((p) => ({ ...p, clinical_review: e.target.value }))}
-                                        required
-                                      />
-                                    </InlineField>
-                                  </div>
-                                  <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
-                                    <Button type="button" variant="outline" className="h-8" onClick={() => setIsReviewSlideOverOpen(false)}>
-                                      Cancel
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"
-                                      onClick={async () => {
-                                        await submitReview();
-                                      }}
-                                    >
-                                      <Save className="mr-2 h-4 w-4" /> Save
-                                    </Button>
-                                  </div>
+                                <SheetHeader className="px-4 py-3">
+                                  <SheetTitle>Add Clinical Review</SheetTitle>
+                                </SheetHeader>
+                                <div className="flex-1 p-4 overflow-y-auto space-y-3">
+                                  <InlineField label="Review Date" htmlFor="review_date">
+                                    <Input
+                                      id="review_date"
+                                      type="date"
+                                      className="h-8"
+                                      value={reviewData.review_date}
+                                      onChange={(e) => setReviewData((p) => ({ ...p, review_date: e.target.value }))}
+                                      required
+                                    />
+                                  </InlineField>
+                                  <InlineField label="Clinical Review" htmlFor="clinical_review" alignStart>
+                                    <Textarea
+                                      id="clinical_review"
+                                      className="min-h-28"
+                                      value={reviewData.clinical_review}
+                                      onChange={(e) => setReviewData((p) => ({ ...p, clinical_review: e.target.value }))}
+                                      required
+                                    />
+                                  </InlineField>
                                 </div>
+                                <SheetFooter className="px-4 py-3 bg-muted/20 border-t">
+                                  <Button type="button" variant="outline" className="h-8" onClick={() => setIsReviewSlideOverOpen(false)}>
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"
+                                    onClick={async () => {
+                                      await submitReview();
+                                    }}
+                                  >
+                                    <Save className="mr-2 h-4 w-4" /> Save
+                                  </Button>
+                                </SheetFooter>
                               </SlideOverContent>
                             </SlideOver>
 	                        </div>
@@ -1026,14 +1026,14 @@ export default function PatientDetailsPage({
 	                    <InlineField label="Status" htmlFor="status">
 	                        <Select value={editFormData.status || ''} onValueChange={(value) => handleEditSelectChange('status', value)} required>
 	                            <SelectTrigger className="border-primary/20"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Active">Active</SelectItem>
-                                <SelectItem value="In Review">In Review</SelectItem>
-                                <SelectItem value="Critical">Critical</SelectItem>
-                                <SelectItem value="Discharged">Discharged</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </InlineField>
+	                            <SelectContent>
+	                                <SelectItem value="Active">Active</SelectItem>
+	                                <SelectItem value="In Review">In Review</SelectItem>
+	                                <SelectItem value="Critical">Critical</SelectItem>
+	                                <SelectItem value="Discharged">Discharged</SelectItem>
+	                            </SelectContent>
+	                        </Select>
+	                    </InlineField>
 
 	                    <div className="pt-2">
 	                        <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
