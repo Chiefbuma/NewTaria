@@ -10,6 +10,7 @@ import {
   SheetDescription,
   SheetFooter,
   SheetTrigger,
+  SheetClose
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +25,7 @@ const getLocalDateString = (date: Date) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 };
 
-export default function AddAssessmentModal({
+export default function AddAssessmentSheet({
   trigger,
   onSave,
   parameter,
@@ -118,7 +119,7 @@ export default function AddAssessmentModal({
   };
 
   const renderInput = () => {
-    if (!selectedParameter) return <Input disabled readOnly value="" className="h-8" />;
+    if (!selectedParameter) return <Input disabled readOnly value="" className="h-10" />;
 
     switch (selectedParameter.type) {
       case 'numeric':
@@ -129,15 +130,15 @@ export default function AddAssessmentModal({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             required
-            className="h-8"
+            className="h-10"
           />
         );
       case 'text':
-        return <Textarea value={value} onChange={(e) => setValue(e.target.value)} required className="min-h-20" />;
+        return <Textarea value={value} onChange={(e) => setValue(e.target.value)} required className="min-h-24" />;
       case 'choice':
         return (
           <Select onValueChange={setValue} value={value} required>
-            <SelectTrigger className="h-8">
+            <SelectTrigger className="h-10">
               <SelectValue placeholder="Select" />
             </SelectTrigger>
             <SelectContent>
@@ -157,7 +158,7 @@ export default function AddAssessmentModal({
               accept="image/*"
               capture="environment"
               onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
-              className="h-9"
+              className="h-10"
               disabled={isUploading}
             />
             {value ? (
@@ -166,7 +167,7 @@ export default function AddAssessmentModal({
                 <img src={value} alt="Uploaded assessment" className="max-h-48 w-full rounded object-contain" />
               </div>
             ) : (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Upload a photo (or use camera capture on mobile).
               </p>
             )}
@@ -180,7 +181,7 @@ export default function AddAssessmentModal({
               accept="audio/*"
               capture="user"
               onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
-              className="h-9"
+              className="h-10"
               disabled={isUploading}
             />
             {value ? (
@@ -188,14 +189,14 @@ export default function AddAssessmentModal({
                 <audio controls src={value} className="w-full" />
               </div>
             ) : (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Upload a voice note (or use microphone capture on mobile).
               </p>
             )}
           </div>
         );
       default:
-        return <Input type="text" value={value} onChange={(e) => setValue(e.target.value)} required className="h-8" />;
+        return <Input type="text" value={value} onChange={(e) => setValue(e.target.value)} required className="h-10" />;
     }
   };
 
@@ -221,26 +222,22 @@ export default function AddAssessmentModal({
     setOpen(false);
   };
 
-  const isMultiline = selectedParameter?.type === 'text' || selectedParameter?.type === 'image' || selectedParameter?.type === 'voice';
-
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild disabled={disabled}>
         {trigger}
       </SheetTrigger>
-      <SheetContent className="w-[440px] max-w-[calc(100vw-2rem)]" side="right">
-        <SheetHeader>
+      <SheetContent className="w-[440px] max-w-[calc(100vw-2rem)] p-0">
+        <SheetHeader className="px-4 py-3 border-b">
           <SheetTitle>{existingAssessment ? 'Edit Assessment' : 'Add Assessment'}</SheetTitle>
-          <SheetDescription>
-            Record a new clinical measurement for the patient.
-          </SheetDescription>
         </SheetHeader>
         <form onSubmit={handleSubmit}>
-          <div className="space-y-3 py-4">
+          <div className="space-y-4 p-4">
             {!parameter && allParameters ? (
-              <InlineField label="Parameter" htmlFor="parameter">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Parameter</Label>
                 <Select onValueChange={setSelectedParamId} value={selectedParamId}>
-                  <SelectTrigger id="parameter" className="h-8">
+                  <SelectTrigger className="h-10">
                     <SelectValue placeholder="Select parameter" />
                   </SelectTrigger>
                   <SelectContent>
@@ -251,62 +248,48 @@ export default function AddAssessmentModal({
                     ))}
                   </SelectContent>
                 </Select>
-              </InlineField>
+              </div>
             ) : null}
 
             {selectedParamId ? (
               <>
-                <InlineField label={valueLabel} htmlFor="value" alignStart={Boolean(isMultiline)}>
-                  {renderInput()}
-                </InlineField>
-                <InlineField label="Notes" htmlFor="notes" alignStart>
-                  <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-20" />
-                </InlineField>
-                <InlineField label="Date" htmlFor="measuredAt">
-                  <Input
-                    id="measuredAt"
-                    type="date"
-                    value={measuredAt}
-                    onChange={(e) => setMeasuredAt(e.target.value)}
-                    required
-                    className="h-8"
-                  />
-                </InlineField>
+                <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">{valueLabel}</Label>
+                    {renderInput()}
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">Notes</Label>
+                    <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-24" />
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">Date</Label>
+                    <Input
+                        id="measuredAt"
+                        type="date"
+                        value={measuredAt}
+                        onChange={(e) => setMeasuredAt(e.target.value)}
+                        required
+                        className="h-10"
+                    />
+                </div>
               </>
             ) : null}
           </div>
 
-          <SheetFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isUploading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isUploading}>
-              Save
-            </Button>
-          </SheetFooter>
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background">
+            <div className="flex justify-end gap-2">
+                <SheetClose asChild>
+                    <Button type="button" variant="outline" disabled={isUploading}>
+                        Cancel
+                    </Button>
+                </SheetClose>
+                <Button type="submit" disabled={isUploading}>
+                    Save
+                </Button>
+            </div>
+        </div>
         </form>
       </SheetContent>
     </Sheet>
-  );
-}
-
-function InlineField({
-  label,
-  htmlFor,
-  children,
-  alignStart = false,
-}: {
-  label: string;
-  htmlFor: string;
-  children: React.ReactNode;
-  alignStart?: boolean;
-}) {
-  return (
-    <div className={cn('grid grid-cols-[132px_minmax(0,1fr)] gap-3', alignStart ? 'items-start' : 'items-center')}>
-      <Label htmlFor={htmlFor} className={cn('text-right text-sm text-muted-foreground', alignStart ? 'pt-2' : '')}>
-        {label}
-      </Label>
-      <div>{children}</div>
-    </div>
   );
 }

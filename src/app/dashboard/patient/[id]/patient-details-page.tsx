@@ -65,11 +65,11 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import ReportViewer from '@/components/report-viewer';
-import AddAssessmentModal from '@/components/patient/add-assessment-modal';
+import AddAssessmentSheet from '@/components/patient/add-assessment-sheet';
 import PrescriptionManagement from '@/components/patient/prescription-management';
 import AppointmentsCard from '@/components/patient/appointments-card';
 import PatientInfoCard from '@/components/patient/patient-info-card';
-import AddGoalModal from '@/components/patient/add-goal-modal';
+import AddGoalSheet from '@/components/patient/add-goal-sheet';
 import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -651,7 +651,7 @@ export default function PatientDetailsPage({
 		                    <CardDescription>Clean, simple tracking for the patient&apos;s active care goals.</CardDescription>
 		                  </div>
 		                  {canManageAssessments && (
-		                    <AddGoalModal
+		                    <AddGoalSheet
 		                      trigger={
 		                        <Button size="sm">
 		                          <PlusCircle className="mr-2 h-4 w-4" />
@@ -772,7 +772,7 @@ export default function PatientDetailsPage({
 		                                                </Badge>
 			                                                {canManageAssessments ? (
 			                                                  <div className="flex items-center gap-1">
-			                                                    <AddAssessmentModal
+			                                                    <AddAssessmentSheet
 			                                                      trigger={
 			                                                        <Button
 			                                                          type="button"
@@ -792,8 +792,8 @@ export default function PatientDetailsPage({
 			                                                      type="button"
 			                                                      variant="ghost"
 			                                                      size="icon"
-		                                                      className="h-7 w-7 text-red-500 hover:bg-red-50"
-		                                                      onClick={() => setPendingAssessmentDeleteId(assessment.id)}
+			                                                      className="h-7 w-7 text-red-500 hover:bg-red-50"
+			                                                      onClick={() => setPendingAssessmentDeleteId(assessment.id)}
 		                                                    >
 		                                                      <Trash2 className="h-3.5 w-3.5" />
 		                                                    </Button>
@@ -1137,7 +1137,7 @@ function InlineField({
       <Label
         htmlFor={htmlFor}
         className={cn(
-          "text-[11px] font-bold uppercase tracking-wider text-muted-foreground dark:text-white",
+          "text-[11px] font-bold uppercase tracking-widest text-muted-foreground dark:text-white",
           alignStart ? "pt-2" : null
         )}
       >
