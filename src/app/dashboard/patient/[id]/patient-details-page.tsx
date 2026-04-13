@@ -33,6 +33,8 @@ import {
   SheetHeader,
   SheetTitle,
   SheetFooter,
+  SheetTrigger,
+  SheetClose,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import {
@@ -72,7 +74,6 @@ import PatientInfoCard from '@/components/patient/patient-info-card';
 import AddGoalSheet from '@/components/patient/add-goal-sheet';
 import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { SlideOver, SlideOverContent, SlideOverTrigger } from '@/components/ui/slide-over';
 import {
     createAssessment, 
@@ -97,7 +98,7 @@ function todayYmd() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function GoalCheckInPopover({
+function GoalCheckInSheet({
   patientId,
   parameter,
   goal,
@@ -181,14 +182,14 @@ function GoalCheckInPopover({
   };
 
   const renderValueInput = () => {
-    if (!parameter) return <Input disabled className="h-8" />;
+    if (!parameter) return <Input disabled className="h-10" />;
     if (parameter.type === 'numeric') {
-      return <Input type="number" step="any" className="h-8" value={value} onChange={(e) => setValue(e.target.value)} />;
+      return <Input type="number" step="any" className="h-10" value={value} onChange={(e) => setValue(e.target.value)} />;
     }
     if (parameter.type === 'choice') {
       return (
         <Select value={value} onValueChange={setValue}>
-          <SelectTrigger className="h-8">
+          <SelectTrigger className="h-10">
             <SelectValue placeholder="Select..." />
           </SelectTrigger>
           <SelectContent>
@@ -200,7 +201,7 @@ function GoalCheckInPopover({
       );
     }
     if (parameter.type === 'text') {
-      return <Textarea className="min-h-20" value={value} onChange={(e) => setValue(e.target.value)} />;
+      return <Textarea className="min-h-24" value={value} onChange={(e) => setValue(e.target.value)} />;
     }
     if (parameter.type === 'image') {
       return (
@@ -218,7 +219,7 @@ function GoalCheckInPopover({
               <img src={value} alt="Uploaded photo" className="max-h-44 w-full rounded object-contain" />
             </div>
           ) : (
-            <p className="text-[11px] text-muted-foreground">Upload a photo (or use camera capture on mobile).</p>
+            <p className="text-xs text-muted-foreground">Upload a photo (or use camera capture on mobile).</p>
           )}
         </div>
       );
@@ -238,16 +239,16 @@ function GoalCheckInPopover({
               <audio controls src={value} className="w-full" />
             </div>
           ) : (
-            <p className="text-[11px] text-muted-foreground">Upload a voice note (or use microphone capture on mobile).</p>
+            <p className="text-xs text-muted-foreground">Upload a voice note (or use microphone capture on mobile).</p>
           )}
         </div>
       );
     }
-    return <Input className="h-8" value={value} onChange={(e) => setValue(e.target.value)} />;
+    return <Input className="h-10" value={value} onChange={(e) => setValue(e.target.value)} />;
   };
 
   return (
-    <Popover
+    <SlideOver
       open={open}
       onOpenChange={(v) => {
         setOpen(v);
@@ -258,7 +259,7 @@ function GoalCheckInPopover({
         }
       }}
     >
-      <PopoverTrigger asChild>
+      <SlideOverTrigger asChild>
         <Button
           type="button"
           variant="ghost"
@@ -270,43 +271,45 @@ function GoalCheckInPopover({
           <PlusCircle className="h-4 w-4" />
           <span className="sr-only">Add check-in</span>
         </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[360px] p-4">
-        <div className="space-y-3">
-          <div>
-            <p className="text-sm font-semibold text-foreground">Add check-in</p>
-            <p className="text-[11px] text-muted-foreground">Target: {goal.target_operator} {goal.target_value}</p>
+      </SlideOverTrigger>
+      <SlideOverContent className="w-[440px] max-w-[calc(100vw-2rem)] p-0">
+        <SheetHeader className="px-4 py-3 border-b">
+            <SheetTitle>Add Check-in</SheetTitle>
+            <p className="text-sm text-muted-foreground">Target: {goal.target_operator} {goal.target_value}</p>
+        </SheetHeader>
+        <div className="p-4 space-y-4">
+          <div className="space-y-1.5">
+            <Label>Date</Label>
+            <Input type="date" className="h-10" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Date</Label>
-            <Input type="date" className="h-8" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <Label>
               {parameter?.type === 'image' ? 'Photo' : parameter?.type === 'voice' ? 'Voice note' : 'Value'}
             </Label>
             {renderValueInput()}
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Notes (optional)</Label>
-            <Textarea className="min-h-16" value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting || isUploading}>
-              Cancel
-            </Button>
-            <Button type="button" className="h-8" onClick={submit} disabled={isSubmitting || isUploading || !value.trim() || !date}>
-              {isSubmitting || isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Save
-            </Button>
+            <Label>Notes (optional)</Label>
+            <Textarea className="min-h-24" value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
         </div>
-      </PopoverContent>
-    </Popover>
+        <SheetFooter className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background">
+            <div className="flex justify-end gap-2">
+                <SheetClose asChild>
+                    <Button type="button" variant="outline" disabled={isSubmitting || isUploading}>
+                        Cancel
+                    </Button>
+                </SheetClose>
+                <Button type="button" onClick={submit} disabled={isSubmitting || isUploading || !value.trim() || !date}>
+                    {isSubmitting || isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Save
+                </Button>
+            </div>
+        </SheetFooter>
+      </SlideOverContent>
+    </SlideOver>
   );
 }
 
@@ -706,7 +709,7 @@ export default function PatientDetailsPage({
 			                              {getStatusBadge(goal)}
 			                              {canManageAssessments && (
 			                                <>
-			                                  <GoalCheckInPopover
+			                                  <GoalCheckInSheet
 			                                    patientId={patient.id}
 			                                    parameter={parameter}
 			                                    goal={goal}
