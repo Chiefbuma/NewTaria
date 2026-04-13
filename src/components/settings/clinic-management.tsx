@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import type { Clinic } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { SlideOver, SlideOverContent } from '@/components/ui/slide-over';
-import { SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
+import { SheetHeader, SheetTitle, SheetFooter, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -76,7 +76,8 @@ export default function ClinicManagement() {
   };
 
   const columns: ColumnDef<Clinic>[] = [
-    { accessorKey: "name", header: "Name" },
+    { accessorKey: "name", header: "Clinic Name" },
+    { accessorKey: "location", header: "Location" },
     {
         id: "actions",
         cell: ({ row }) => (
@@ -89,13 +90,12 @@ export default function ClinicManagement() {
                     toast({ title: 'Success', description: 'Clinic saved successfully.' });
                   }}
                   trigger={
-                    <Button variant="ghost" size="icon">
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Edit</span>
+                    <Button variant="outline" size="sm">
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
                     </Button>
                   }
                 />
-                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete(row.original.id)}><Trash2 className="h-4 w-4" /></Button>
             </div>
         )
     }
@@ -159,6 +159,7 @@ function ClinicUpsertForm({
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState('');
+  const [location, setLocation] = useState('');
 
   const title = clinic?.id ? 'Edit Clinic' : 'Add Clinic';
 
@@ -169,25 +170,23 @@ function ClinicUpsertForm({
         setOpen(next);
         if (next) {
           setName(clinic?.name || '');
+          setLocation(clinic?.location || '');
         }
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SlideOverContent
-        className="h-full w-[440px] max-w-[calc(100vw-2rem)] overflow-y-auto p-0"
-      >
-        <SheetHeader className="px-4 py-3">
+      <SlideOverContent className="h-full w-[440px] max-w-[calc(100vw-2rem)] p-0">
+        <SheetHeader className="px-4 py-3 border-b">
             <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
-        <div className="p-4 flex-1">
-          <form
-            className="border rounded-md flex flex-col h-full overflow-hidden"
+        <form
+            className="h-full flex flex-col"
             onSubmit={async (e) => {
               e.preventDefault();
               if (!name.trim()) return;
               try {
                 setIsSubmitting(true);
-                const saved = await saveClinic({ id: clinic?.id, name: name.trim() });
+                const saved = await saveClinic({ id: clinic?.id, name: name.trim(), location: location.trim() });
                 onSaved(saved);
                 setOpen(false);
               } catch (err: any) {
@@ -197,19 +196,26 @@ function ClinicUpsertForm({
               }
             }}
           >
-            <div className="p-4 flex-1 overflow-y-auto space-y-3">
-              <InlineField label="Clinic Name" htmlFor="name">
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
-              </InlineField>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="space-y-1.5">
+                <Label>Clinic Name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} className="h-10" required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Location</Label>
+                <Input value={location} onChange={(e) => setLocation(e.target.value)} className="h-10" />
+              </div>
             </div>
-            <SheetFooter className="px-4 py-3 bg-muted/20 border-t">
-              <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
-                Cancel
-              </Button>
-              <Button type="submit" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting}>
+            <SheetFooter className="px-4 py-3 bg-background border-t absolute bottom-0 left-0 right-0">
+                <SheetClose asChild>
+                    <Button type="button" variant="outline" disabled={isSubmitting}>
+                        Cancel
+                    </Button>
+                </SheetClose>
+              <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving
                   </>
                 ) : (
                   'Save'
@@ -217,27 +223,7 @@ function ClinicUpsertForm({
               </Button>
             </SheetFooter>
           </form>
-        </div>
       </SlideOverContent>
     </SlideOver>
-  );
-}
-
-function InlineField({
-  label,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid grid-cols-[132px_minmax(0,1fr)] items-center gap-3">
-      <Label htmlFor={htmlFor} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </Label>
-      <div>{children}</div>
-    </div>
   );
 }
