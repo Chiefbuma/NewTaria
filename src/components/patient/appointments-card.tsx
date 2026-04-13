@@ -42,6 +42,8 @@ export default function AppointmentsCard({
     const [sheetOpen, setSheetOpen] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
 
+    const clinicianUsers = clinicians.filter(user => user.role === 'clinician');
+
     const upcomingAppointments = patient.appointments
         .filter(a => new Date(a.appointment_date) > new Date() && a.status !== 'cancelled')
         .sort((a, b) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime());
@@ -222,7 +224,7 @@ export default function AppointmentsCard({
           open={sheetOpen}
           onOpenChange={setSheetOpen}
           patient={patient}
-          clinicians={clinicians}
+          clinicians={clinicianUsers}
           onSave={handleSave}
           existingAppointment={editingAppointment}
         />
