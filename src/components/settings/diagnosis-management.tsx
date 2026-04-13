@@ -13,28 +13,15 @@ import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { DataTable } from '../ui/data-table';
 import { ColumnDef } from "@tanstack/react-table";
 import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
+import { Textarea } from '@/components/ui/textarea';
 
-export default function DiagnosisManagement() {
-  const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export default function DiagnosisManagement({ initialDiagnoses, onDiagnosesUpdate }: { initialDiagnoses: Diagnosis[], onDiagnosesUpdate: (diagnoses: Diagnosis[]) => void }) {
+  const [diagnoses, setDiagnoses] = useState<Diagnosis[]>(initialDiagnoses);
+  const [isLoading, setIsLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<null | (() => Promise<void>)>(null);
   const [confirmTitle, setConfirmTitle] = useState('');
   const [confirmDescription, setConfirmDescription] = useState('');
   const { toast } = useToast();
-
-  const loadDiagnoses = async () => {
-      try {
-          const res = await fetch('/api/diagnoses');
-          const data = await res.json();
-          setDiagnoses(data);
-      } catch (e) {
-          console.error(e);
-      } finally {
-          setIsLoading(false);
-      }
-  };
-
-  useEffect(() => { loadDiagnoses(); }, []);
 
   const saveDiagnosis = async (data: Partial<Diagnosis>): Promise<Diagnosis> => {
     if (!data.name) throw new Error('Diagnosis name is required.');
@@ -54,7 +41,9 @@ export default function DiagnosisManagement() {
   const applySavedDiagnosis = (saved: Diagnosis) => {
     setDiagnoses((prev) => {
       const exists = prev.some((d) => d.id === saved.id);
-      return exists ? prev.map((d) => (d.id === saved.id ? saved : d)) : [saved, ...prev];
+      const updated = exists ? prev.map((d) => (d.id === saved.id ? saved : d)) : [saved, ...prev];
+      onDiagnosesUpdate(updated);
+      return updated;
     });
   };
 
@@ -62,7 +51,9 @@ export default function DiagnosisManagement() {
       try {
           const res = await fetch(`/api/diagnoses?id=${id}`, { method: 'DELETE' });
           if (!res.ok) throw new Error('Failed to delete');
-          setDiagnoses(prev => prev.filter(d => d.id !== id));
+          const updated = diagnoses.filter(d => d.id !== id);
+          setDiagnoses(updated);
+          onDiagnosesUpdate(updated);
           toast({ title: 'Success', description: 'Diagnosis deactivated.' });
       } catch (e: any) {
           toast({ variant: 'destructive', title: 'Error', description: e.message });
@@ -76,8 +67,9 @@ export default function DiagnosisManagement() {
   };
 
   const columns: ColumnDef<Diagnosis>[] = [
-    { accessorKey: "name", header: "Name" },
-    { accessorKey: "code", header: "Code" },
+    { accessorKey: "code", header: "ICD-10 Code" },
+    { accessorKey: "name", header: "Diagnosis Name" },
+    { accessorKey: "description", header: "Description" },
     {
         id: "actions",
         cell: ({ row }) => (
@@ -161,29 +153,28 @@ function DiagnosisUpsertForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
+  const [description, setDescription] = useState('');
 
   const title = diagnosis?.id ? 'Edit Diagnosis' : 'Add Diagnosis';
 
+  useEffect(() => {
+    if (open) {
+      setName(diagnosis?.name || '');
+      setCode(diagnosis?.code || '');
+      setDescription(diagnosis?.description || '');
+    }
+  }, [open, diagnosis]);
+
   return (
-    <SlideOver
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (next) {
-          setName(diagnosis?.name || '');
-          setCode(diagnosis?.code || '');
-        }
-      }}
-    >
+    <SlideOver open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SlideOverContent
-        className="h-full w-[440px] max-w-[calc(100vw-2rem)] overflow-y-auto p-0"
-      >
+      <SlideOverContent className="h-full w-[520px] max-w-[calc(100vw-2rem)] flex flex-col p-0">
         <SheetHeader className="px-4 py-3">
-            <SheetTitle>{title}</SheetTitle>
+          <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
         <div className="p-4 flex-1">
           <form
+            id="diagnosis-form"
             className="border rounded-md flex flex-col h-full overflow-hidden"
             onSubmit={async (e) => {
               e.preventDefault();
@@ -194,6 +185,7 @@ function DiagnosisUpsertForm({
                   id: diagnosis?.id,
                   name: name.trim(),
                   code: code.trim(),
+                  description: description.trim(),
                 });
                 onSaved(saved);
                 setOpen(false);
@@ -205,18 +197,21 @@ function DiagnosisUpsertForm({
             }}
           >
             <div className="p-4 flex-1 overflow-y-auto space-y-3">
-              <InlineField label="Diagnosis Name" htmlFor="name">
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
-              </InlineField>
-              <InlineField label="Diagnosis Code" htmlFor="code">
-                <Input id="code" value={code} onChange={(e) => setCode(e.target.value)} className="h-8" required />
-              </InlineField>
+                <InlineField label="ICD-10 Code" htmlFor="code">
+                    <Input id="code" value={code} onChange={(e) => setCode(e.target.value)} className="h-8" required />
+                </InlineField>
+                <InlineField label="Diagnosis Name" htmlFor="name">
+                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-8" required />
+                </InlineField>
+                <InlineField label="Description" htmlFor="description">
+                    <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
+                </InlineField>
             </div>
             <SheetFooter className="px-4 py-3 bg-muted/20 border-t">
               <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting}>
+              <Button type="submit" form="diagnosis-form" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…

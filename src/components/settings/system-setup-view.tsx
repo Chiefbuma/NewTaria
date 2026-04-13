@@ -10,6 +10,7 @@ import MedicationManagement from '@/components/settings/medication-management';
 import UserManagement from '@/components/settings/user-management';
 import ReferenceCatalogManagement from '@/components/settings/reference-catalog-management';
 import ClinicalParameters from '@/components/settings/clinical-parameters';
+import DiagnosisManagement from '@/components/settings/diagnosis-management';
 import {
   bulkDeleteClinics,
   bulkDeleteDiagnoses,
@@ -28,6 +29,7 @@ type SystemSetupViewProps = {
   users: User[];
   clinicalParameters?: ClinicalParameter[];
   onUsersUpdate?: (users: User[]) => void;
+  onDiagnosesUpdate?: (diagnoses: Diagnosis[]) => void;
   activeSection?: SetupSection;
 };
 
@@ -38,6 +40,7 @@ export default function SystemSetupView({
   users,
   clinicalParameters = [],
   onUsersUpdate = () => undefined,
+  onDiagnosesUpdate = () => undefined,
   activeSection = 'payers',
 }: SystemSetupViewProps) {
   const content = useMemo(() => {
@@ -62,22 +65,7 @@ export default function SystemSetupView({
       );
     }
     if (activeSection === 'diagnoses') {
-      return (
-        <ReferenceCatalogManagement
-          title="Diagnoses"
-          addLabel="Add Diagnosis"
-          singularLabel="Diagnosis"
-          initialItems={diagnoses}
-          fields={[
-            { key: 'code', label: 'ICD-10 Code', required: true },
-            { key: 'name', label: 'Diagnosis Name', required: true },
-            { key: 'description', label: 'Description', type: 'textarea' },
-          ]}
-          saveItem={upsertDiagnosis}
-          deleteItem={deleteDiagnosis}
-          bulkDeleteItems={bulkDeleteDiagnoses}
-        />
-      );
+        return <DiagnosisManagement initialDiagnoses={diagnoses} onDiagnosesUpdate={onDiagnosesUpdate} />;
     }
     if (activeSection === 'medications') {
       return <MedicationManagement />;
@@ -91,7 +79,7 @@ export default function SystemSetupView({
       );
     }
     return <UserManagement initialUsers={users} onUsersUpdate={onUsersUpdate} />;
-  }, [activeSection, clinicalParameters, clinics, diagnoses, onUsersUpdate, payers, users]);
+  }, [activeSection, clinicalParameters, clinics, diagnoses, onDiagnosesUpdate, onUsersUpdate, payers, users]);
 
   return (
     <div className="space-y-8">

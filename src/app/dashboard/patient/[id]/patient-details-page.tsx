@@ -68,6 +68,7 @@ import AddGoalModal from '@/components/patient/add-goal-modal';
 import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { SlideOver, SlideOverContent, SlideOverTrigger } from '@/components/ui/slide-over';
 import {
     createAssessment, 
     deleteAssessment, 
@@ -526,7 +527,7 @@ export default function PatientDetailsPage({
 	    clinical_review: '',
 	    review_date: new Date().toISOString().split('T')[0]
 	  });
-	  const [isReviewPopoverOpen, setIsReviewPopoverOpen] = useState(false);
+	  const [isReviewSlideOverOpen, setIsReviewSlideOverOpen] = useState(false);
 
 		  const submitReview = async (): Promise<boolean> => {
 		    if (!canManageReviews) return false;
@@ -553,7 +554,7 @@ export default function PatientDetailsPage({
 	          clinical_review: '',
 	          review_date: new Date().toISOString().split('T')[0]
 	        });
-          setIsReviewPopoverOpen(false);
+          setIsReviewSlideOverOpen(false);
 	        toast({title: 'Success', description: 'Review submitted.'});
 	        return true;
 	    } catch (error: any) {
@@ -834,10 +835,10 @@ export default function PatientDetailsPage({
 	                            <CardTitle className="text-xl">Clinical Review</CardTitle>
 	                            <CardDescription>Conduct comprehensive clinical evaluation</CardDescription>
 	                          </div>
-	                          <Popover
-                              open={isReviewPopoverOpen}
+	                          <SlideOver
+                              open={isReviewSlideOverOpen}
                               onOpenChange={(open) => {
-                                setIsReviewPopoverOpen(open);
+                                setIsReviewSlideOverOpen(open);
                                 if (!open) {
                                   setReviewData({
                                     clinical_review: '',
@@ -846,15 +847,13 @@ export default function PatientDetailsPage({
                                 }
                               }}
                             >
-                              <PopoverTrigger asChild>
+                              <SlideOverTrigger asChild>
 	                              <Button type="button" size="sm" className="bg-primary hover:bg-primary/90 px-5">
 	                                <PlusCircle className="mr-2 h-4 w-4" />
 	                                Add Review
 	                              </Button>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                align="end"
-                                sideOffset={10}
+                              </SlideOverTrigger>
+                              <SlideOverContent
                                 className="w-[520px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-0"
                               >
                                 <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
@@ -886,7 +885,7 @@ export default function PatientDetailsPage({
                                     </InlineField>
                                   </div>
                                   <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
-                                    <Button type="button" variant="outline" className="h-8" onClick={() => setIsReviewPopoverOpen(false)}>
+                                    <Button type="button" variant="outline" className="h-8" onClick={() => setIsReviewSlideOverOpen(false)}>
                                       Cancel
                                     </Button>
                                     <Button
@@ -900,8 +899,8 @@ export default function PatientDetailsPage({
                                     </Button>
                                   </div>
                                 </div>
-                              </PopoverContent>
-                            </Popover>
+                              </SlideOverContent>
+                            </SlideOver>
 	                        </div>
 	                    </CardHeader>
 	                    <CardContent className="pt-5">
@@ -1027,14 +1026,14 @@ export default function PatientDetailsPage({
 	                    <InlineField label="Status" htmlFor="status">
 	                        <Select value={editFormData.status || ''} onValueChange={(value) => handleEditSelectChange('status', value)} required>
 	                            <SelectTrigger className="border-primary/20"><SelectValue /></SelectTrigger>
-	                            <SelectContent>
-	                                <SelectItem value="Active">Active</SelectItem>
-	                                <SelectItem value="In Review">In Review</SelectItem>
-	                                <SelectItem value="Critical">Critical</SelectItem>
-	                                <SelectItem value="Discharged">Discharged</SelectItem>
-	                            </SelectContent>
-	                        </Select>
-	                    </InlineField>
+                            <SelectContent>
+                                <SelectItem value="Active">Active</SelectItem>
+                                <SelectItem value="In Review">In Review</SelectItem>
+                                <SelectItem value="Critical">Critical</SelectItem>
+                                <SelectItem value="Discharged">Discharged</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </InlineField>
 
 	                    <div className="pt-2">
 	                        <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
