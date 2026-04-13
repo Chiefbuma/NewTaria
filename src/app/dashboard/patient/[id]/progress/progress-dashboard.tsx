@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import {
   LineChart,
   Line,
@@ -318,7 +318,7 @@ function todayYmd() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function SelfMonitorPopover({
+function SelfMonitorSheet({
   parameter,
   goal,
   patientId,
@@ -459,12 +459,12 @@ function SelfMonitorPopover({
 
   const renderValueInput = () => {
     if (parameter.type === 'numeric') {
-      return <Input type="number" step="any" className="h-8" value={value} onChange={(e) => setValue(e.target.value)} />;
+      return <Input type="number" step="any" className="h-10" value={value} onChange={(e) => setValue(e.target.value)} />;
     }
     if (parameter.type === 'choice') {
       return (
         <Select value={value} onValueChange={setValue}>
-          <SelectTrigger className="h-8">
+          <SelectTrigger className="h-10">
             <SelectValue placeholder="Select..." />
           </SelectTrigger>
           <SelectContent>
@@ -476,7 +476,7 @@ function SelfMonitorPopover({
       );
     }
     if (parameter.type === 'text') {
-      return <Textarea className="min-h-20" value={value} onChange={(e) => setValue(e.target.value)} />;
+      return <Textarea className="min-h-24" value={value} onChange={(e) => setValue(e.target.value)} />;
     }
     if (parameter.type === 'image') {
       return (
@@ -494,7 +494,7 @@ function SelfMonitorPopover({
               <img src={value} alt="Uploaded photo" className="max-h-44 w-full rounded object-contain" />
             </div>
           ) : (
-            <p className="text-[11px] text-muted-foreground">Upload a photo (or use camera capture on mobile).</p>
+            <p className="text-xs text-muted-foreground">Upload a photo (or use camera capture on mobile).</p>
           )}
         </div>
       );
@@ -514,20 +514,20 @@ function SelfMonitorPopover({
               <audio controls src={value} className="w-full" />
             </div>
           ) : (
-            <p className="text-[11px] text-muted-foreground">Upload a voice note (or use microphone capture on mobile).</p>
+            <p className="text-xs text-muted-foreground">Upload a voice note (or use microphone capture on mobile).</p>
           )}
         </div>
       );
     }
-    return <Input className="h-8" value={value} onChange={(e) => setValue(e.target.value)} />;
+    return <Input className="h-10" value={value} onChange={(e) => setValue(e.target.value)} />;
   };
 
   const triggerLabel = intent === 'edit' ? 'Edit latest check-in' : 'Add check-in';
   const TriggerIcon = intent === 'edit' ? Pencil : Plus;
 
   return (
-    <Popover open={open} onOpenChange={(v) => setOpen(v)}>
-      <PopoverTrigger asChild>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
         <Button
           type="button"
           size="icon"
@@ -538,43 +538,47 @@ function SelfMonitorPopover({
           <TriggerIcon className="h-4 w-4" />
           <span className="sr-only">{triggerLabel}</span>
         </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[360px] p-4">
-        <div className="space-y-3">
-          <div>
-            <p className="text-sm font-semibold text-foreground">{intent === 'edit' ? 'Edit latest check-in' : 'Add check-in'}</p>
-            <p className="text-[11px] text-muted-foreground">
-              Target: {goal.target_operator} {goal.target_value}
+      </SheetTrigger>
+      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+        <SheetHeader className="mb-4">
+          <SheetTitle>{intent === 'edit' ? 'Edit latest check-in' : 'Add check-in'}</SheetTitle>
+            <p className="text-sm text-muted-foreground">
+                Target: {goal.target_operator} {goal.target_value}
             </p>
-          </div>
+        </SheetHeader>
+        
+        <div className="space-y-4">
+            <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Date</Label>
+                <Input type="date" className="h-10" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Date</Label>
-            <Input type="date" className="h-8" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
+            <div className="space-y-1.5">
+                <Label className="text-sm font-medium">{valueLabel}</Label>
+                {renderValueInput()}
+            </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{valueLabel}</Label>
-            {renderValueInput()}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Notes (optional)</Label>
-            <Textarea className="min-h-16" value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)} disabled={isSubmitting || isUploading}>
-              Cancel
-            </Button>
-            <Button type="button" className="h-8" onClick={submit} disabled={isSubmitting || isUploading || !value.trim() || !date}>
-              {(isSubmitting || isUploading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Save
-            </Button>
-          </div>
+            <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Notes (optional)</Label>
+                <Textarea className="min-h-24" value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
         </div>
-      </PopoverContent>
-    </Popover>
+
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background">
+            <div className="flex justify-end gap-2">
+                <SheetClose asChild>
+                    <Button type="button" variant="outline" disabled={isSubmitting || isUploading}>
+                        Cancel
+                    </Button>
+                </SheetClose>
+                <Button type="button" onClick={submit} disabled={isSubmitting || isUploading || !value.trim() || !date}>
+                    {(isSubmitting || isUploading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Save
+                </Button>
+            </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -656,7 +660,7 @@ export default function ProgressDashboard({
                                     <div className="flex items-center gap-2">
                                       {canShowCheckInControls ? (
                                         <div className="flex items-center gap-1.5">
-                                          <SelfMonitorPopover
+                                          <SelfMonitorSheet
                                             parameter={parameter}
                                             goal={goal}
                                             patientId={patient.id}
@@ -668,7 +672,7 @@ export default function ProgressDashboard({
                                           />
                                           {checkInMode === 'patient' && latestMine ? (
                                             <>
-                                              <SelfMonitorPopover
+                                              <SelfMonitorSheet
                                                 intent="edit"
                                                 parameter={parameter}
                                                 goal={goal}

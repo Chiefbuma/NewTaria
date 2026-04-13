@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Trash2, Edit } from 'lucide-react';
-import AddGoalModal from './add-goal-modal';
+import AddGoalSheet from './add-goal-sheet';
 
 export default function GoalList({ patient, goals, clinicalParameters, onGoalsUpdate }: { patient: Patient, goals: Goal[], clinicalParameters: ClinicalParameter[], onGoalsUpdate: (goals: Goal[]) => void }) {
     const handleSaveGoal = (newGoalData: Omit<Goal, 'id' | 'patient_id' | 'created_at'> & { id?: number }) => {
@@ -37,7 +37,7 @@ export default function GoalList({ patient, goals, clinicalParameters, onGoalsUp
         <div className="space-y-6 pt-6">
             <div className="flex items-center justify-between">
                 <div />
-                <AddGoalModal
+                <AddGoalSheet
                     trigger={
                         <Button>
                             <PlusCircle className="mr-2" /> Add Goal
@@ -70,7 +70,7 @@ export default function GoalList({ patient, goals, clinicalParameters, onGoalsUp
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Badge variant={goal.status === 'active' ? 'default' : 'secondary'}>{goal.status}</Badge>
-                                        <AddGoalModal
+                                        <AddGoalSheet
                                             trigger={
                                                 <Button variant="ghost" size="icon">
                                                     <Edit className="h-4 w-4" />

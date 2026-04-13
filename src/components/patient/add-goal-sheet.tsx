@@ -8,6 +8,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  SheetClose
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,7 +64,7 @@ export default function AddGoalSheet({
 
   const renderTargetInput = () => {
     if (!selectedParameter) {
-      return <Input disabled readOnly value="" className="h-8" />;
+      return <Input disabled readOnly value="" className="h-10" />;
     }
 
     switch (selectedParameter.type) {
@@ -75,13 +76,13 @@ export default function AddGoalSheet({
             value={targetValue ?? ''}
             onChange={(e) => setTargetValue(e.target.value)}
             required
-            className="h-8"
+            className="h-10"
           />
         );
       case 'choice':
         return (
           <Select onValueChange={setTargetValue} value={targetValue ?? ''} required>
-            <SelectTrigger className="h-8">
+            <SelectTrigger className="h-10">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -100,7 +101,7 @@ export default function AddGoalSheet({
             value={targetValue ?? ''}
             onChange={(e) => setTargetValue(e.target.value)}
             required
-            className="h-8"
+            className="h-10"
           />
         );
     }
@@ -135,94 +136,79 @@ export default function AddGoalSheet({
         {trigger}
       </SheetTrigger>
       <SheetContent className="w-[420px] max-w-[calc(100vw-2rem)] p-0">
-        <SheetHeader className="form-header-bar flex items-center justify-between px-4 py-3">
+        <SheetHeader className="px-4 py-3 border-b">
           <SheetTitle>{existingGoal ? 'Edit Goal' : 'Add Goal'}</SheetTitle>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Goal setup
-          </span>
         </SheetHeader>
         <form onSubmit={handleSubmit}>
-          <div className="space-y-3 p-4">
-            <InlineField label="Parameter" htmlFor="parameter">
-              <Select onValueChange={setClinicalParameterId} value={clinicalParameterId} required>
-                <SelectTrigger id="parameter" className="h-8">
-                  <SelectValue placeholder="Select parameter" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clinicalParameters.map((p) => (
-                    <SelectItem key={p.id} value={p.id.toString()}>
-                      {p.name} {p.unit ? `(${p.unit})` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+          <div className="space-y-4 p-4">
+            <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Parameter</Label>
+                <Select onValueChange={setClinicalParameterId} value={clinicalParameterId} required>
+                    <SelectTrigger className="h-10">
+                        <SelectValue placeholder="Select parameter" />
+                    </SelectTrigger>
+                    <SelectContent>
+                    {clinicalParameters.map((p) => (
+                        <SelectItem key={p.id} value={p.id.toString()}>
+                        {p.name} {p.unit ? `(${p.unit})` : ''}
+                        </SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Target</Label>
+                {renderTargetInput()}
+            </div>
+
+            <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Operator</Label>
+                <Select onValueChange={(v) => setTargetOperator(v as any)} value={targetOperator}>
+                    <SelectTrigger className="h-10">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                    <SelectItem value="=">Equal to</SelectItem>
+                    <SelectItem value="<=">At or below</SelectItem>
+                    <SelectItem value="<">Below</SelectItem>
+                    <SelectItem value=">=">At or above</SelectItem>
+                    <SelectItem value=">">Above</SelectItem>
+                    </SelectContent>
               </Select>
-            </InlineField>
+            </div>
 
-            <InlineField label="Target" htmlFor="targetValue">
-              {renderTargetInput()}
-            </InlineField>
+            <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Deadline</Label>
+                <Input
+                    id="deadline"
+                    type="date"
+                    value={deadline}
+                    onChange={(e) => setDeadline(e.target.value)}
+                    required
+                    className="h-10"
+                />
+            </div>
 
-            <InlineField label="Operator" htmlFor="operator">
-              <Select onValueChange={(v) => setTargetOperator(v as any)} value={targetOperator}>
-                <SelectTrigger id="operator" className="h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="=">Equal to</SelectItem>
-                  <SelectItem value="<=">At or below</SelectItem>
-                  <SelectItem value="<">Below</SelectItem>
-                  <SelectItem value=">=">At or above</SelectItem>
-                  <SelectItem value=">">Above</SelectItem>
-                </SelectContent>
-              </Select>
-            </InlineField>
-
-            <InlineField label="Deadline" htmlFor="deadline">
-              <Input
-                id="deadline"
-                type="date"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                required
-                className="h-8"
-              />
-            </InlineField>
-
-            <InlineField label="Notes" htmlFor="notes" alignStart>
-              <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-16" />
-            </InlineField>
+            <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Notes</Label>
+                <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-24" />
+            </div>
           </div>
-          <div className="flex justify-end gap-2 border-t border-border/70 bg-muted/20 px-4 py-3">
-            <Button type="button" variant="outline" className="h-8" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90">
-              Save
-            </Button>
-          </div>
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background">
+            <div className="flex justify-end gap-2">
+                <SheetClose asChild>
+                    <Button type="button" variant="outline">
+                        Cancel
+                    </Button>
+                </SheetClose>
+                <Button type="submit">
+                    Save
+                </Button>
+            </div>
+        </div>
         </form>
       </SheetContent>
     </Sheet>
-  );
-}
-
-function InlineField({
-  label,
-  htmlFor,
-  children,
-  alignStart = false,
-}: {
-  label: string;
-  htmlFor: string;
-  children: React.ReactNode;
-  alignStart?: boolean;
-}) {
-  return (
-    <div className={cn('grid grid-cols-[120px_minmax(0,1fr)] gap-3', alignStart ? 'items-start' : 'items-center')}>
-      <Label htmlFor={htmlFor} className={cn('text-[11px] font-bold uppercase tracking-wider text-muted-foreground', alignStart ? 'pt-2' : null)}>
-        {label}
-      </Label>
-      <div>{children}</div>
-    </div>
   );
 }
