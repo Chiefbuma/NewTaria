@@ -11,7 +11,6 @@ import { PasswordInput } from '@/components/ui/password-input';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { authenticateUser } from '@/lib/actions';
 import AuthShell from '@/components/auth/auth-shell';
 import { cn } from '@/lib/utils';
 import Logo from '@/components/logo';
@@ -33,13 +32,18 @@ export default function LoginPageClient() {
     e.preventDefault();
     setLoading(true);
 
-    const result = await authenticateUser(phone, password);
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, password }),
+    });
+    const result = await res.json().catch(() => null);
 
-    if (!result.success || !result.user) {
+    if (!res.ok || !result?.success || !result?.user) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: result.error || 'Invalid credentials',
+        description: result?.error || 'Invalid credentials',
       });
       setLoading(false);
       return;

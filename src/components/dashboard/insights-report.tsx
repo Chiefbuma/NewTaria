@@ -149,8 +149,8 @@ export default function InsightsReport({
     {
       label: 'No check-in (14+ days)',
       total: Number(stats?.membersWithNoCheckIn14d ?? 0),
-      male: Number(stats?.membersWithNoCheckIn14dMale ?? 0),
-      female: Number(stats?.membersWithNoCheckIn14dFemale ?? 0),
+      male: 0,
+      female: 0,
       meta: 'Patients overdue for follow-up',
     },
   ];
@@ -163,21 +163,21 @@ export default function InsightsReport({
     {
       label: 'Active goals',
       total: Number(deepDive?.totals?.activeGoals ?? 0),
-      male: Number(deepDive?.totals?.activeGoalsMale ?? 0),
-      female: Number(deepDive?.totals?.activeGoalsFemale ?? 0),
+      male: 0,
+      female: 0,
     },
     {
       label: 'Overdue goals',
       total: Number(deepDive?.totals?.overdueGoals ?? 0),
-      male: Number(deepDive?.totals?.overdueGoalsMale ?? 0),
-      female: Number(deepDive?.totals?.overdueGoalsFemale ?? 0),
+      male: 0,
+      female: 0,
       meta: 'Active goals past deadline',
     },
     {
       label: 'Completed goals',
       total: Number(deepDive?.totals?.completedGoals ?? 0),
-      male: Number(deepDive?.totals?.completedGoalsMale ?? 0),
-      female: Number(deepDive?.totals?.completedGoalsFemale ?? 0),
+      male: 0,
+      female: 0,
     },
   ];
 
@@ -186,43 +186,22 @@ export default function InsightsReport({
     {
       label: 'Patients with no active goals',
       total: Number(deepDive?.totals?.membersWithNoActiveGoals ?? 0),
-      male: Number(deepDive?.totals?.membersWithNoActiveGoalsMale ?? 0),
-      female: Number(deepDive?.totals?.membersWithNoActiveGoalsFemale ?? 0),
+      male: 0,
+      female: 0,
       meta: 'Potential onboarding gap',
     },
     {
       label: 'Active prescriptions',
       total: Number(deepDive?.totals?.activePrescriptions ?? 0),
-      male: Number(deepDive?.totals?.activePrescriptionsMale ?? 0),
-      female: Number(deepDive?.totals?.activePrescriptionsFemale ?? 0),
+      male: 0,
+      female: 0,
       meta: 'Prescription records marked active',
     },
     {
       label: 'Clinical reviews (30d)',
       total: Number(deepDive?.totals?.reviews30d ?? 0),
-      male: Number(deepDive?.totals?.reviews30dMale ?? 0),
-      female: Number(deepDive?.totals?.reviews30dFemale ?? 0),
-    },
-  ];
-
-  const adherenceRows: ClassificationRow[] = [
-    {
-      label: 'Good Adherence',
-      total: Number(deepDive?.totals?.medicationAdherenceGood ?? 0),
-      male: Number(deepDive?.totals?.medicationAdherenceGoodMale ?? 0),
-      female: Number(deepDive?.totals?.medicationAdherenceGoodFemale ?? 0),
-    },
-    {
-      label: 'Partial Adherence',
-      total: Number(deepDive?.totals?.medicationAdherencePartial ?? 0),
-      male: Number(deepDive?.totals?.medicationAdherencePartialMale ?? 0),
-      female: Number(deepDive?.totals?.medicationAdherencePartialFemale ?? 0),
-    },
-    {
-      label: 'Poor Adherence',
-      total: Number(deepDive?.totals?.medicationAdherencePoor ?? 0),
-      male: Number(deepDive?.totals?.medicationAdherencePoorMale ?? 0),
-      female: Number(deepDive?.totals?.medicationAdherencePoorFemale ?? 0),
+      male: 0,
+      female: 0,
     },
   ];
 
@@ -286,26 +265,16 @@ export default function InsightsReport({
           measuredLabel="Total patients"
           total={Number(coverageTotal)}
         />
-        <ClassificationSection
-          index={6}
-          title="Medication Adherence"
-          description="Adherence to prescribed medications."
-          rows={adherenceRows}
-          measuredLabel="Total patients"
-          total={totalMembers}
-        />
-
         <ReportTableSection
-          index={7}
+          index={6}
           title="Patient Progress"
           description="A patient-wise summary of key progress and risk indicators. Hover over the symbols for details."
           headers={[
-            { label: 'Patient', className: 'w-[30%]' },
-            { label: 'Attention', className: 'w-[14%] text-center' },
-            { label: 'Interaction', className: 'w-[14%] text-center' },
-            { label: 'Goals', className: 'w-[14%] text-center' },
-            { label: 'Progress', className: 'w-[14%] text-center' },
-            { label: 'Medication', className: 'w-[14%] text-center' },
+            { label: 'Patient', className: 'w-[38%]' },
+            { label: 'Needs Attention', className: 'w-[15%] text-center' },
+            { label: 'Least Interaction', className: 'w-[15%] text-center' },
+            { label: 'Upcoming Appointment', className: 'w-[16%] text-center' },
+            { label: 'Off Track', className: 'w-[16%] text-center' },
           ]}
           emptyLabel="No patients found."
         >
@@ -315,8 +284,23 @@ export default function InsightsReport({
                 const daysSinceLast = last ? Math.floor((Date.now() - last.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
                 const attentionColor: MetricColor =
-                  row.status === 'Critical' ? 'red' : row.status === 'Active' ? 'green' : 'yellow';
-                const attentionTitle = `Patient Status: ${row.status ?? 'Unknown'}`;
+                  row.status === 'Critical'
+                    ? 'red'
+                    : row.overdue_goals > 0
+                      ? 'red'
+                      : daysSinceLast === null
+                        ? 'red'
+                        : daysSinceLast >= 14
+                          ? 'yellow'
+                          : 'green';
+                const attentionTitle =
+                  row.overdue_goals > 0
+                    ? `Overdue goals: ${row.overdue_goals}`
+                    : daysSinceLast === null
+                      ? 'No check-ins recorded'
+                      : daysSinceLast >= 14
+                        ? `Last check-in: ${format(last!, 'dd MMM')} (over 14 days)`
+                        : `Last check-in: ${format(last!, 'dd MMM')}`;
 
                 const interactionColor: MetricColor =
                   daysSinceLast === null ? 'red' : daysSinceLast >= 14 ? 'yellow' : 'green';
@@ -327,41 +311,29 @@ export default function InsightsReport({
                       ? `Last check-in: ${format(last!, 'dd MMM')} (over 14 days)`
                       : `Last check-in: ${format(last!, 'dd MMM')}`;
 
-                // @ts-expect-error - active_goals is not in the type definition but is expected from the API
-                const hasActiveGoals = row.active_goals > 0;
-                const hasOverdueGoals = row.overdue_goals > 0;
+                const upcomingColor: MetricColor =
+                  row.next_appointment_at === null
+                    ? 'white'
+                    : row.next_appointment_status === 'confirmed'
+                      ? 'green'
+                      : 'yellow';
+                const upcomingTitle =
+                  row.next_appointment_at === null
+                    ? 'No upcoming appointment'
+                    : `Next: ${format(new Date(row.next_appointment_at), 'dd MMM')} (${String(row.next_appointment_status)})`;
 
-                const goalsColor: MetricColor = hasOverdueGoals ? 'red' : hasActiveGoals ? 'green' : 'yellow';
-                const goalsTitle = hasOverdueGoals
-                  ? `Overdue goals: ${row.overdue_goals}`
-                  : hasActiveGoals
-                    // @ts-expect-error
-                    ? `Active goals: ${row.active_goals}`
-                    : 'No active goals';
-
-                const progressColor: MetricColor =
-                  row.total_numeric_goals === 0 ? 'white' : row.off_target_numeric_goals > 0 ? 'red' : 'green';
-
-                const progressTitle =
+                const offTrackColor: MetricColor =
+                  row.total_numeric_goals === 0
+                    ? 'white'
+                    : row.off_target_numeric_goals > 0
+                      ? 'red'
+                      : 'green';
+                const offTrackTitle =
                   row.total_numeric_goals === 0
                     ? 'No numeric goals tracked'
                     : row.off_target_numeric_goals > 0
                       ? `Off target numeric goals: ${row.off_target_numeric_goals} / ${row.total_numeric_goals}`
                       : `On target (numeric goals: ${row.total_numeric_goals})`;
-
-                // @ts-expect-error - medication_adherence is not on type
-                const adherence = row.medication_adherence as 'Good' | 'Partial' | 'Poor' | null | undefined;
-                const adherenceColor: MetricColor =
-                  adherence === 'Poor'
-                    ? 'red'
-                    : adherence === 'Partial'
-                      ? 'yellow'
-                      : adherence === 'Good'
-                        ? 'green'
-                        : 'white';
-                const adherenceTitle = adherence
-                  ? `Medication Adherence: ${adherence}`
-                  : 'No tracked medications';
 
                 return (
                   <TableRow key={row.patient_id} className="border-border/50">
@@ -375,13 +347,10 @@ export default function InsightsReport({
                       <TriangleMetric color={interactionColor} title={interactionTitle} />
                     </TableCell>
                     <TableCell className="py-2 text-center">
-                      <TriangleMetric color={goalsColor} title={goalsTitle} />
+                      <TriangleMetric color={upcomingColor} title={upcomingTitle} />
                     </TableCell>
                     <TableCell className="py-2 text-center">
-                      <TriangleMetric color={progressColor} title={progressTitle} />
-                    </TableCell>
-                    <TableCell className="py-2 text-center">
-                      <TriangleMetric color={adherenceColor} title={adherenceTitle} />
+                      <TriangleMetric color={offTrackColor} title={offTrackTitle} />
                     </TableCell>
                   </TableRow>
                 );
@@ -393,11 +362,11 @@ export default function InsightsReport({
           <div className="text-[11px] font-semibold text-muted-foreground">
             {metricsPage.total ? (
               <>
-                {metricsPage.total} patients • Page <span className="text-foreground">{metricsPage.page}</span> of{' '}
+                {metricsPage.total} members • Page <span className="text-foreground">{metricsPage.page}</span> of{' '}
                 <span className="text-foreground">{totalPages}</span>
               </>
             ) : (
-              '0 patients'
+              '0 members'
             )}
           </div>
           <div className="flex items-center gap-2">
