@@ -3,8 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { cn } from '@/lib/utils';
 
 type AuthShellProps = {
-  title: string;
-  description: React.ReactNode;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
   headerBadge?: React.ReactNode;
@@ -40,12 +40,16 @@ export default function AuthShell({
             )}
           >
             {headerBadge ? <div className="mx-auto mb-2">{headerBadge}</div> : null}
-            <CardTitle className={cn('text-2xl', isPrimaryHeader ? 'text-primary-foreground' : 'text-foreground')}>
-              {title}
-            </CardTitle>
-            <CardDescription className={cn(isPrimaryHeader ? 'text-primary-foreground/90' : 'text-muted-foreground')}>
-              {description}
-            </CardDescription>
+            {title ? (
+              <CardTitle className={cn('text-2xl', isPrimaryHeader ? 'text-primary-foreground' : 'text-foreground')}>
+                {title}
+              </CardTitle>
+            ) : null}
+            {description ? (
+              <CardDescription className={cn(isPrimaryHeader ? 'text-primary-foreground/90' : 'text-muted-foreground')}>
+                {description}
+              </CardDescription>
+            ) : null}
           </CardHeader>
           <CardContent className={cn('bg-background/60 p-5 sm:p-6', contentClassName)}>
             {children}

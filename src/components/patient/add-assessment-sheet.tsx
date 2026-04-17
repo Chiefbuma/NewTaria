@@ -227,7 +227,7 @@ export default function AddAssessmentSheet({
       <SheetTrigger asChild disabled={disabled}>
         {trigger}
       </SheetTrigger>
-      <SheetContent className="w-[440px] max-w-[calc(100vw-2rem)] p-0">
+      <SheetContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] p-0 sm:w-[440px] sm:max-w-md">
         <SheetHeader className="px-4 py-3 border-b">
           <SheetTitle>{existingAssessment ? 'Edit Assessment' : 'Add Assessment'}</SheetTitle>
         </SheetHeader>

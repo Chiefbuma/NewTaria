@@ -1,6 +1,5 @@
 'use client';
-import { useState } from 'react';
-import type { Patient, Prescription } from '@/lib/types';
+import type { Patient } from '@/lib/types';
 import { motion } from 'framer-motion';
 import { Pill } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
@@ -26,23 +25,44 @@ export default function MedicationUseSection({ patient, onUpdate }: { patient: P
                 </CardHeader>
                 <CardContent className="pt-6">
                     {prescriptions.length > 0 ? (
-                         <div className="overflow-x-auto rounded-xl border border-border">
+                         <div className="space-y-3">
+                            <div className="grid gap-3 sm:hidden">
+                                {prescriptions.map((p) => (
+                                    <div key={p.id} className="rounded-2xl border border-border bg-card p-3 shadow-sm">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <div className="truncate text-sm font-semibold text-foreground">
+                                                    {p.medication?.name || 'Unknown'}
+                                                </div>
+                                                <div className="mt-1 text-[11px] text-muted-foreground">
+                                                    {p.dosage} • Exp: {p.end_date ? new Date(p.end_date).toLocaleDateString() : 'N/A'}
+                                                </div>
+                                            </div>
+                                            <Badge variant={p.status === 'active' ? 'default' : 'secondary'} className="capitalize">
+                                                {p.status}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="hidden overflow-x-auto rounded-xl border border-border sm:block">
                             <table className="min-w-full divide-y divide-border">
                                 <thead className="bg-muted/50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Medication</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Dosage</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Frequency</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Status</th>
+                                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Medication</th>
+                                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Dosage</th>
+                                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Frequency</th>
+                                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-card divide-y divide-border">
                                     {prescriptions.map((p) => (
                                         <tr key={p.id} className="hover:bg-muted/30 transition-colors">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-foreground">{p.medication?.name || 'Unknown'}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{p.dosage}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{p.frequency}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-foreground">{p.medication?.name || 'Unknown'}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{p.dosage}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{p.frequency}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm">
                                                 <Badge variant={p.status === 'active' ? 'default' : 'secondary'} className="capitalize">
                                                     {p.status}
                                                 </Badge>
@@ -51,6 +71,7 @@ export default function MedicationUseSection({ patient, onUpdate }: { patient: P
                                     ))}
                                 </tbody>
                             </table>
+                            </div>
                          </div>
                     ) : (
                         <p className="text-center text-muted-foreground py-8 italic">No prescriptions found in record.</p>

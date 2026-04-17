@@ -189,7 +189,7 @@ function ReferenceItemUpsertPopover<T extends { id: number }>({
       <PopoverContent
         align="end"
         sideOffset={10}
-        className="w-[520px] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-0"
+        className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] max-h-[85vh] overflow-y-auto p-0 sm:w-[520px] sm:max-w-xl"
       >
         <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-[0_24px_55px_-34px_rgba(15,23,42,0.28)]">
           <div className="form-header-bar flex items-center justify-between px-4 py-3">

@@ -4,8 +4,10 @@ import type React from 'react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import Header from '@/components/header';
 import { AppSidebar } from '@/components/app-sidebar';
+import Logo from '@/components/logo';
 import type { User } from '@/lib/types';
 import { isPatientRole } from '@/lib/role-utils';
 import {
@@ -44,13 +46,18 @@ export default function DashboardShell({
   if (isProgressPage || isPatientRole(user.role)) {
     return (
       <div className="flex min-h-screen w-full flex-col">
-        <header className="glass-white flex h-14 shrink-0 items-center gap-4 border-b px-4 text-foreground shadow-sm lg:h-[60px] lg:px-6">
-          <Link href="/dashboard" className="flex items-center font-semibold text-foreground md:hidden">
-            <img src="/images/taria-logo.png" alt="Taria Health Logo" className="logo" />
+        <motion.header
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-3 border-b border-border/50 bg-background/45 px-4 text-foreground shadow-[0_10px_40px_-28px_rgba(15,23,42,0.26)] backdrop-blur-xl lg:h-[60px] lg:px-6"
+        >
+          <Link href="/dashboard" className="flex items-center">
+            <Logo className="h-8 w-auto" />
           </Link>
           <div className="w-full flex-1" />
           <Header user={user} />
-        </header>
+        </motion.header>
         <main className="flex flex-1 flex-col gap-4 bg-background p-4 lg:gap-6 lg:p-6">{children}</main>
       </div>
     );
@@ -66,11 +73,19 @@ export default function DashboardShell({
     >
       <AppSidebar user={user} />
       <SidebarInset>
-        <header className="glass-white flex h-14 items-center gap-3 border-b px-3 text-foreground shadow-sm sm:px-4 lg:h-[60px] lg:px-6">
+        <motion.header
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="sticky top-0 z-50 flex h-14 items-center gap-3 border-b border-border/50 bg-background/45 px-3 text-foreground shadow-[0_10px_40px_-28px_rgba(15,23,42,0.26)] backdrop-blur-xl sm:px-4 lg:h-[60px] lg:px-6"
+        >
           <SidebarTrigger className="shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground" />
+          <Link href="/dashboard" className="flex items-center">
+            <Logo className="h-8 w-auto" />
+          </Link>
           <div className="w-full flex-1" />
           <Header user={user} />
-        </header>
+        </motion.header>
         <main className="flex flex-1 flex-col gap-4 bg-background p-4 lg:gap-6 lg:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>

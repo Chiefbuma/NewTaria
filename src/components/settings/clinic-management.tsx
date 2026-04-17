@@ -175,7 +175,7 @@ function ClinicUpsertForm({
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SlideOverContent className="h-full w-[440px] max-w-[calc(100vw-2rem)] p-0">
+      <SlideOverContent className="h-full w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] p-0 sm:w-[440px] sm:max-w-md">
         <SheetHeader className="px-4 py-3 border-b">
             <SheetTitle>{title}</SheetTitle>
         </SheetHeader>

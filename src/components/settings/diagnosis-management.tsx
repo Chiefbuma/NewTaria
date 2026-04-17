@@ -168,7 +168,7 @@ function DiagnosisUpsertForm({
   return (
     <SlideOver open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SlideOverContent className="h-full w-[520px] max-w-[calc(100vw-2rem)] flex flex-col p-0">
+      <SlideOverContent className="h-full w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] flex flex-col p-0 sm:w-[520px] sm:max-w-xl">
         <SheetHeader className="px-4 py-3">
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>

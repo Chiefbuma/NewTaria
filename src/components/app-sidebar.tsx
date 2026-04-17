@@ -12,7 +12,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -24,12 +23,20 @@ import {
 import { cn } from '@/lib/utils';
 import type { User } from '@/lib/types';
 import { canAccessAdminCenter, canManageOnboarding, isPartnerRole } from '@/lib/role-utils';
+import { useSidebar } from '@/components/ui/sidebar';
 
 function AppSidebarNav({ user }: { user: User & { patientId?: number } }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const adminSection = searchParams.get('section') ?? 'dashboard';
   const [adminOpen, setAdminOpen] = useState(pathname.startsWith('/dashboard/admin'));
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const closeMobileSidebar = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   useEffect(() => {
     if (pathname.startsWith('/dashboard/admin')) {
@@ -45,7 +52,7 @@ function AppSidebarNav({ user }: { user: User & { patientId?: number } }) {
           tooltip="Member Registry"
           isActive={pathname.startsWith('/dashboard/registry') || pathname.includes('/dashboard/patient/')}
         >
-          <Link href="/dashboard/registry">
+          <Link href="/dashboard/registry" onClick={closeMobileSidebar}>
             <ClipboardList />
             <span>Member Registry</span>
           </Link>
@@ -54,23 +61,23 @@ function AppSidebarNav({ user }: { user: User & { patientId?: number } }) {
 
       {(canAccessAdminCenter(user.role) || isPartnerRole(user.role)) && (
         <SidebarMenuItem>
-          <SidebarMenuButton asChild tooltip="Dashboard" isActive={pathname.startsWith('/dashboard/insights')}>
-            <Link href="/dashboard/insights">
+        <SidebarMenuButton asChild tooltip="Dashboard" isActive={pathname.startsWith('/dashboard/insights')}>
+          <Link href="/dashboard/insights" onClick={closeMobileSidebar}>
               <BarChart3 />
               <span>Dashboard</span>
             </Link>
-          </SidebarMenuButton>
+        </SidebarMenuButton>
         </SidebarMenuItem>
       )}
 
       {canManageOnboarding(user.role) && (
         <SidebarMenuItem>
-          <SidebarMenuButton asChild tooltip="Onboarding Module" isActive={pathname === '/dashboard/register-patient'}>
-            <Link href="/dashboard/register-patient">
+        <SidebarMenuButton asChild tooltip="Onboarding Module" isActive={pathname === '/dashboard/register-patient'}>
+          <Link href="/dashboard/register-patient" onClick={closeMobileSidebar}>
               <UserPlus />
               <span>Onboarding Module</span>
             </Link>
-          </SidebarMenuButton>
+        </SidebarMenuButton>
         </SidebarMenuItem>
       )}
 
@@ -96,7 +103,7 @@ function AppSidebarNav({ user }: { user: User & { patientId?: number } }) {
                     asChild
                     isActive={pathname.startsWith('/dashboard/admin') && adminSection === 'payers'}
                   >
-                    <Link href="/dashboard/admin?section=payers">Payers</Link>
+                    <Link href="/dashboard/admin?section=payers" onClick={closeMobileSidebar}>Payers</Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
                 <SidebarMenuSubItem>
@@ -104,7 +111,7 @@ function AppSidebarNav({ user }: { user: User & { patientId?: number } }) {
                     asChild
                     isActive={pathname.startsWith('/dashboard/admin') && adminSection === 'clinics'}
                   >
-                    <Link href="/dashboard/admin?section=clinics">Clinics</Link>
+                    <Link href="/dashboard/admin?section=clinics" onClick={closeMobileSidebar}>Clinics</Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
                 <SidebarMenuSubItem>
@@ -112,7 +119,7 @@ function AppSidebarNav({ user }: { user: User & { patientId?: number } }) {
                     asChild
                     isActive={pathname.startsWith('/dashboard/admin') && adminSection === 'diagnoses'}
                   >
-                    <Link href="/dashboard/admin?section=diagnoses">Diagnoses</Link>
+                    <Link href="/dashboard/admin?section=diagnoses" onClick={closeMobileSidebar}>Diagnoses</Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
                 <SidebarMenuSubItem>
@@ -120,7 +127,7 @@ function AppSidebarNav({ user }: { user: User & { patientId?: number } }) {
                     asChild
                     isActive={pathname.startsWith('/dashboard/admin') && adminSection === 'medications'}
                   >
-                    <Link href="/dashboard/admin?section=medications">Medications</Link>
+                    <Link href="/dashboard/admin?section=medications" onClick={closeMobileSidebar}>Medications</Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
                 <SidebarMenuSubItem>
@@ -128,7 +135,7 @@ function AppSidebarNav({ user }: { user: User & { patientId?: number } }) {
                     asChild
                     isActive={pathname.startsWith('/dashboard/admin') && adminSection === 'clinical-parameters'}
                   >
-                    <Link href="/dashboard/admin?section=clinical-parameters">Clinical Parameters</Link>
+                    <Link href="/dashboard/admin?section=clinical-parameters" onClick={closeMobileSidebar}>Clinical Parameters</Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
                 <SidebarMenuSubItem>
@@ -136,7 +143,7 @@ function AppSidebarNav({ user }: { user: User & { patientId?: number } }) {
                     asChild
                     isActive={pathname.startsWith('/dashboard/admin') && adminSection === 'users'}
                   >
-                    <Link href="/dashboard/admin?section=users">Users &amp; Roles</Link>
+                    <Link href="/dashboard/admin?section=users" onClick={closeMobileSidebar}>Users &amp; Roles</Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
               </SidebarMenuSub>
@@ -151,18 +158,6 @@ function AppSidebarNav({ user }: { user: User & { patientId?: number } }) {
 export function AppSidebar({ user }: { user: User & { patientId?: number } }) {
   return (
     <Sidebar variant="inset" collapsible="icon">
-      <SidebarHeader>
-        <div className="flex items-center gap-3 px-2 py-1">
-          <Link href="/dashboard" className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-accent">
-               <img src="/images/taria-logo.png" alt="Taria Health Logo" className="h-auto w-24" />
-            </div>
-            <div className="leading-none group-data-[collapsible=icon]:hidden">
-               <img src="/images/taria-logo.png" alt="Taria Health Logo" className="h-auto w-24" />
-            </div>
-          </Link>
-        </div>
-      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>

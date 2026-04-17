@@ -177,7 +177,7 @@ function MedicationUpsertForm({
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SlideOverContent
-        className="h-full w-[440px] max-w-[calc(100vw-2rem)] overflow-y-auto p-0"
+        className="h-full w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-y-auto p-0 sm:w-[440px] sm:max-w-md"
       >
         <SheetHeader className="px-4 py-3">
             <SheetTitle>{title}</SheetTitle>

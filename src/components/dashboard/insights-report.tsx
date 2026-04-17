@@ -10,6 +10,15 @@ import { Triangle } from 'lucide-react';
 
 type MetricColor = 'green' | 'yellow' | 'red' | 'white';
 
+type MemberProgressRow = {
+  patientId: number;
+  patientName: string;
+  attention: { color: MetricColor; title: string };
+  interaction: { color: MetricColor; title: string };
+  upcoming: { color: MetricColor; title: string };
+  offTrack: { color: MetricColor; title: string };
+};
+
 function TriangleMetric({ color, title }: { color: MetricColor; title: string }) {
   const cls =
     color === 'green'
@@ -24,6 +33,25 @@ function TriangleMetric({ color, title }: { color: MetricColor; title: string })
     <span className="inline-flex items-center justify-center" title={title} aria-label={title}>
       <Triangle className={cn('h-3.5 w-3.5', cls)} />
     </span>
+  );
+}
+
+function MetricTile({
+  label,
+  color,
+  title,
+}: {
+  label: string;
+  color: MetricColor;
+  title: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-muted/20 px-2 py-2 text-center">
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <TriangleMetric color={color} title={title} />
+    </div>
   );
 }
 
@@ -45,6 +73,7 @@ function ReportTableSection({
   title,
   description,
   headers,
+  mobileRows,
   children,
   emptyLabel,
   className,
@@ -53,6 +82,7 @@ function ReportTableSection({
   title: string;
   description: string;
   headers: { label: string; className?: string }[];
+  mobileRows: MemberProgressRow[];
   children: React.ReactNode;
   emptyLabel: string;
   className?: string;
@@ -79,7 +109,33 @@ function ReportTableSection({
             <p className="text-[12px] leading-5 text-muted-foreground">{description}</p>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="grid gap-3 sm:hidden">
+            {mobileRows.length ? (
+              mobileRows.map((row) => (
+                <div key={row.patientId} className="rounded-2xl border border-border/60 bg-background p-3 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-foreground">{row.patientName}</div>
+                      <div className="mt-1 text-[11px] text-muted-foreground">Patient progress summary</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <MetricTile label="Attention" color={row.attention.color} title={row.attention.title} />
+                    <MetricTile label="Interaction" color={row.interaction.color} title={row.interaction.title} />
+                    <MetricTile label="Upcoming" color={row.upcoming.color} title={row.upcoming.title} />
+                    <MetricTile label="Off Track" color={row.offTrack.color} title={row.offTrack.title} />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-border/60 bg-background p-4 text-center text-[12px] italic text-muted-foreground">
+                {emptyLabel}
+              </div>
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto sm:block">
             <Table className="min-w-full table-fixed">
               <TableHeader className="bg-transparent">
                 <TableRow className="border-border/60">
@@ -209,6 +265,71 @@ export default function InsightsReport({
   const totalPages = metricsPage.total ? Math.max(1, Math.ceil(metricsPage.total / metricsPage.pageSize)) : 1;
   const canPrev = metricsPage.page > 1;
   const canNext = metricsPage.page < totalPages;
+  const memberProgressRows: MemberProgressRow[] = metricsPage.rows.map((row) => {
+    const last = row.last_assessment_at ? new Date(row.last_assessment_at) : null;
+    const daysSinceLast = last ? Math.floor((Date.now() - last.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+    const attentionColor: MetricColor =
+      row.status === 'Critical'
+        ? 'red'
+        : row.overdue_goals > 0
+          ? 'red'
+          : daysSinceLast === null
+            ? 'red'
+            : daysSinceLast >= 14
+              ? 'yellow'
+              : 'green';
+    const attentionTitle =
+      row.overdue_goals > 0
+        ? `Overdue goals: ${row.overdue_goals}`
+        : daysSinceLast === null
+          ? 'No check-ins recorded'
+          : daysSinceLast >= 14
+            ? `Last check-in: ${format(last!, 'dd MMM')} (over 14 days)`
+            : `Last check-in: ${format(last!, 'dd MMM')}`;
+
+    const interactionColor: MetricColor =
+      daysSinceLast === null ? 'red' : daysSinceLast >= 14 ? 'yellow' : 'green';
+    const interactionTitle =
+      daysSinceLast === null
+        ? 'No check-ins recorded'
+        : daysSinceLast >= 14
+          ? `Last check-in: ${format(last!, 'dd MMM')} (over 14 days)`
+          : `Last check-in: ${format(last!, 'dd MMM')}`;
+
+    const upcomingColor: MetricColor =
+      row.next_appointment_at === null
+        ? 'white'
+        : row.next_appointment_status === 'confirmed'
+          ? 'green'
+          : 'yellow';
+    const upcomingTitle =
+      row.next_appointment_at === null
+        ? 'No upcoming appointment'
+        : `Next: ${format(new Date(row.next_appointment_at), 'dd MMM')} (${String(row.next_appointment_status)})`;
+
+    const offTrackColor: MetricColor =
+      row.total_numeric_goals === 0
+        ? 'white'
+        : row.off_target_numeric_goals > 0
+          ? 'red'
+          : 'green';
+    const offTrackTitle =
+      row.total_numeric_goals === 0
+        ? 'No numeric goals tracked'
+        : row.off_target_numeric_goals > 0
+          ? `Off target numeric goals: ${row.off_target_numeric_goals} / ${row.total_numeric_goals}`
+          : `On target (numeric goals: ${row.total_numeric_goals})`;
+
+    return {
+      patientId: row.patient_id,
+      patientName: row.patient_name,
+      attention: { color: attentionColor, title: attentionTitle },
+      interaction: { color: interactionColor, title: interactionTitle },
+      upcoming: { color: upcomingColor, title: upcomingTitle },
+      offTrack: { color: offTrackColor, title: offTrackTitle },
+    };
+  });
 
   return (
     <div
@@ -276,85 +397,29 @@ export default function InsightsReport({
             { label: 'Upcoming Appointment', className: 'w-[16%] text-center' },
             { label: 'Off Track', className: 'w-[16%] text-center' },
           ]}
+          mobileRows={memberProgressRows}
           emptyLabel="No patients found."
         >
-          {metricsPage.rows.length
-            ? metricsPage.rows.map((row) => {
-                const last = row.last_assessment_at ? new Date(row.last_assessment_at) : null;
-                const daysSinceLast = last ? Math.floor((Date.now() - last.getTime()) / (1000 * 60 * 60 * 24)) : null;
-
-                const attentionColor: MetricColor =
-                  row.status === 'Critical'
-                    ? 'red'
-                    : row.overdue_goals > 0
-                      ? 'red'
-                      : daysSinceLast === null
-                        ? 'red'
-                        : daysSinceLast >= 14
-                          ? 'yellow'
-                          : 'green';
-                const attentionTitle =
-                  row.overdue_goals > 0
-                    ? `Overdue goals: ${row.overdue_goals}`
-                    : daysSinceLast === null
-                      ? 'No check-ins recorded'
-                      : daysSinceLast >= 14
-                        ? `Last check-in: ${format(last!, 'dd MMM')} (over 14 days)`
-                        : `Last check-in: ${format(last!, 'dd MMM')}`;
-
-                const interactionColor: MetricColor =
-                  daysSinceLast === null ? 'red' : daysSinceLast >= 14 ? 'yellow' : 'green';
-                const interactionTitle =
-                  daysSinceLast === null
-                    ? 'No check-ins recorded'
-                    : daysSinceLast >= 14
-                      ? `Last check-in: ${format(last!, 'dd MMM')} (over 14 days)`
-                      : `Last check-in: ${format(last!, 'dd MMM')}`;
-
-                const upcomingColor: MetricColor =
-                  row.next_appointment_at === null
-                    ? 'white'
-                    : row.next_appointment_status === 'confirmed'
-                      ? 'green'
-                      : 'yellow';
-                const upcomingTitle =
-                  row.next_appointment_at === null
-                    ? 'No upcoming appointment'
-                    : `Next: ${format(new Date(row.next_appointment_at), 'dd MMM')} (${String(row.next_appointment_status)})`;
-
-                const offTrackColor: MetricColor =
-                  row.total_numeric_goals === 0
-                    ? 'white'
-                    : row.off_target_numeric_goals > 0
-                      ? 'red'
-                      : 'green';
-                const offTrackTitle =
-                  row.total_numeric_goals === 0
-                    ? 'No numeric goals tracked'
-                    : row.off_target_numeric_goals > 0
-                      ? `Off target numeric goals: ${row.off_target_numeric_goals} / ${row.total_numeric_goals}`
-                      : `On target (numeric goals: ${row.total_numeric_goals})`;
-
-                return (
-                  <TableRow key={row.patient_id} className="border-border/50">
-                    <TableCell className="py-2 font-medium text-foreground">
-                      <span className="truncate">{row.patient_name}</span>
-                    </TableCell>
-                    <TableCell className="py-2 text-center">
-                      <TriangleMetric color={attentionColor} title={attentionTitle} />
-                    </TableCell>
-                    <TableCell className="py-2 text-center">
-                      <TriangleMetric color={interactionColor} title={interactionTitle} />
-                    </TableCell>
-                    <TableCell className="py-2 text-center">
-                      <TriangleMetric color={upcomingColor} title={upcomingTitle} />
-                    </TableCell>
-                    <TableCell className="py-2 text-center">
-                      <TriangleMetric color={offTrackColor} title={offTrackTitle} />
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+          {memberProgressRows.length
+            ? memberProgressRows.map((row) => (
+                <TableRow key={row.patientId} className="border-border/50">
+                  <TableCell className="py-2 font-medium text-foreground">
+                    <span className="truncate">{row.patientName}</span>
+                  </TableCell>
+                  <TableCell className="py-2 text-center">
+                    <TriangleMetric color={row.attention.color} title={row.attention.title} />
+                  </TableCell>
+                  <TableCell className="py-2 text-center">
+                    <TriangleMetric color={row.interaction.color} title={row.interaction.title} />
+                  </TableCell>
+                  <TableCell className="py-2 text-center">
+                    <TriangleMetric color={row.upcoming.color} title={row.upcoming.title} />
+                  </TableCell>
+                  <TableCell className="py-2 text-center">
+                    <TriangleMetric color={row.offTrack.color} title={row.offTrack.title} />
+                  </TableCell>
+                </TableRow>
+              ))
             : null}
         </ReportTableSection>
 

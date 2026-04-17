@@ -539,7 +539,7 @@ function SelfMonitorSheet({
           <span className="sr-only">{triggerLabel}</span>
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+      <SheetContent className="h-full w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-y-auto p-4 sm:w-[540px] sm:max-w-xl sm:p-6">
         <SheetHeader className="mb-4">
           <SheetTitle>{intent === 'edit' ? 'Edit latest check-in' : 'Add check-in'}</SheetTitle>
             <p className="text-sm text-muted-foreground">
@@ -547,7 +547,7 @@ function SelfMonitorSheet({
             </p>
         </SheetHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-4 pb-24">
             <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Date</Label>
                 <Input type="date" className="h-10" value={date} onChange={(e) => setDate(e.target.value)} />

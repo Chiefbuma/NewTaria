@@ -26,6 +26,8 @@ export default function ClassificationSection({
   total: number;
   className?: string;
 }) {
+  const mobileRows = rows.length ? rows : [];
+
   return (
     <section
       className={cn(
@@ -53,7 +55,49 @@ export default function ClassificationSection({
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="grid gap-3 sm:hidden">
+            {mobileRows.length ? (
+              mobileRows.map((row) => {
+                const pct = total > 0 ? Math.round((row.total / total) * 100) : 0;
+                return (
+                  <div key={row.label} className="rounded-2xl border border-border/60 bg-background p-3 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-foreground">{row.label}</div>
+                        {row.meta ? (
+                          <div className="mt-1 truncate text-[11px] text-muted-foreground">{row.meta}</div>
+                        ) : null}
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className="text-sm font-semibold text-foreground">{row.total}</div>
+                        <div className="text-[11px] text-muted-foreground">{pct}%</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-muted-foreground">
+                      <div className="rounded-xl border border-border/60 bg-muted/20 px-2 py-1 text-center">
+                        <div className="font-semibold text-foreground">{row.male}</div>
+                        M
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-muted/20 px-2 py-1 text-center">
+                        <div className="font-semibold text-foreground">{row.female}</div>
+                        F
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-muted/20 px-2 py-1 text-center">
+                        <div className="font-semibold text-foreground">{pct}%</div>
+                        Share
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="rounded-2xl border border-border/60 bg-background p-4 text-center text-[12px] italic text-muted-foreground">
+                No records found.
+              </div>
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto sm:block">
             <Table className="min-w-full table-fixed">
               <TableHeader className="bg-transparent">
                 <TableRow className="border-border/60">
@@ -100,4 +144,3 @@ export default function ClassificationSection({
     </section>
   );
 }
-

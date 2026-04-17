@@ -443,9 +443,12 @@ export function DataTable<TData, TValue>({
       .getVisibleCells()
       .filter((cell: any) => cell.column.id !== "select" && cell.column.id !== "actions")
       .slice(0, 4)
+    const actionCells = row
+      .getVisibleCells()
+      .filter((cell: any) => cell.column.id === "actions")
 
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         {visibleCells.map((cell: any, idx: number) => {
           const header = cell.column.columnDef.header
           const label = typeof header === "string" ? header : cell.column.id
@@ -465,6 +468,15 @@ export function DataTable<TData, TValue>({
             </div>
           )
         })}
+        {actionCells.length ? (
+          <div className="flex items-center justify-end gap-2 border-t border-border/60 pt-2">
+            {actionCells.map((cell: any) => (
+              <div key={cell.id} className="flex items-center gap-2">
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
     )
   }

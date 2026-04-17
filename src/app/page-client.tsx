@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Poppins } from 'next/font/google';
@@ -27,6 +27,24 @@ export default function LoginPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const wasDark = root.classList.contains('dark');
+    const wasLight = root.classList.contains('light');
+
+    root.classList.remove('dark');
+    root.classList.add('light');
+
+    return () => {
+      root.classList.remove('light');
+      if (wasDark) {
+        root.classList.add('dark');
+      } else if (wasLight) {
+        root.classList.add('light');
+      }
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,71 +77,68 @@ export default function LoginPageClient() {
   };
 
   return (
-    <>
-      <header className="absolute left-0 right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-border/60 bg-background/95 px-6 backdrop-blur-sm">
-        <Logo className="h-12 w-auto" />
-      </header>
-      <AuthShell
-        title="Login to Your Account"
-        description="Enter your phone number and password to sign in."
-        headerTone="primary"
-        cardClassName={cn(authFont.className)}
+    <AuthShell
+      title=""
+      description=""
+      headerTone="neutral"
+      cardClassName={cn(authFont.className)}
+      headerBadge={<Logo className="h-11 w-auto" />}
+      headerClassName="bg-white text-foreground border-b border-border/70"
+    >
+      <motion.form
+        onSubmit={handleSubmit}
+        className="space-y-5"
+        variants={{
+          hidden: { opacity: 0, y: 10 },
+          show: {
+            opacity: 1,
+            y: 0,
+            transition: { staggerChildren: 0.08, delayChildren: 0.05 },
+          },
+        }}
+        initial="hidden"
+        animate="show"
       >
-        <motion.form
-          onSubmit={handleSubmit}
-          className="space-y-5"
-          variants={{
-            hidden: { opacity: 0, y: 10 },
-            show: {
-              opacity: 1,
-              y: 0,
-              transition: { staggerChildren: 0.08, delayChildren: 0.05 },
-            },
-          }}
-          initial="hidden"
-          animate="show"
-        >
-          <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
-            <Label htmlFor="phone" className="mb-1.5 block text-sm font-semibold text-muted-foreground">
-              Phone Number
+        <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
+          <Label htmlFor="phone" className="mb-1.5 block text-sm font-semibold text-muted-foreground">
+            Phone Number
+          </Label>
+          <Input
+            id="phone"
+            type="tel"
+            required
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            disabled={loading}
+            className="w-full"
+          />
+        </motion.div>
+
+        <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-sm font-semibold text-muted-foreground">
+              Password
             </Label>
-            <Input
-              id="phone"
-              type="tel"
-              required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              disabled={loading}
-              className="w-full"
-            />
-          </motion.div>
+            <Link href="/forgot-password" className="text-xs font-semibold text-primary hover:underline">
+              Forgot password?
+            </Link>
+          </div>
+          <PasswordInput
+            id="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
+            className="mt-1 w-full"
+          />
+        </motion.div>
 
-          <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="text-sm font-semibold text-muted-foreground">
-                Password
-              </Label>
-              <Link href="/forgot-password" className="text-xs font-semibold text-primary hover:underline">
-                Forgot password?
-              </Link>
-            </div>
-            <PasswordInput
-              id="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-              className="mt-1 w-full"
-            />
-          </motion.div>
-
-          <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sign In'}
-            </Button>
-          </motion.div>
-        </motion.form>
-      </AuthShell>
-    </>
+        <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sign In'}
+          </Button>
+        </motion.div>
+      </motion.form>
+    </AuthShell>
   );
 }

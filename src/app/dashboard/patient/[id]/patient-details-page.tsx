@@ -272,7 +272,7 @@ function GoalCheckInSheet({
           <span className="sr-only">Add check-in</span>
         </Button>
       </SlideOverTrigger>
-      <SlideOverContent className="w-[440px] max-w-[calc(100vw-2rem)] p-0">
+      <SlideOverContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] p-0 sm:w-[440px] sm:max-w-md">
         <SheetHeader className="px-4 py-3 border-b">
             <SheetTitle>Add Check-in</SheetTitle>
             <p className="text-sm text-muted-foreground">Target: {goal.target_operator} {goal.target_value}</p>
@@ -862,7 +862,7 @@ export default function PatientDetailsPage({
 	                              </Button>
                               </SlideOverTrigger>
                               <SlideOverContent
-                                className="h-full w-[520px] max-w-[calc(100vw-2rem)] flex flex-col p-0"
+                                className="h-full w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] flex flex-col p-0 sm:w-[520px] sm:max-w-xl"
                               >
                                 <SheetHeader className="px-4 py-3">
                                   <SheetTitle>Add Clinical Review</SheetTitle>

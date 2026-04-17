@@ -125,7 +125,7 @@ export default function AddPrescriptionSheet({
       <SlideOverTrigger asChild disabled={disabled}>
         {trigger}
       </SlideOverTrigger>
-      <SlideOverContent className="w-[520px] max-w-[calc(100vw-2rem)] p-0" open={open}>
+      <SlideOverContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] p-0 sm:w-[520px] sm:max-w-xl" open={open}>
         <SlideOverHeader className="form-header-bar flex items-center justify-between px-4 py-3">
             <SlideOverTitle>{existingPrescription ? 'Edit Prescription' : 'Add Prescription'}</SlideOverTitle>
             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">

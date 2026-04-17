@@ -34,6 +34,9 @@ export default function Header({ user }: { user: User }) {
 
   return (
     <div className="flex items-center gap-4">
+      <Button asChild variant="outline" size="sm" className="h-8 bg-background/60 px-3 backdrop-blur-sm">
+        <Link href="/dashboard">Home</Link>
+      </Button>
       <ThemeToggle />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

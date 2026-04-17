@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import AuthShell from '@/components/auth/auth-shell';
+import Logo from '@/components/logo';
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -65,11 +66,7 @@ export default function ChangePasswordPage() {
     <AuthShell
       title="Change Password"
       description="Update your temporary password before continuing into the app."
-      headerBadge={
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white">
-          <ShieldCheck className="h-6 w-6" />
-        </div>
-      }
+      headerBadge={<Logo className="h-11 w-auto" />}
     >
       <form onSubmit={handleSubmit} className="space-y-3">
         <InlineField label="Current" htmlFor="currentPassword">

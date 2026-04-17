@@ -101,7 +101,7 @@ export default function AddAppointmentSheet({
 
   return (
     <SlideOver open={open} onOpenChange={onOpenChange}>
-      <SlideOverContent className="w-[520px] max-w-[calc(100vw-2rem)] p-0 flex flex-col">
+      <SlideOverContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] p-0 flex flex-col sm:w-[520px] sm:max-w-xl">
         <SlideOverHeader className="form-header-bar flex items-center justify-between px-4 py-3">
           <SlideOverTitle>
             {existingAppointment ? 'Edit Appointment' : 'Schedule Appointment'}
