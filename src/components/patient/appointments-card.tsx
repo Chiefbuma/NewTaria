@@ -3,11 +3,12 @@ import { useState } from 'react';
 import type { Patient, Appointment, User } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarCheck, Clock, CalendarPlus, Edit, XCircle, Check } from 'lucide-react';
+import { CalendarCheck, Clock, CalendarPlus, Edit, Trash2, XCircle, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatAppointmentDateTime } from '@/lib/date-format';
-import { updateAppointmentStatus, upsertAppointment } from '@/lib/api-service';
+import { deleteAppointment, updateAppointmentStatus, upsertAppointment } from '@/lib/api-service';
 import AddAppointmentSheet from '@/components/patient/add-appointment-sheet';
+import { isClinicianRole } from '@/lib/role-utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,12 +20,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip"
 
 export default function AppointmentsCard({
   patient,
@@ -39,10 +34,11 @@ export default function AppointmentsCard({
 }) {
     const { toast } = useToast();
     const [pendingStatusId, setPendingStatusId] = useState<number | null>(null);
+    const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
     const [sheetOpen, setSheetOpen] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
 
-    const clinicianUsers = clinicians.filter(user => user.role === 'clinician');
+    const clinicianUsers = clinicians.filter((user) => isClinicianRole(user.role));
 
     const upcomingAppointments = patient.appointments
         .filter(a => new Date(a.appointment_date) > new Date() && a.status !== 'cancelled')
@@ -65,6 +61,20 @@ export default function AppointmentsCard({
 
       onUpdate(updatedAppointments);
       toast({ title: 'Success', description: 'Appointment saved.' });
+    };
+
+    const handleDelete = async (appointmentId: number) => {
+      try {
+        setPendingDeleteId(appointmentId);
+        await deleteAppointment(appointmentId);
+        const updatedAppointments = patient.appointments.filter((a) => a.id !== appointmentId);
+        onUpdate(updatedAppointments);
+        toast({ title: 'Success', description: 'Appointment deleted.' });
+      } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e?.message || 'Failed to delete appointment.' });
+      } finally {
+        setPendingDeleteId(null);
+      }
     };
 
     const handleCancel = async (appointmentId: number) => {
@@ -123,19 +133,10 @@ export default function AppointmentsCard({
                         </CardTitle>
                         <CardDescription>Manage upcoming appointments.</CardDescription>
                     </div>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button size="icon" variant="ghost" className="h-8 w-8" disabled={readOnly} onClick={openSheetForNew}>
-                            <CalendarPlus className="h-4 w-4" />
-                            <span className="sr-only">Schedule Appointment</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Schedule Appointment</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Button size="icon" variant="ghost" className="h-8 w-8" disabled={readOnly} onClick={openSheetForNew} title="Schedule Appointment">
+                      <CalendarPlus className="h-4 w-4" />
+                      <span className="sr-only">Schedule Appointment</span>
+                    </Button>
                 </div>
             </CardHeader>
             <CardContent className="pt-4">
@@ -151,50 +152,30 @@ export default function AppointmentsCard({
                         </div>
                         <div className="flex flex-wrap justify-end gap-2">
                             {nextAppointment.status === 'scheduled' && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      size="icon"
-                                      variant="secondary"
-                                      className="h-8 w-8"
-                                      onClick={() => handleConfirm(nextAppointment.id)}
-                                      disabled={pendingStatusId === nextAppointment.id}
-                                    >
-                                      <Check className="h-4 w-4" />
-                                      <span className="sr-only">Confirm</span>
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent><p>Confirm</p></TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                              <Button
+                                size="icon"
+                                variant="secondary"
+                                className="h-8 w-8"
+                                onClick={() => handleConfirm(nextAppointment.id)}
+                                disabled={pendingStatusId === nextAppointment.id}
+                                title="Confirm"
+                              >
+                                <Check className="h-4 w-4" />
+                                <span className="sr-only">Confirm</span>
+                              </Button>
                             )}
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button size="icon" variant="outline" className="h-8 w-8" disabled={readOnly} onClick={() => openSheetForEdit(nextAppointment)}>
-                                    <Edit className="h-4 w-4" />
-                                    <span className="sr-only">Reschedule</span>
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Reschedule</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
                              <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button size="icon" variant="destructive" className="h-8 w-8" disabled={pendingStatusId === nextAppointment.id}>
-                                          <XCircle className="h-4 w-4" />
-                                          <span className="sr-only">Cancel</span>
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent><p>Cancel</p></TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
+                                  <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-8 w-8"
+                                    disabled={pendingStatusId === nextAppointment.id}
+                                    title="Cancel"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                    <span className="sr-only">Cancel</span>
+                                  </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
@@ -210,6 +191,38 @@ export default function AppointmentsCard({
                                     </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
+                            </AlertDialog>
+                            <Button size="icon" variant="outline" className="h-8 w-8" disabled={readOnly} onClick={() => openSheetForEdit(nextAppointment)} title="Reschedule">
+                              <Edit className="h-4 w-4" />
+                              <span className="sr-only">Reschedule</span>
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-8 w-8"
+                                  disabled={readOnly || pendingDeleteId === nextAppointment.id}
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">Delete</span>
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Appointment?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently remove the appointment record from the patient timeline.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Back</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(nextAppointment.id)} className="bg-destructive hover:bg-destructive/90">
+                                    Confirm Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
                             </AlertDialog>
                         </div>
                     </div>

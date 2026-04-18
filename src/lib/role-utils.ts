@@ -13,7 +13,7 @@ export function isPartnerRole(role: UserRole | undefined | null) {
 }
 
 export function isClinicianRole(role: UserRole | undefined | null) {
-  return role === 'physician' || role === 'clinician';
+  return role === 'physician' || role === 'clinician' || role === 'specialist' || role === 'nutritionist';
 }
 
 export function isInternalUserRole(role: UserRole | undefined | null) {
@@ -59,6 +59,10 @@ export function getRoleLabel(role: UserRole | undefined | null) {
     case 'physician':
     case 'clinician':
       return 'Clinician';
+    case 'specialist':
+      return 'Specialist';
+    case 'nutritionist':
+      return 'Nutritionist';
     case 'partner':
     case 'payer':
       return 'Partner';

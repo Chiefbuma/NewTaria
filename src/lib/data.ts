@@ -1690,11 +1690,13 @@ export async function updateGoal(id: number, data: any): Promise<void> {
 export async function upsertAppointment(data: any): Promise<number> {
     const apptDate = toSqlDateTime(data.appointment_date);
     const endDate = toSqlDateTime(data.end_date);
+    const description = data.description ?? data.notes ?? null;
+    const status = data.status ?? 'scheduled';
     if (data.id) {
-        await db.query('UPDATE appointments SET clinician_id = ?, title = ?, appointment_date = ?, end_date = ?, description = ?, status = ? WHERE id = ?', [data.clinician_id, data.title, apptDate, endDate, data.description, data.status, data.id]);
+        await db.query('UPDATE appointments SET clinician_id = ?, title = ?, appointment_date = ?, end_date = ?, description = ?, status = ? WHERE id = ?', [data.clinician_id, data.title, apptDate, endDate, description, status, data.id]);
         return Number(data.id);
     }
-    const [result] = await db.query('INSERT INTO appointments (patient_id, clinician_id, title, appointment_date, end_date, description, status) VALUES (?, ?, ?, ?, ?, ?, ?)', [data.patient_id, data.clinician_id, data.title, apptDate, endDate, data.description, data.status]);
+    const [result] = await db.query('INSERT INTO appointments (patient_id, clinician_id, title, appointment_date, end_date, description, status) VALUES (?, ?, ?, ?, ?, ?, ?)', [data.patient_id, data.clinician_id, data.title, apptDate, endDate, description, status]);
     return Number((result as any).insertId);
 }
 
@@ -1724,6 +1726,7 @@ export async function bulkDeleteClinics(ids: number[]): Promise<void> {
 export async function bulkDeleteDiagnoses(ids: number[]): Promise<void> { if (ids.length) await db.query('UPDATE diagnoses SET deleted_at = NOW() WHERE id IN (?)', [ids]); }
 export async function bulkDeleteParameters(ids: number[]): Promise<void> { if (ids.length) await db.query('UPDATE clinical_parameters SET deleted_at = NOW() WHERE id IN (?)', [ids]); }
 export async function updateAppointmentStatus(id: number, status: string): Promise<void> { await db.query('UPDATE appointments SET status = ? WHERE id = ?', [status, id]); }
+export async function deleteAppointment(id: number): Promise<void> { await db.query('UPDATE appointments SET deleted_at = NOW() WHERE id = ?', [id]); }
 export async function deletePartner(id: number): Promise<void> { await db.query('UPDATE partners SET deleted_at = NOW() WHERE id = ?', [id]); }
 export async function deleteUser(id: number): Promise<void> { await db.query('UPDATE users SET deleted_at = NOW() WHERE id = ?', [id]); }
 export async function deleteClinic(id: number): Promise<void> {

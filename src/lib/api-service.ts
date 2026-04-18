@@ -122,6 +122,15 @@ export async function updateAppointmentStatus(id: number, status: Appointment['s
     if (!res.ok) throw await getErrorFromResponse(res);
 }
 
+export async function deleteAppointment(id: number): Promise<void> {
+    const res = await fetch('/api/appointments', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+    });
+    if (!res.ok) throw await getErrorFromResponse(res);
+}
+
 // --- Prescription APIs ---
 export async function upsertPrescription(data: Partial<Prescription>): Promise<Prescription> {
     const method = data.id ? 'PUT' : 'POST';

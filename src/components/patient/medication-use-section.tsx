@@ -35,7 +35,7 @@ export default function MedicationUseSection({ patient, onUpdate }: { patient: P
                                                     {p.medication?.name || 'Unknown'}
                                                 </div>
                                                 <div className="mt-1 text-[11px] text-muted-foreground">
-                                                    {p.dosage} • Exp: {p.end_date ? new Date(p.end_date).toLocaleDateString() : 'N/A'}
+                                                    {p.dosage} • Exp: {p.expiry_date ? new Date(p.expiry_date).toLocaleDateString() : 'N/A'}
                                                 </div>
                                             </div>
                                             <Badge variant={p.status === 'active' ? 'default' : 'secondary'} className="capitalize">

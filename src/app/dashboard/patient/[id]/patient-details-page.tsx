@@ -75,6 +75,7 @@ import AddGoalSheet from '@/components/patient/add-goal-sheet';
 import { ConfirmActionDialog } from '@/components/ui/confirm-action-dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SlideOver, SlideOverContent, SlideOverTrigger } from '@/components/ui/slide-over';
+import { getGoalProgressState } from '@/lib/goal-status';
 import {
     createAssessment, 
     deleteAssessment, 
@@ -572,12 +573,15 @@ export default function PatientDetailsPage({
 	  };
   
   const getStatusBadge = (goal: Goal) => {
-    const isOverdue = new Date(goal.deadline) < new Date() && goal.status !== 'completed';
-    if (goal.status === 'completed') {
+    const state = getGoalProgressState(goal);
+    if (state.label === 'Goal Achieved') {
       return <Badge variant="default" className='bg-green-500/20 text-green-700 dark:bg-green-500/10 dark:text-green-400 border-green-500/30'><CheckCircle className="mr-1 h-3 w-3"/>Goal Achieved</Badge>;
     }
-    if (isOverdue) {
+    if (state.label === 'Overdue') {
       return <Badge variant="destructive"><Clock className="mr-1 h-3 w-3"/>Overdue</Badge>;
+    }
+    if (state.label === 'Cancelled') {
+      return <Badge variant="secondary"><ShieldAlert className="mr-1 h-3 w-3"/>Cancelled</Badge>;
     }
     return <Badge variant="secondary"><Activity className="mr-1 h-3 w-3"/>In Progress</Badge>;
   };

@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { getRoleLabel, isClinicianRole } from '@/lib/role-utils';
 
 export default function AddAppointmentSheet({
   open,
@@ -38,6 +39,7 @@ export default function AddAppointmentSheet({
   existingAppointment: Appointment | null;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const clinicianChoices = clinicians.filter((c) => isClinicianRole(c.role));
 
   const [title, setTitle] = useState('');
   const [clinicianId, setClinicianId] = useState('');
@@ -59,10 +61,10 @@ export default function AddAppointmentSheet({
         setClinicianId(String(existingAppointment.clinician_id));
         setAppointmentDate(`${yyyy}-${mm}-${dd}`);
         setAppointmentTime(`${hh}:${mins}`);
-        setNotes(existingAppointment.notes || '');
+        setNotes(existingAppointment.description || '');
       } else {
         setTitle('Follow-up Consultation');
-        setClinicianId(String(patient.primary_clinician_id || ''));
+        setClinicianId('');
         setAppointmentDate('');
         setAppointmentTime('');
         setNotes('');
@@ -89,7 +91,7 @@ export default function AddAppointmentSheet({
         title,
         clinician_id: Number(clinicianId),
         appointment_date: combinedDateTime.toISOString(),
-        notes,
+        description: notes,
       });
       onOpenChange(false);
     } catch (error) {
@@ -132,13 +134,16 @@ export default function AddAppointmentSheet({
                   <SelectValue placeholder="Select a clinician" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clinicians.map((c) => (
+                  {clinicianChoices.map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name}
+                      {c.name} - {getRoleLabel(c.role)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-muted-foreground">
+                The dropdown shows the selected clinician title for clarity.
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">

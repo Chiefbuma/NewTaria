@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { authorizeApiRequest } from '@/lib/auth';
 import crypto from 'crypto';
-import path from 'path';
 import fs from 'fs/promises';
 import { canManageAssessments, isPatientRole } from '@/lib/role-utils';
+import { resolveUploadDayDir, resolveUploadFilePath, resolveUploadUrl, mimeTypeFromFilename } from '@/lib/upload-storage';
 
 export const runtime = 'nodejs';
 
 function safeExtFromFilename(filename: string) {
-  const ext = path.extname(filename || '').toLowerCase();
+  const ext = filename.includes('.') ? `.${filename.split('.').pop()?.toLowerCase() || ''}` : '';
   if (!ext) return '';
   // Avoid weird / long extensions.
   if (!/^\.[a-z0-9]{1,6}$/.test(ext)) return '';
@@ -54,22 +54,23 @@ export async function POST(req: Request) {
     }
 
     const day = new Date().toISOString().slice(0, 10);
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', day);
+    const uploadsDir = resolveUploadDayDir(day);
     await fs.mkdir(uploadsDir, { recursive: true });
 
     const id = crypto.randomUUID();
     const ext = safeExtFromFilename(fileName) || (isImage ? '.jpg' : isVoice ? '.webm' : '');
     const filename = `${id}${ext}`;
-    const fullPath = path.join(uploadsDir, filename);
+    const fullPath = resolveUploadFilePath(day, filename);
 
     const buf = Buffer.from(await file.arrayBuffer());
     await fs.writeFile(fullPath, buf);
 
     return NextResponse.json({
-      url: `/uploads/${day}/${filename}`,
+      url: resolveUploadUrl(day, filename),
       name: fileName,
       type: fileType,
       size: fileSize,
+      mimeType: mimeTypeFromFilename(filename),
     });
   } catch (error: any) {
     // Ensure we can see the real root cause in container logs during dev.

@@ -14,6 +14,7 @@ import { placeholderImages } from '@/lib/placeholder-images';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ClipboardCheck } from 'lucide-react';
+import { calculateAgeFromDob } from '@/lib/age';
 
 const StatusBadge = ({ status }: { status: Patient['status'] }) => {
   const statusConfig = {
@@ -68,6 +69,7 @@ export default function PatientCard({ patient, index }: { patient: Patient, inde
     if (!stats) return null;
 
     const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
+    const calculatedAge = calculateAgeFromDob(patient.dob);
     
     const completionRate = stats.totalGoals > 0 ? Math.round((stats.activeGoals / stats.totalGoals) * 100) : 0;
     const name = `${patient.first_name} ${patient.surname || ''}`
@@ -116,7 +118,7 @@ export default function PatientCard({ patient, index }: { patient: Patient, inde
                         )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            {patient.age} years old &middot; {patient.gender}
+                            {calculatedAge ?? patient.age ?? 'N/A'} years old &middot; {patient.gender || 'N/A'}
                         </p>
                     </div>
                     <Badge variant="outline">{patient.status}</Badge>

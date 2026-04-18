@@ -51,6 +51,8 @@ services:
       - "8084:80"
     environment:
       PMA_HOST: mysql
+      PMA_USER: pma_admin
+      PMA_PASSWORD: secret
       MYSQL_ROOT_PASSWORD: secret
     depends_on:
       - mysql

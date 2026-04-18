@@ -5,6 +5,8 @@ export type UserRole =
   | 'staff'
   | 'physician'
   | 'clinician'
+  | 'specialist'
+  | 'nutritionist'
   | 'navigator'
   | 'payer'
   | 'partner'

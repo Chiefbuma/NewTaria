@@ -27,11 +27,13 @@ import {
   Pie,
   Cell,
   ReferenceLine,
+  ReferenceArea,
 } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Target, FileText, Plus, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { getGoalAssessmentFill, getGoalAssessmentLevel } from '@/lib/goal-status';
 import { createAssessment, createPatientAssessment, deletePatientAssessment, updatePatientAssessment } from '@/lib/api-service';
 import {
   AlertDialog,
@@ -46,17 +48,15 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: Assessment[], parameter: ClinicalParameter, goal?: Goal | null }) => {
-    
     const data = useMemo(() => {
         if (parameter.type === 'choice') {
-            // Calculate distribution of choices
             const distribution: Record<string, number> = {};
             assessments.forEach(a => {
                 distribution[a.value] = (distribution[a.value] || 0) + 1;
             });
-            
-            const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
-            
+
+            const COLORS = ['#067f46', '#8c0505'];
+
             return Object.entries(distribution).map(([name, value], idx) => ({
                 name,
                 value,
@@ -67,10 +67,10 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
         if (!goal) {
             const normal = assessments.filter(a => a.is_normal === true).length;
             const abnormal = assessments.filter(a => a.is_normal === false).length;
-            
+
             const result = [];
-            if (normal > 0) result.push({ name: 'Normal', value: normal, fill: 'hsl(var(--chart-2))' });
-            if (abnormal > 0) result.push({ name: 'Abnormal', value: abnormal, fill: 'hsl(var(--chart-5))' });
+            if (normal > 0) result.push({ name: 'Normal', value: normal, fill: '#067f46' });
+            if (abnormal > 0) result.push({ name: 'Abnormal', value: abnormal, fill: '#8c0505' });
             return result;
         }
 
@@ -91,29 +91,59 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
 
         const onTrackCount = assessments.filter(a => checkTargetMet(a.value, goal)).length;
         const needsImprovementCount = assessments.length - onTrackCount;
-        
+
         const result = [];
-        if (onTrackCount > 0) result.push({ name: 'Achieved/On Track', value: onTrackCount, fill: 'hsl(var(--chart-2))' });
-        if (needsImprovementCount > 0) result.push({ name: 'Off Track', value: needsImprovementCount, fill: 'hsl(var(--chart-5))' });
-        
+        if (onTrackCount > 0) result.push({ name: 'Achieved/On Track', value: onTrackCount, fill: '#067f46' });
+        if (needsImprovementCount > 0) result.push({ name: 'Off Track', value: needsImprovementCount, fill: '#8c0505' });
+
         return result;
 
     }, [assessments, goal, parameter]);
 
     const title = parameter.type === 'choice' ? 'Distribution' : (goal ? 'Goal Achievement' : 'Status Overview');
+    const latestSeverity = useMemo(() => {
+        if (!goal || assessments.length === 0) return null;
+        const latest = [...assessments].sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())[0];
+        if (!latest) return null;
+        return getGoalAssessmentLevel(goal, latest.value);
+    }, [assessments, goal]);
+
+    const isTrendingGreen = latestSeverity === 'achieved' || latestSeverity === 'on_track';
+    const statusLabel = goal ? (isTrendingGreen ? 'On Track' : 'Off Track') : null;
     const chartConfig = {
         value: { label: 'Assessments', color: 'hsl(var(--primary))' }
     };
 
     if (data.length === 0) return null;
-    
+
     return (
         <Card className="h-full flex flex-col border-primary/20">
             <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground"><Target className="h-4 w-4 text-primary"/>{title}</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground">
+                  <Target className="h-4 w-4 text-primary" />
+                  <span>{title}</span>
+                  {statusLabel ? (
+                    <span
+                      className={`relative inline-flex h-4 w-4 shrink-0 items-center justify-center`}
+                      title={statusLabel}
+                      aria-label={statusLabel}
+                    >
+                      <span
+                        className={`absolute inline-flex h-full w-full rounded-full ${
+                          isTrendingGreen ? 'bg-[#067f46]' : 'bg-[#8c0505]'
+                        } opacity-70 animate-ping`}
+                      />
+                      <span
+                        className={`relative inline-flex h-3 w-3 rounded-full ${
+                          isTrendingGreen ? 'bg-[#067f46]' : 'bg-[#8c0505]'
+                        }`}
+                      />
+                    </span>
+                  ) : null}
+                </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col items-center justify-center pt-0">
-                <div className="w-full aspect-square max-h-[180px]">
+                <div className="relative w-full aspect-square max-h-[180px]">
                     <ChartContainer config={chartConfig} className="h-full w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -138,19 +168,19 @@ const ParameterDonutChart = ({ assessments, parameter, goal }: { assessments: As
                             </PieChart>
                         </ResponsiveContainer>
                     </ChartContainer>
-                </div>
-                <div className="mt-4 space-y-1 w-full">
-                    {data.map((entry, index) => (
-                        <div key={index} className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }} />
-                                <span className="text-muted-foreground font-medium">{entry.name}</span>
-                            </div>
-                            <span className="font-bold text-foreground">
-                                {((entry.value / data.reduce((acc, curr) => acc + curr.value, 0)) * 100).toFixed(0)}%
-                            </span>
+                    {statusLabel ? (
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                        <div className="rounded-full bg-background/85 px-3 py-1.5 text-center shadow-sm ring-1 ring-border/60 backdrop-blur-sm">
+                          <p
+                            className={`text-xs font-semibold uppercase tracking-[0.2em] ${
+                              isTrendingGreen ? 'text-[#067f46]' : 'text-[#8c0505]'
+                            }`}
+                          >
+                            {statusLabel}
+                          </p>
                         </div>
-                    ))}
+                      </div>
+                    ) : null}
                 </div>
             </CardContent>
         </Card>
@@ -234,6 +264,13 @@ const ParameterLineChart = ({ assessments, parameter, goal }: { assessments: Ass
         return Number.isFinite(t) ? t : null;
     }, [goal]);
 
+    const latestSeverity = useMemo(() => {
+        if (!goal || assessments.length === 0) return null;
+        const latest = [...assessments].sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())[0];
+        if (!latest) return null;
+        return getGoalAssessmentLevel(goal, latest.value);
+    }, [assessments, goal]);
+
     const yDomain = useMemo((): [number, number] | undefined => {
         if (chartData.length === 0) return undefined;
         const values = chartData.map((d) => d.value);
@@ -245,6 +282,48 @@ const ParameterLineChart = ({ assessments, parameter, goal }: { assessments: Ass
         const pad = span > 0 ? span * 0.12 : 1;
         return [minValue - pad, maxValue + pad];
     }, [chartData, targetValue]);
+
+    const targetZones = useMemo(() => {
+        if (!goal || targetValue === null || !yDomain || chartData.length === 0) return null;
+        const [minY, maxY] = yDomain;
+        const isHigherBetter = goal.target_operator === '>' || goal.target_operator === '>=';
+        const greenBand = goal.target_operator === '='
+          ? {
+              y1: targetValue - Math.max(Math.abs(targetValue) * 0.05, 1),
+              y2: targetValue + Math.max(Math.abs(targetValue) * 0.05, 1),
+            }
+          : isHigherBetter
+            ? { y1: targetValue, y2: maxY }
+            : { y1: minY, y2: targetValue };
+        const redBands =
+          goal.target_operator === '='
+            ? [
+                {
+                  y1: minY,
+                  y2: targetValue - Math.max(Math.abs(targetValue) * 0.05, 1),
+                },
+                {
+                  y1: targetValue + Math.max(Math.abs(targetValue) * 0.05, 1),
+                  y2: maxY,
+                },
+              ]
+            : [
+                isHigherBetter
+                  ? { y1: minY, y2: targetValue }
+                  : { y1: targetValue, y2: maxY },
+              ];
+
+        return { greenBand, redBands };
+    }, [chartData.length, goal, targetValue, yDomain]);
+
+    const lineColor =
+      latestSeverity === 'critical'
+        ? getGoalAssessmentFill('critical')
+        : latestSeverity === 'off_track'
+          ? getGoalAssessmentFill('off_track')
+          : latestSeverity === 'on_track'
+            ? getGoalAssessmentFill('on_track')
+            : getGoalAssessmentFill('achieved');
 
     const chartConfig = {
         value: { label: parameter.name, color: 'hsl(var(--primary))' }
@@ -274,6 +353,31 @@ const ParameterLineChart = ({ assessments, parameter, goal }: { assessments: Ass
                                         tickLine={false} 
                                         tick={{ fill: 'hsl(var(--foreground))', fontSize: 10 }}
                                     />
+                                    {targetZones && (
+                                      <>
+                                        <ReferenceArea
+                                          x1={chartData[0].date}
+                                          x2={chartData[chartData.length - 1].date}
+                                          y1={targetZones.greenBand.y1}
+                                          y2={targetZones.greenBand.y2}
+                                          fill={getGoalAssessmentFill('achieved')}
+                                          fillOpacity={0.08}
+                                          ifOverflow="extendDomain"
+                                        />
+                                        {targetZones.redBands.map((band, index) => (
+                                          <ReferenceArea
+                                            key={index}
+                                            x1={chartData[0].date}
+                                            x2={chartData[chartData.length - 1].date}
+                                            y1={band.y1}
+                                            y2={band.y2}
+                                            fill={getGoalAssessmentFill('critical')}
+                                            fillOpacity={0.06}
+                                            ifOverflow="extendDomain"
+                                          />
+                                        ))}
+                                      </>
+                                    )}
                                     <Tooltip content={<ChartTooltipContent labelKey="fullDate" />} />
                                     {targetValue !== null && (
                                         <ReferenceLine
@@ -293,9 +397,9 @@ const ParameterLineChart = ({ assessments, parameter, goal }: { assessments: Ass
                                         type="monotone" 
                                         dataKey="value" 
                                         name={parameter.name} 
-                                        stroke="hsl(var(--primary))" 
+                                        stroke={lineColor} 
                                         strokeWidth={3} 
-                                        dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                                        dot={{ fill: lineColor, strokeWidth: 2, r: 4 }}
                                         activeDot={{ r: 6 }}
                                     />
                                 </LineChart>
@@ -629,7 +733,7 @@ export default function ProgressDashboard({
     return (
         <div className={patientView ? "space-y-6" : "space-y-10"}>
             {trackedParameters.length > 0 ? (
-                trackedParameters.map(({ parameter, assessments, goal }) => {
+            trackedParameters.map(({ parameter, assessments, goal }) => {
                     const latestMine =
                       checkInMode === 'patient' && currentUserId
                         ? [...patient.assessments]
@@ -645,12 +749,31 @@ export default function ProgressDashboard({
                     const canShowCheckInControls =
                       checkInMode !== 'none' &&
                       (checkInMode !== 'patient' || Boolean(parameter.allow_self_monitoring));
+                    const latestGoalAssessment = goal
+                      ? [...assessments].sort((a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime())[0] ?? null
+                      : null;
+                    const latestGoalSeverity = latestGoalAssessment && goal
+                      ? getGoalAssessmentLevel(goal, latestGoalAssessment.value)
+                      : null;
+                    const isGoalTrendingGreen = latestGoalSeverity === 'achieved' || latestGoalSeverity === 'on_track';
                     return (
                         <Card key={parameter.id} className="overflow-hidden border-primary/10 shadow-[0_24px_50px_-34px_rgba(15,23,42,0.22)]">
                             <CardHeader className="bg-muted/30">
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="flex items-center gap-3">
-                                        <h2 className="text-xl font-bold tracking-tight text-foreground">{parameter.name}</h2>
+                                        <h2 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground">
+                                          <span>{parameter.name}</span>
+                                          {goal ? (
+                                            <span
+                                              className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center"
+                                              title={isGoalTrendingGreen ? 'Trending green' : 'Trending red'}
+                                              aria-label={isGoalTrendingGreen ? 'Trending green' : 'Trending red'}
+                                            >
+                                              <span className={`absolute inline-flex h-full w-full rounded-full ${isGoalTrendingGreen ? 'bg-[#067f46]' : 'bg-[#8c0505]'} opacity-70 animate-ping`} />
+                                              <span className={`relative inline-flex h-3 w-3 rounded-full ${isGoalTrendingGreen ? 'bg-[#067f46]' : 'bg-[#8c0505]'}`} />
+                                            </span>
+                                          ) : null}
+                                        </h2>
                                         {parameter.unit && (
                                             <span className="rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
                                                 {parameter.unit}

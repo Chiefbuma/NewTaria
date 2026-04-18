@@ -305,8 +305,230 @@ CREATE TABLE `appointments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- SEED DATA
+INSERT INTO `clinics` (`name`, `location`) VALUES
+('Nairobi Care Centre', 'Nairobi'),
+('Mombasa Wellness Hub', 'Mombasa'),
+('Kisumu Outreach Clinic', 'Kisumu'),
+('Radiant Hospital Group', 'Nairobi');
+
+INSERT INTO `partners` (`name`, `partner_type`, `clinic_id`) VALUES
+('Aetna Insurance', 'insurance', NULL),
+('Blue Cross', 'insurance', NULL),
+('Self-Pay', 'insurance', NULL),
+('Radiant', 'insurance', NULL),
+('Nairobi Care Centre', 'clinic', 1),
+('Mombasa Wellness Hub', 'clinic', 2),
+('Kisumu Outreach Clinic', 'clinic', 3),
+('Radiant Hospital Group', 'clinic', 4);
+
+INSERT INTO `diagnoses` (`code`, `name`, `description`) VALUES
+('E11.9', 'Type 2 diabetes mellitus without complications', 'General adult diabetes follow-up.'),
+('I10', 'Essential (primary) hypertension', 'Primary blood pressure management.'),
+('J45.909', 'Unspecified asthma, uncomplicated', 'Stable outpatient asthma monitoring.');
+
 INSERT INTO `users` (`name`, `phone`, `email`, `password`, `role`, `partner_id`, `must_change_password`, `password_changed_at`) VALUES
--- Default seed password for production bootstrap: TempPass123! (change on first login).
-('System Admin', '0700000001', 'admin@taria.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'admin', NULL, 1, NULL);
+-- Default seed password for local dev: TempPass123! (users will be forced to change on first login).
+('System Admin', '0700000001', 'admin@taria.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'admin', NULL, 1, NULL),
+('Navigator One', '0700000002', 'nav@taria.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'navigator', 4, 1, NULL),
+('Clinician One', '0700000003', 'clinician@taria.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'clinician', 4, 1, NULL),
+('Specialist One', '0700000005', 'specialist@taria.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'specialist', 4, 1, NULL),
+('Nutritionist One', '0700000010', 'nutritionist@taria.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'nutritionist', 4, 1, NULL),
+('Partner Admin', '0700000004', 'partner@taria.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'partner', 8, 1, NULL);
+
+CREATE USER IF NOT EXISTS 'pma_admin'@'%' IDENTIFIED WITH mysql_native_password BY 'secret';
+GRANT ALL PRIVILEGES ON `NewTariaDB`.* TO 'pma_admin'@'%';
+FLUSH PRIVILEGES;
+
+-- SEED MEMBER USERS (PORTAL LOGINS)
+INSERT INTO `users` (`name`, `phone`, `email`, `password`, `role`, `partner_id`, `must_change_password`, `password_changed_at`) VALUES
+('Maria Garcia', '0711000004', 'maria@example.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'user', NULL, 1, NULL),
+('Grace Njeri', '0711000006', 'grace.njeri@radiant.example.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'user', NULL, 1, NULL),
+('Peter Mwangi', '0711000007', 'peter.mwangi@radiant.example.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'user', NULL, 1, NULL),
+('Faith Achieng', '0711000008', 'faith.achieng@radiant.example.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'user', NULL, 1, NULL),
+('Daniel Kiptoo', '0711000009', 'daniel.kiptoo@radiant.example.com', '$2a$10$Djg0wLEIFzfkd1ndpIJqa.dJqkUbLdpy4ogUopXuEA03cOTPTesta', 'user', NULL, 1, NULL);
+
+INSERT INTO `clinical_parameters` (`name`, `type`, `unit`, `options`, `category`, `allow_self_monitoring`) VALUES 
+('Systolic BP', 'numeric', 'mmHg', NULL, 'vital_sign', 1),
+('Diastolic BP', 'numeric', 'mmHg', NULL, 'vital_sign', 1),
+('Weight', 'numeric', 'kg', NULL, 'clinical_measurement', 1),
+('KCB Status', 'choice', NULL, '["Good", "Average", "Bad"]', 'assessment', 1),
+('Mood', 'choice', NULL, '["Happy", "Anxious", "Sad", "Calm"]', 'assessment', 1),
+('Clinic Notes', 'text', NULL, NULL, 'assessment', 1);
+
+-- SEED PATIENTS
+INSERT INTO `patients` (
+  `user_id`,
+  `patient_identifier`,
+  `portal_username`,
+  `first_name`,
+  `surname`,
+  `dob`,
+  `gender`,
+  `email`,
+  `phone`,
+  `status`,
+  `primary_diagnosis`,
+  `date_of_onboarding`,
+  `navigator_id`,
+  `clinic_id`,
+  `partner_id`,
+  `primary_diagnosis_id`
+) VALUES 
+(
+  (SELECT `id` FROM `users` WHERE `phone` = '0711000004' LIMIT 1),
+  CONCAT('PT-', YEAR(CURDATE()), '-', LPAD(1, 5, '0')),
+  'maria.0004',
+  'Maria',
+  'Garcia',
+  '1990-08-22',
+  'Female',
+  'maria@example.com',
+  '0711000004',
+  'Active',
+  'Hypertension',
+  CURDATE(),
+  (SELECT `id` FROM `users` WHERE `phone` = '0700000002' LIMIT 1),
+  (SELECT `id` FROM `clinics` WHERE `name` = 'Nairobi Care Centre' LIMIT 1),
+  (SELECT `id` FROM `partners` WHERE `name` = 'Aetna Insurance' AND `partner_type` = 'insurance' LIMIT 1),
+  2
+),
+(
+  (SELECT `id` FROM `users` WHERE `phone` = '0711000006' LIMIT 1),
+  CONCAT('PT-', YEAR(CURDATE()), '-', LPAD(2, 5, '0')),
+  'grace.0006',
+  'Grace',
+  'Njeri',
+  '1991-04-12',
+  'Female',
+  'grace.njeri@radiant.example.com',
+  '0711000006',
+  'Active',
+  'Hypertension',
+  CURDATE(),
+  (SELECT `id` FROM `users` WHERE `phone` = '0700000002' LIMIT 1),
+  (SELECT `id` FROM `clinics` WHERE `name` = 'Radiant Hospital Group' LIMIT 1),
+  (SELECT `id` FROM `partners` WHERE `name` = 'Radiant' AND `partner_type` = 'insurance' LIMIT 1),
+  2
+),
+(
+  (SELECT `id` FROM `users` WHERE `phone` = '0711000007' LIMIT 1),
+  CONCAT('PT-', YEAR(CURDATE()), '-', LPAD(3, 5, '0')),
+  'peter.0007',
+  'Peter',
+  'Mwangi',
+  '1988-09-03',
+  'Male',
+  'peter.mwangi@radiant.example.com',
+  '0711000007',
+  'Active',
+  'Diabetes',
+  CURDATE(),
+  (SELECT `id` FROM `users` WHERE `phone` = '0700000002' LIMIT 1),
+  (SELECT `id` FROM `clinics` WHERE `name` = 'Radiant Hospital Group' LIMIT 1),
+  (SELECT `id` FROM `partners` WHERE `name` = 'Radiant' AND `partner_type` = 'insurance' LIMIT 1),
+  1
+),
+(
+  (SELECT `id` FROM `users` WHERE `phone` = '0711000008' LIMIT 1),
+  CONCAT('PT-', YEAR(CURDATE()), '-', LPAD(4, 5, '0')),
+  'faith.0008',
+  'Faith',
+  'Achieng',
+  '1979-01-27',
+  'Female',
+  'faith.achieng@radiant.example.com',
+  '0711000008',
+  'Active',
+  'Hypertension and Diabetes',
+  CURDATE(),
+  (SELECT `id` FROM `users` WHERE `phone` = '0700000002' LIMIT 1),
+  (SELECT `id` FROM `clinics` WHERE `name` = 'Radiant Hospital Group' LIMIT 1),
+  (SELECT `id` FROM `partners` WHERE `name` = 'Radiant' AND `partner_type` = 'insurance' LIMIT 1),
+  1
+),
+(
+  (SELECT `id` FROM `users` WHERE `phone` = '0711000009' LIMIT 1),
+  CONCAT('PT-', YEAR(CURDATE()), '-', LPAD(5, 5, '0')),
+  'daniel.0009',
+  'Daniel',
+  'Kiptoo',
+  '1994-06-18',
+  'Male',
+  'daniel.kiptoo@radiant.example.com',
+  '0711000009',
+  'Active',
+  'Hypertension',
+  CURDATE(),
+  (SELECT `id` FROM `users` WHERE `phone` = '0700000002' LIMIT 1),
+  (SELECT `id` FROM `clinics` WHERE `name` = 'Radiant Hospital Group' LIMIT 1),
+  (SELECT `id` FROM `partners` WHERE `name` = 'Radiant' AND `partner_type` = 'insurance' LIMIT 1),
+  2
+);
+
+INSERT INTO `medications` (`name`, `dosage`) VALUES
+('Metformin', '500mg'),
+('Lisinopril', '10mg'),
+('Amlodipine', '5mg'),
+('Atorvastatin', '20mg'),
+('Salbutamol Inhaler', '100mcg');
+
+-- SEED ASSESSMENTS FOR ALL 5 PATIENTS
+-- Patient 1
+INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `measured_at`) VALUES 
+(1, 1, '130', NOW()), (1, 2, '85', NOW()), (1, 3, '88', NOW()), -- Numeric
+(1, 4, 'Good', NOW()), (1, 5, 'Calm', NOW()), -- Choices
+(1, 6, 'Patient is adhering to low sodium diet.', NOW()); -- Text
+
+-- Patient 2
+INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `measured_at`) VALUES 
+(2, 1, '145', NOW()), (2, 2, '95', NOW()), (2, 3, '102', NOW()), 
+(2, 4, 'Bad', NOW()), (2, 5, 'Anxious', NOW()), 
+(2, 6, 'Experiencing headaches in the mornings.', NOW());
+
+-- Patient 3
+INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `measured_at`) VALUES 
+(3, 1, '120', NOW()), (3, 2, '80', NOW()), (3, 3, '75', NOW()), 
+(3, 4, 'Good', NOW()), (3, 5, 'Happy', NOW()), 
+(3, 6, 'Weight loss program yielding results.', NOW());
+
+-- Patient 4
+INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `measured_at`) VALUES 
+(4, 1, '135', NOW()), (4, 2, '88', NOW()), (4, 3, '68', NOW()), 
+(4, 4, 'Average', NOW()), (4, 5, 'Calm', NOW()), 
+(4, 6, 'Mild allergic reaction noted.', NOW());
+
+-- Patient 5
+INSERT INTO `assessments` (`patient_id`, `clinical_parameter_id`, `value`, `measured_at`) VALUES 
+(5, 1, '128', NOW()), (5, 2, '82', NOW()), (5, 3, '72', NOW()), 
+(5, 4, 'Good', NOW()), (5, 5, 'Happy', NOW()), 
+(5, 6, 'Consistent monitoring of glucose levels.', NOW());
+
+INSERT INTO `goals` (`patient_id`, `clinical_parameter_id`, `target_value`, `target_operator`, `status`, `notes`, `deadline`) VALUES
+(1, 1, '130', '<=', 'active', 'Maintain healthy blood pressure control.', DATE_ADD(CURDATE(), INTERVAL 30 DAY)),
+(2, 3, '95', '<=', 'active', 'Support gradual weight reduction.', DATE_ADD(CURDATE(), INTERVAL 45 DAY)),
+(3, 2, '85', '<=', 'active', 'Reduce diastolic blood pressure.', DATE_ADD(CURDATE(), INTERVAL 21 DAY)),
+(4, 4, 'Good', '=', 'active', 'Keep self-management status rated as good.', DATE_ADD(CURDATE(), INTERVAL 30 DAY)),
+(5, 5, 'Calm', '=', 'active', 'Improve mood stability and adherence.', DATE_ADD(CURDATE(), INTERVAL 14 DAY));
+
+INSERT INTO `prescriptions` (`patient_id`, `medication_id`, `dosage`, `frequency`, `start_date`, `expiry_date`, `notes`, `status`) VALUES
+(1, 2, '10mg', 'daily', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY), 'Monitor blood pressure weekly.', 'active'),
+(2, 1, '500mg', 'twice daily', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY), 'Take with meals.', 'active'),
+(3, 3, '5mg', 'daily', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY), 'Evening dose preferred.', 'active'),
+(4, 4, '20mg', 'nightly', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY), 'Lipid management support.', 'active'),
+(5, 5, '2 puffs', 'as needed', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY), 'Use for wheezing episodes.', 'active');
+
+INSERT INTO `reviews` (`patient_id`, `reviewed_by_id`, `review_date`, `subjective_findings`, `objective_findings`, `assessment`, `plan`, `recommendations`, `follow_up_date`) VALUES
+(1, 3, CURDATE(), 'Patient reports stable blood pressure readings at home.', 'Clinic readings remain within target range.', 'Hypertension well controlled.', 'Continue current therapy.', 'Maintain low-sodium diet and walking program.', DATE_ADD(CURDATE(), INTERVAL 30 DAY)),
+(2, 3, CURDATE(), 'Patient notes improved energy with medication adherence.', 'Weight remains above target but stable.', 'Diabetes follow-up ongoing.', 'Continue metformin and nutrition support.', 'Reduce sugary drinks and review fasting readings.', DATE_ADD(CURDATE(), INTERVAL 21 DAY));
+
+INSERT INTO `appointments` (`patient_id`, `clinician_id`, `title`, `appointment_date`, `end_date`, `description`, `status`) VALUES
+(1, 3, 'Hypertension Review', DATE_ADD(NOW(), INTERVAL 7 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 7 DAY), INTERVAL 30 MINUTE), 'Routine blood pressure follow-up.', 'scheduled'),
+(2, 3, 'Diabetes Nutrition Check', DATE_ADD(NOW(), INTERVAL 10 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 10 DAY), INTERVAL 30 MINUTE), 'Review glucose trends and diet plan.', 'confirmed'),
+(5, 3, 'Respiratory Follow-up', DATE_ADD(NOW(), INTERVAL 14 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 14 DAY), INTERVAL 30 MINUTE), 'Assess asthma symptom control.', 'scheduled');
+
+INSERT INTO `messages` (`sender_id`, `receiver_id`, `content`) VALUES
+(1, 2, 'Please review today''s onboarding queue before noon.'),
+(2, 1, 'Received. I will finish the pending registry updates shortly.'),
+(3, 2, 'I have added new follow-up appointments for the active care list.');
 
 COMMIT;

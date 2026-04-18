@@ -40,7 +40,7 @@ const emptyUser: Omit<User, 'id'> = {
 };
 
 function normalizeRoleValue(role: User['role'] | undefined) {
-  if (role === 'clinician') return 'physician';
+  if (role === 'physician') return 'clinician';
   if (role === 'payer') return 'partner';
   if (role === 'patient') return 'user';
   return role || 'navigator';
@@ -344,7 +344,10 @@ function UserUpsertForm({
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="navigator">Navigator</SelectItem>
-                    <SelectItem value="physician">Clinician</SelectItem>
+                    <SelectItem value="clinician">Clinician</SelectItem>
+                    <SelectItem value="specialist">Specialist</SelectItem>
+                    <SelectItem value="nutritionist">Nutritionist</SelectItem>
+                    <SelectItem value="physician">Physician</SelectItem>
                     <SelectItem value="partner">Partner</SelectItem>
                     <SelectItem value="staff">Staff</SelectItem>
                     <SelectItem value="user">Patient</SelectItem>

@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { User as UserIcon, Cake, Phone, Mail, Binary } from 'lucide-react';
 import { placeholderImages } from '@/lib/placeholder-images';
+import { calculateAgeFromDob } from '@/lib/age';
 
 const DetailItem = ({
   label,
@@ -33,6 +34,7 @@ const DetailItem = ({
 
 export default function PatientInfoCard({ patient }: { patient: Patient }) {
   const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
+  const calculatedAge = calculateAgeFromDob(patient.dob);
 
   return (
     <Card className="overflow-hidden border-primary/10">
@@ -55,7 +57,11 @@ export default function PatientInfoCard({ patient }: { patient: Patient }) {
             value={`${patient.first_name} ${patient.middle_name || ''} ${patient.surname || ''}`}
           />
           <DetailItem icon={Cake} label="Date of Birth" value={patient.dob ? new Date(patient.dob).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'} />
-          <DetailItem icon={Binary} label="Age / Gender" value={`${patient.age || 'N/A'} / ${patient.gender || 'N/A'}`} />
+          <DetailItem
+            icon={Binary}
+            label="Age / Gender"
+            value={`${calculatedAge ?? patient.age ?? 'N/A'} / ${patient.gender || 'N/A'}`}
+          />
           <DetailItem icon={Phone} label="Phone" value={patient.phone} />
           <DetailItem icon={Mail} label="Email" value={patient.email} />
         </div>

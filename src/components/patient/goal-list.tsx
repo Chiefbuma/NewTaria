@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Trash2, Edit } from 'lucide-react';
 import AddGoalSheet from './add-goal-sheet';
+import { getGoalProgressState } from '@/lib/goal-status';
 
 export default function GoalList({ patient, goals, clinicalParameters, onGoalsUpdate }: { patient: Patient, goals: Goal[], clinicalParameters: ClinicalParameter[], onGoalsUpdate: (goals: Goal[]) => void }) {
     const handleSaveGoal = (newGoalData: Omit<Goal, 'id' | 'patient_id' | 'created_at'> & { id?: number }) => {
@@ -66,10 +67,10 @@ export default function GoalList({ patient, goals, clinicalParameters, onGoalsUp
                                         <p className="text-sm text-muted-foreground">
                                             Deadline: {new Date(goal.deadline).toLocaleDateString()}
                                         </p>
-                                        {goal.notes && <p className="text-sm italic text-muted-foreground pt-2">Notes: {goal.notes}</p>}
+                                    {goal.notes && <p className="text-sm italic text-muted-foreground pt-2">Notes: {goal.notes}</p>}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <Badge variant={goal.status === 'active' ? 'default' : 'secondary'}>{goal.status}</Badge>
+                                        <Badge variant={getGoalProgressState(goal).variant}>{getGoalProgressState(goal).label}</Badge>
                                         <AddGoalSheet
                                             trigger={
                                                 <Button variant="ghost" size="icon">

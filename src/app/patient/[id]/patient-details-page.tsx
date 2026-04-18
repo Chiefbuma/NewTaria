@@ -67,6 +67,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { placeholderImages } from '@/lib/placeholder-images';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { calculateAgeFromDob } from '@/lib/age';
 import ReportViewer from '@/components/report-viewer';
 import { corporates as mockCorporates } from '@/lib/mock-data';
 
@@ -112,6 +113,7 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   const patientAvatar = placeholderImages.find(p => p.id === 'patient-avatar');
+  const calculatedAge = calculateAgeFromDob(patient.dob);
 
   // Form states
   const [vitalsForm, setVitalsForm] = useState({ bp_systolic: '', bp_diastolic: '', pulse: '', temp: '', rbs: '' });
@@ -240,7 +242,11 @@ export default function PatientDetailsPage({ initialPatient }: { initialPatient:
                   />
                   <DetailItem icon={Cake} label="Date of Birth" value={patient.dob ? new Date(patient.dob).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'} />
                    <DetailItem icon={CalendarDays} label="Wellness Date" value={patient.wellness_date ? new Date(patient.wellness_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'} />
-                  <DetailItem icon={Binary} label="Age / Gender" value={`${patient.age} / ${patient.gender}`} />
+                  <DetailItem
+                    icon={Binary}
+                    label="Age / Gender"
+                    value={`${calculatedAge ?? patient.age ?? 'N/A'} / ${patient.gender || 'N/A'}`}
+                  />
                   <DetailItem icon={Phone} label="Phone" value={patient.phone} />
                   <DetailItem icon={Mail} label="Email" value={patient.email} />
                 </div>

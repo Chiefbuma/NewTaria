@@ -6,6 +6,8 @@ import { Target } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { clinicalParameters as mockClinicalParameters } from '@/lib/mock-data';
+import { Badge } from '../ui/badge';
+import { getGoalProgressState } from '@/lib/goal-status';
 
 export default function GoalsSettingSection({ patient, onUpdate }: { patient: Patient, onUpdate: () => void }) {
     const [goals, setGoals] = useState(patient.goals);
@@ -30,10 +32,14 @@ export default function GoalsSettingSection({ patient, onUpdate }: { patient: Pa
                         <div className="space-y-4">
                         {goals.map(goal => (
                             <div key={goal.id} className="p-4 rounded-xl border bg-background/50">
-                                <p className="font-semibold">{mockClinicalParameters.find(p => p.id === goal.clinical_parameter_id)?.name}</p>
+                                <div className="flex items-start justify-between gap-2">
+                                    <p className="font-semibold">{mockClinicalParameters.find(p => p.id === goal.clinical_parameter_id)?.name}</p>
+                                    <Badge variant={getGoalProgressState(goal).variant} className="capitalize">
+                                        {getGoalProgressState(goal).label}
+                                    </Badge>
+                                </div>
                                 <p className="text-sm text-muted-foreground">Target: {goal.target_operator} {goal.target_value}</p>
                                 <p className="text-sm text-muted-foreground">Deadline: {new Date(goal.deadline).toLocaleDateString()}</p>
-                                <p className="text-sm text-muted-foreground capitalize">Status: {goal.status}</p>
                             </div>
                         ))}
                         </div>
